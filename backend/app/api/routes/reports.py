@@ -452,39 +452,41 @@ async def build_machine_time_report(
         .all()
     )
 
-    # Tugamagan oxirgi holat: faqat oraliq hozirni o'z ichiga olsa va agent hali tirik bo'lsa
-    ongoing: dict[int, tuple[str, datetime]] = {}
-    if end >= now:
-        # Har ish markazining OXIRGI holati — «guruhdagi oxirgi qator» LATERAL + LIMIT 1 bilan:
-        # `ix_andon_event_live (kind, machine_id, happened_at)` dan har stanokka bitta qator
-        # o'qiladi. `DISTINCT ON` butun `state` tarixini o'qib saralardi — narxi tarix bilan
-        # o'sardi (2026-09-26 da 6 282 qator, 7,5 ms), bu esa stanok soniga bog'liq xolos.
-        oxirgi = (
-            select(AndonEvent.state, AndonEvent.happened_at)
-            .where(
-                AndonEvent.machine_id == Machine.id,
-                AndonEvent.kind == "state",
-                AndonEvent.is_deleted == False,  # noqa: E712
-                AndonEvent.state.is_not(None),
-            )
-            .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
-            .limit(1)
-            .lateral()
+    # Tugamagan oxirgi holat — agent hali tirik bo'lsa, so'ralgan oraliq qanday bo'lmasin (docs/12 §4.21).
+    # Ilgari faqat `end >= now` da qo'shilardi: «Kecha» so'rovida kechagi 15:00 da boshlanib hali
+    # davom etayotgan holat yo'qolib, o'sha kun «Kecha + bugun» so'rovidagidan boshqacha chiqardi.
+    # Kesish `machine_time` da: oraliq `min(end, now)` da to'xtaydi.
+    # Har ish markazining OXIRGI holati — «guruhdagi oxirgi qator» LATERAL + LIMIT 1 bilan:
+    # `ix_andon_event_live (kind, machine_id, happened_at)` dan har stanokka bitta qator
+    # o'qiladi. `DISTINCT ON` butun `state` tarixini o'qib saralardi — narxi tarix bilan
+    # o'sardi (2026-09-26 da 6 282 qator, 7,5 ms), bu esa stanok soniga bog'liq xolos.
+    oxirgi = (
+        select(AndonEvent.state, AndonEvent.happened_at)
+        .where(
+            AndonEvent.machine_id == Machine.id,
+            AndonEvent.kind == "state",
+            AndonEvent.is_deleted == False,  # noqa: E712
+            AndonEvent.state.is_not(None),
         )
-        last_states = (
-            await db.execute(
-                select(Machine.id, oxirgi.c.state, oxirgi.c.happened_at)
-                .join(oxirgi, true())
-                .where(faqat(Machine.id))
-                .order_by(Machine.id)
-            )
-        ).all()
-        live = await read_live(mid for mid, _state, _at in last_states)
-        ongoing = {
-            mid: (state, at)
-            for mid, state, at in last_states
-            if state is not None and live.get(mid, {}).get("state") == state
-        }
+        .order_by(AndonEvent.happened_at.desc(), AndonEvent.id.desc())
+        .limit(1)
+        .lateral()
+    )
+    last_states = (
+        await db.execute(
+            select(Machine.id, oxirgi.c.state, oxirgi.c.happened_at)
+            .join(oxirgi, true())
+            # Oraliqdan keyin boshlangan holat bu hisobotga tegishli emas
+            .where(faqat(Machine.id), oxirgi.c.happened_at <= end)
+            .order_by(Machine.id)
+        )
+    ).all()
+    live = await read_live(mid for mid, _state, _at in last_states)
+    ongoing: dict[int, tuple[str, datetime]] = {
+        mid: (state, at)
+        for mid, state, at in last_states
+        if state is not None and live.get(mid, {}).get("state") == state
+    }
 
     spans = andon_spans(events, ongoing) + await uskuna_machine_spans(db, start, end, now, faqat(AndonEvent.machine_id))
     result = machine_time(spans, start, end, now)
