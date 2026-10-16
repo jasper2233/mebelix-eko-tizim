@@ -60,7 +60,7 @@ async def reopen_from_step(db: AsyncSession, defect: PartDefect) -> list[dict[st
     now = datetime.now(UTC)
     events: list[dict[str, Any]] = []
     for scan in rows:
-        route = await revoke_scan(db, scan, at=now)
+        route = await revoke_scan(db, scan, at=now, defect_id=defect.id)
         events.append(
             {
                 "type": "scan.cancelled",

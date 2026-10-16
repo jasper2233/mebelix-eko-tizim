@@ -962,7 +962,9 @@ async def log_rejected_scan(
     await db.commit()
 
 
-async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = None) -> PartRoute | None:
+async def revoke_scan(
+    db: AsyncSession, scan: Scan, *, at: datetime | None = None, defect_id: int | None = None
+) -> PartRoute | None:
     """Bitta skanni QAYTARADI: o'zi, hosilalari, hisoblagichlar va buyurtma holati.
 
     Skanni bekor qilish TO'RT joyda bo'ladi — terminaldagi BEKOR QILISH tugmasi
@@ -979,10 +981,15 @@ async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = Non
 
     Qaytaradi: skanning O'Z marshrut qadami (hisoblagichi yangilangan holda),
     chaqiruvchi undan `qoldiq` ni hisoblaydi.
+
+    `defect_id` — faqat brak tasdig'i beradi: skan (va hosilalari) «brak tufayli bekor
+    qilingan» deb belgilanadi, OEE uni ish sifatida sanayveradi (docs/12 §4.17).
     """
     now = at or datetime.now(UTC)
     scan.is_cancelled = True
     scan.cancelled_at = now
+    if defect_id is not None:
+        scan.defect_id = defect_id
     # Idempotentlik kaliti BO'SHATILADI. U doim yagona (`ix_scan_client_event_id`)
     # va faqat TIRIK skan uchun ma'noga ega. Doimiy kalitli yagona yo'lda
     # (`pachka`: `pack-{qadoq}-{nusxa}`) bekor qilingan qator kalitni band qilib
@@ -1007,6 +1014,8 @@ async def revoke_scan(db: AsyncSession, scan: Scan, *, at: datetime | None = Non
     for child_scan in derived:
         child_scan.is_cancelled = True
         child_scan.cancelled_at = now
+        if defect_id is not None:
+            child_scan.defect_id = defect_id
         await db.execute(
             update(PartRoute)
             .where(PartRoute.id == child_scan.route_id, PartRoute.total_done > 0)

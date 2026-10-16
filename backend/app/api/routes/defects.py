@@ -71,7 +71,9 @@ async def mark_defect(
         part_id=scan.part_id,
         instance_id=scan.instance_id,
         scan_id=scan.id,
-        machine_id=machine.id,
+        # Brak SKAN yozilgan stanokniki (OEE Quality o'sha stanokda): post monobloki boshqa
+        # stanokka biriktirilgan bo'lsa ham — bir postda ikki stanok bo'lishi mumkin
+        machine_id=scan.machine_id or machine.id,
         post_id=post.id,
         employee_id=session.employee_id,
         reason=body.reason,

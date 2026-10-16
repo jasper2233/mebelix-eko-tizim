@@ -137,9 +137,14 @@ async def main() -> None:
         skan(eshik, nusxa, qadam, T(9, 55), is_cancelled=True)       # braksiz bekor — sanalmaydi
         await db.flush()
         for i in range(4):
-            db.add(PartDefect(order_id=buyurtma.id, part_id=eshik.id, instance_id=nusxa.id,
-                              scan_id=skanlar[0].id if i == 0 else None, machine_id=rover.id,
-                              post_id=rover_post.id, reason="Skol", created_at=T(9) + timedelta(seconds=i)))
+            d = PartDefect(order_id=buyurtma.id, part_id=eshik.id, instance_id=nusxa.id,
+                           scan_id=skanlar[0].id if i == 0 else None, machine_id=rover.id,
+                           post_id=rover_post.id, reason="Skol", created_at=T(9) + timedelta(seconds=i))
+            db.add(d)
+            if i == 0:
+                # Birinchi skanni brak TASDIG'I bekor qilgan (`reopen_from_step` belgisi bilan)
+                await db.flush()
+                skanlar[0].defect_id = d.id
         db.add(PartDefect(order_id=buyurtma.id, part_id=eshik.id, instance_id=nusxa.id, machine_id=rover.id,
                           post_id=rover_post.id, reason="Skol", status=DefectStatus.REJECTED, created_at=T(9)))
         await db.commit()

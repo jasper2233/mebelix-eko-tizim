@@ -142,10 +142,15 @@ async def main() -> None:
         db.add_all(skanlar)
         await db.flush()
         for i in range(16):
-            db.add(PartDefect(order_id=buyurtma.id, part_id=detal.id, instance_id=nusxa.id,
-                              scan_id=skanlar[0].id if i == 0 else None,
-                              machine_id=prisadka.id, post_id=prisadka_post.id,
-                              reason="Chipilgan", created_at=T(9)))
+            d = PartDefect(order_id=buyurtma.id, part_id=detal.id, instance_id=nusxa.id,
+                           scan_id=skanlar[0].id if i == 0 else None,
+                           machine_id=prisadka.id, post_id=prisadka_post.id,
+                           reason="Chipilgan", created_at=T(9))
+            db.add(d)
+            if i == 0:
+                # Birinchi skanni brak TASDIG'I bekor qilgan (`reopen_from_step` belgisi bilan)
+                await db.flush()
+                skanlar[0].defect_id = d.id
         # «Brak emas» deb rad etilgani Quality'ga kirmaydi
         db.add(PartDefect(order_id=buyurtma.id, part_id=detal.id, instance_id=nusxa.id,
                           machine_id=prisadka.id, post_id=prisadka_post.id, reason="Chipilgan",

@@ -63,3 +63,9 @@ class Scan(BaseModel):
     parent_scan_id: Mapped[int | None] = mapped_column(ForeignKey("scan.id"), default=None, index=True, kw_only=True)
     is_cancelled: Mapped[bool] = mapped_column(default=False, kw_only=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    #: Brak TASDIG'I shu skanni bekor qilgan (`defects.reopen_from_step`) — boshqa postniki ham.
+    #: Ish QILINGAN: OEE Performance va Quality uni sanayveradi (docs/12 §4.17). «Brak emas»
+    #: deb qayta rad etilsa ham belgi qoladi — skan tiklanmaydi, ish esa baribir bo'lgan.
+    defect_id: Mapped[int | None] = mapped_column(
+        ForeignKey("part_defect.id", use_alter=True, name="scan_defect_id_fkey"), default=None, kw_only=True
+    )
