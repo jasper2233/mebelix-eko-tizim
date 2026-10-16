@@ -364,7 +364,6 @@ async def _rover_parts(
     db: AsyncSession,
     rover_ids: set[int],
     avail: dict[int, Availability],
-    defect_scan_ids: set[int],
     start: datetime,
     end: datetime,
     cycle: IdealCycleRover,
@@ -375,7 +374,7 @@ async def _rover_parts(
     Manba — shu stanokdagi skanlar: chek chiqarish (`rvprint-*` avto-skani, roverda
     kesiladigan detal) ham, ARRA'dan keyin oddiy skan ham. Ideal vaqt kontur uzunligidan
     (`services/performance.rover_ideal_seconds`). Filtr Prisadkadagi bilan bir xil:
-    faqat KUZATILGAN ish vaqtidagi skan, brak bilan bekor qilingani ham sanaladi."""
+    faqat KUZATILGAN ish vaqtidagi skan, brak tasdig'i bekor qilgani ham sanaladi."""
     rows = (
         (
             await db.execute(
@@ -383,7 +382,7 @@ async def _rover_parts(
                 .join(Part, Part.id == Scan.part_id)
                 .where(
                     Scan.machine_id.in_(rover_ids),
-                    or_(Scan.is_cancelled == False, Scan.id.in_(defect_scan_ids)),  # noqa: E712
+                    or_(Scan.is_cancelled == False, Scan.defect_id.is_not(None)),  # noqa: E712
                     Scan.is_deleted == False,  # noqa: E712
                     Scan.created_at >= start,
                     Scan.created_at <= end,
@@ -567,39 +566,42 @@ async def build_machine_time_report(
     #: Boshqa postlarda o'lchov manbasi yo'q, Quality `—`.
     quality_ids = prisadka_ids | kromka_ids | rover_ids
 
-    # OEE Quality: BRAK (`part_defect`) — detallar bilan BIR XIL filtr (kuzatilgan ish vaqti),
-    # aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilardi. Brak kiritilmagan bo'lsa
-    # Quality 100% bo'lib qoladi: ayiriladigan narsa yo'q.
+    # OEE Quality: BRAK — SKANNING xossasi (2026-10-16, docs/12 §4.17). U skan qilingan VAQTDA va
+    # STANOKDA sanaladi, BRAK tugmasi bosilgan paytda emas: tushlikda, smenadan keyin yoki ertasi
+    # kuni bosilgan brak ham o'z detalining kuniga tushadi. Surat (brak) shu bilan doim maxraj
+    # (sanalgan detallar) ichida — Quality 0..100 dan chiqmaydi. Skansiz eski yozuv — o'z vaqti.
+    # Brak kiritilmagan bo'lsa Quality 100%: ayiriladigan narsa yo'q.
     defects_by: dict[tuple[int, date], int] = {}
-    #: Tasdiqlangan brak nusxaning skanini BEKOR QILADI (`services/defects.reopen_from_step`).
-    #: O'sha skan Performance va Quality hisobida BARIBIR sanalishi kerak: ish qilingan (vaqt
-    #: ketgan), mahsulot esa yaroqsiz. Aks holda brak ikki marta jazolanardi — detal ham
-    #: chiqib ketardi (P tushardi), ham brak bo'lib ayirilardi (Q tushardi).
-    defect_scan_ids: set[int] = set()
     if quality_ids:
+        brak_stanok = func.coalesce(Scan.machine_id, PartDefect.machine_id)
+        brak_vaqt = func.coalesce(Scan.created_at, PartDefect.created_at)
         defect_rows = (
             (
                 await db.execute(
-                    select(PartDefect.machine_id, PartDefect.created_at, PartDefect.scan_id).where(
-                        PartDefect.machine_id.in_(quality_ids),
+                    select(brak_stanok, brak_vaqt)
+                    .select_from(PartDefect)
+                    .outerjoin(Scan, Scan.id == PartDefect.scan_id)
+                    .where(
+                        brak_stanok.in_(quality_ids),
                         # «Brak emas» deb rad etilgani sanalmaydi; tasdiq kutayotgani SANALADI —
                         # aks holda tasdiq kechikkanda OEE aslidan yaxshi ko'rinib turardi
                         PartDefect.status != DefectStatus.REJECTED,
                         PartDefect.is_deleted == False,  # noqa: E712
-                        PartDefect.created_at >= start,
-                        PartDefect.created_at <= end,
+                        # Skani sanalgan bo'lsin (detallar bilan bir xil shart) — operator skanni
+                        # brakdan keyin o'zi bekor qilsa, brak ham maxrajdan tashqarida qolmasin
+                        or_(Scan.id.is_(None), Scan.is_cancelled == False, Scan.defect_id.is_not(None)),  # noqa: E712
+                        brak_vaqt >= start,
+                        brak_vaqt <= end,
                     )
                 )
             )
             .tuples()
             .all()
         )
-        for mid, at, scan_id in defect_rows:
-            if mid is not None and inside(avail[mid].observed, at):
+        for mid, at in defect_rows:
+            if mid is not None and mid in avail and inside(avail[mid].observed, at):
                 key = (mid, at.astimezone(TASHKENT_TZ).date())
                 defects_by[key] = defects_by.get(key, 0) + 1
-                if scan_id is not None:
-                    defect_scan_ids.add(scan_id)
 
     # OEE Performance (Prisadka): KUZATILGAN ish vaqtida skanerlangan detallarning ideal vaqti ÷ ishlagan vaqt.
     # Ma'lumotsiz vaqtdagi skan sanalmaydi — o'sha vaqt `run_s` ga ham kirmagan, aks holda foiz shishardi.
@@ -621,8 +623,8 @@ async def build_machine_time_report(
                     .join(Part, Part.id == Scan.part_id)
                     .where(
                         Scan.machine_id.in_(prisadka_ids),
-                        # Brak deb belgilangan skan bekor qilingan bo'lsa ham sanaladi (yuqoriga qarang)
-                        or_(Scan.is_cancelled == False, Scan.id.in_(defect_scan_ids)),  # noqa: E712
+                        # Brak TASDIG'I bekor qilgan skan ham sanaladi: ish qilingan (docs/12 §4.17)
+                        or_(Scan.is_cancelled == False, Scan.defect_id.is_not(None)),  # noqa: E712
                         Scan.is_deleted == False,  # noqa: E712
                         Scan.created_at >= start,
                         Scan.created_at <= end,
@@ -701,7 +703,7 @@ async def build_machine_time_report(
 
     ideal_rover = await get_ideal_cycle_rover(db)
     if rover_ids:
-        await _rover_parts(db, rover_ids, avail, defect_scan_ids, start, end, ideal_rover, ideal_by)
+        await _rover_parts(db, rover_ids, avail, start, end, ideal_rover, ideal_by)
 
     def perf(mid: int, ideal_s: float, run_s: int) -> float | None:
         return round(ideal_s * 100 / run_s, 1) if mid in quality_ids and run_s > 0 else None

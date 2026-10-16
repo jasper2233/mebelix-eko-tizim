@@ -303,7 +303,7 @@ OEE     = Availability × Performance × Quality
 | Tasdiqda qayta boshlash qadami MAJBURIY, ayb ixtiyoriy | «qayerdan qayta boshlanadi» — qarorning o'zi; material nuqsonida esa ayb hech kimda emas |
 | Qaror qayta o'zgartiriladi | noto'g'ri bosilgani tuzatilsin; operator esa menejer ko'rib chiqqan brakni o'chira olmaydi (422) |
 | Braklar detallar bilan BIR XIL filtrda sanaladi (kuzatilgan ish vaqti) | aks holda surat va maxraj boshqa-boshqa vaqtdan yig'ilib, foiz «100 dan katta» yoki «manfiy» bo'lib chiqardi |
-| Tasdiqlangan brakning BEKOR QILINGAN skani hisobda QOLADI (`defect_scan_ids`) | tasdiq nusxani qayta ochib skanini bekor qiladi; u sanoqdan tushib ketsa brak IKKI marta jazolanardi — detal Performance'dan ham chiqardi, Quality'dan ham ayirilardi. O'lchangan: tasdiqdan keyin ham `parts` 600, `ideal_s` 16200, Quality 93.3% |
+| Brak TASDIG'I bekor qilgan skanlar hisobda QOLADI (`scan.defect_id`, 2026-10-16 dan — §4.17; ilgari faqat brakning o'z skani) | tasdiq nusxani qayta ochib skanini bekor qiladi; u sanoqdan tushib ketsa brak IKKI marta jazolanardi — detal Performance'dan ham chiqardi, Quality'dan ham ayirilardi. O'lchangan: tasdiqdan keyin ham `parts` 600, `ideal_s` 16200, Quality 93.3% |
 | Brakni faqat SKAN yozilgan post belgilaydi (`scan.post_id != post.id` → 403) | bitta nusxa ikki postdan ikki marta brak qilinsa Quality ikki barobar tushardi |
 | Bitta skan — bitta brak (takror urinish 422) | tugma katta, tasodifiy ikki marta bosish real |
 | Sabab ro'yxatdan bo'lishi shart (422 «Sahifani yangilang») | terminal eskirgan ro'yxatni ko'rsatib turgan bo'lishi mumkin |
@@ -657,6 +657,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oracle.py` (25/25) | §4.13, agent 1.9.0 (§4.15), 1.10.0 — tartibsiz kelish va uzluksiz tasdiq |
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
+| `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
 | `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
@@ -764,6 +765,38 @@ tiklandi, A 76.0% (eski hisob 83.3% — uzilish «ishlov» edi); kunlik trekda o
 2100 s; downtime: Pico'dan 2 ta, agentdan 2 ta, agent ko'rgan bo'sh turish takrorlanmadi,
 ikkinchi sinxronda yangi yozuv yo'q. Kromka — Pico tirik uzilishda davomiylik saqlandi (87.5%),
 tokdan yonishda 10:00-11:00 noma'lum (75.0%), `wdt` da kesilmadi (87.5%).
+
+### 4.17 Brak — skanning xossasi (2026-10-16)
+
+Tamoyil: **brak o'z SKANI sanalgan joyda, o'sha vaqtda va o'sha stanokda sanaladi; brak
+jarayoni bekor qilgan skan ish sifatida sanalaveradi.** Bitta qoida to'rt nuqsonni yopdi
+(ikkitasi haqiqiy Postgres'da, ikkitasi koddan tasdiqlangan edi):
+
+| Nuqson | Misol | Tuzatish |
+| --- | --- | --- |
+| Brak BRAK bosilgan vaqtga qarab sanalardi | 11:58 dagi detal 12:03 da (tushlikda) brak — Quality'ga kirmasdi; dushanbadagi detal seshanba brak — dushanba Q 100%, seshanba begona brak bilan tushardi | hisobot brakni `scan` ga ulab, `scan.created_at` va `scan.machine_id` bo'yicha sanaydi; skansiz eski yozuv — o'z vaqti/stanogi |
+| Tasdiq boshqa stanok P sini tushirardi | brak Kromka'da, qayta boshlash Prisadka'dan: Prisadka 10 / 270 s → 9 / 243 s | `reopen_from_step` bekor qilgan HAR skanga (boshqa postnikiga ham, hosilalariga ham) `scan.defect_id` qo'yadi; P va Q «bekor qilinmagan YOKI `defect_id` li» skanlarni sanaydi |
+| Tasdiq → «brak emas» — ish butunlay yo'qolardi | skanlar tiklanmaydi (ataylab), hisobot esa ularni tashlardi | `defect_id` belgisi rad etilganda ham qoladi — ish qilingan |
+| Brak terminal stanogiga yozilardi | bir postda ikki stanok — Quality begona stanokka | `mark_defect` `scan.machine_id` ni yozadi; hisobot baribir skan stanogini oladi |
+
+Natija: surat (brak) doim maxraj (sanalgan detallar) ichida — Quality 0..100 dan chiqmaydi.
+Kech bosilgan brak o'z detalining kuniga tushadi, ya'ni o'tgan kunning Quality'si ORQAGA
+o'zgarishi mumkin — bu to'g'ri: o'sha kunda qilingan detal yaroqsiz chiqqan.
+
+Shu bilan Kromka o'lchovi hukmi ham: kvota (`kromka._progress`) faqat TIRIK skanga bog'langan
+«mos» o'lchovlarni sanaydi — brak tasdig'idan keyin qayta lentalangan detalning yangi o'tishlari
+«ortiqcha» emas, «mos» bo'ladi.
+
+Migratsiya `c6d2e8f41a07`: `scan.defect_id` (nullable FK) va mavjud ma'lumotni to'ldirish —
+tasdiqlangan brak nusxasining qayta boshlash qadamidan keyingi, `reviewed_at` dan 5 soniya
+ichida bekor qilingan skanlari (tasdiq ularni bitta tranzaksiyada bekor qiladi) va hosilalari.
+Lokal sinovda: o'sha brakning ikki skani belgilandi, boshqa nusxaning va boshqa vaqtda bekor
+qilingan skan belgilanmadi; `downgrade` ham ishlaydi.
+
+Tekshiruv — `scripts/oracles/defect_oracle.py` **8/8**: tushlikdagi, ertangi va begona terminal
+stanogidagi brak sanaldi (Q 70.0%), tasdiqdan keyin va rad etilgandan keyin Prisadka 10 / 270 s,
+Kromka kvotasi bekor skandagi o'lchovni sanamadi. `oee_oracle` va `rover_oee_oracle` fixture'larida
+«brak bekor qilgan skan» endi haqiqiy oqimdagidek `defect_id` bilan yasaladi (31/31, 19/19).
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

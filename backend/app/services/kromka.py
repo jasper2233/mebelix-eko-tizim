@@ -237,10 +237,14 @@ async def _progress(db: AsyncSession, instance_id: int | None, part: Part | None
         return {}
     done = await db.execute(
         select(KromkaMeasurement.side_group, func.count())
+        .join(Scan, Scan.id == KromkaMeasurement.scan_id)
         .where(
             KromkaMeasurement.instance_id == instance_id,
             KromkaMeasurement.verdict == KromkaVerdict.MOS,
             KromkaMeasurement.is_deleted == False,  # noqa: E712
+            # Skani BEKOR qilingan o'lchov kvotani band qilmaydi: brak tasdig'idan keyin
+            # qayta lentalangan detalning yangi o'tishlari «ortiqcha» emas, «mos» bo'lsin
+            Scan.is_cancelled == False,  # noqa: E712
         )
         .group_by(KromkaMeasurement.side_group)
     )
