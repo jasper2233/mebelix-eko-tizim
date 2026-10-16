@@ -1,9 +1,12 @@
 # 12 — OEE (Prisadka, Kromka, Rover): holat, bajarilgan ishlar va reja
 
-Holat: **2026-09-19**. OEE'ning uchala qismi ham hisoblanadi (Availability, Performance,
-Quality) va hisobotda `A × P × Q` raqami chiqadi — lekin qiymatlar ma'lumot qamroviga va
-TAXMINIY koeffitsiyentlarga bog'liq (§5, §4.6). Bu hujjat poydevor qayerda turganini,
-prod ma'lumoti nimani ko'rsatganini va keyingi qadamlarni yozadi.
+Holat: **2026-10-16**. KOD TOMONI TAYYOR: Prisadka, Kromka va Rover'da OEE'ning uchala qismi
+(Availability, Performance, Quality) va `A × P × Q` hisoblanadi, «Stanok vaqti» hisobotida va devordagi
+stanok taxtasida ko'rinadi; 2026-10-16 da topilgan hisob xatolari tuzatilgan va orakllar bilan
+isbotlangan (§4.21–4.25). Raqamlarning ISHONCHLILIGI endi tsexga bog'liq: Performance
+koeffitsiyentlari TAXMINIY, Pico qamrovi to'liq emas, Kromka datchigi kalibrlanmagan — §6 da
+tartib bilan. Bu hujjat poydevor qayerda turganini, prod ma'lumoti nimani ko'rsatganini va
+keyingi qadamlarni yozadi.
 
 ## 1. OEE nima va har qismi qayerdan olinadi
 
@@ -26,11 +29,12 @@ OEE          = Availability × Performance × Quality
 | **Performance hisobi** | `services/performance.py`, Hisobotlar → «Stanok vaqti» (§4.6, kromka — §4.9, rover — §4.15) | ✅ bor: Prisadka (2026-09-18), Kromka (2026-09-20) va Rover (2026-10-16, koeffitsiyentlar TAXMINIY) |
 | **Kromka o'lchovi ↔ detal** | `services/kromka.py`, Tizim sozlamalari → «Kromka o'lchovi» (§4.10) | ⚠️ hukm bor (mos/ortiqcha/nomos), lekin KUZATUV: datchik xato o'lchayapti, avtomatik brak o'chirilgan (2026-09-20) |
 | **ROVER (CNC 2130) kuzatuvi** | `bridge-agent/agent.py` (v1.7.0), `andon_event.kind='rover'` (§4.13) | ✅ bor (2026-09-20): holat, to'xtash va Pico hodisalari; rele hali o'chiq |
-| **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan |
+| **Devordagi stanok taxtasi** | `/tablo/stanoklar`, `GET /tablo/machines` | ✅ bor (2026-09-21): jonli holat, smena, bugungi A·P·Q·OEE, sababsiz to'xtashlar, «aloqa yo'q» ajratilgan; 2026-10-16 dan oyna ham yangilanadi, reja vaqti yo'q kunda izoh chiqadi |
+| **Kromka kalibrlash** | Tizim sozlamalari → «Kalibrlash» (§4.18–4.20) | ✅ kod bor (2026-10-16): joriy qiymatlar, sessiya va hisob, Pico'ga qo'llash/qaytarish; ⚠️ tsexda hali bajarilmagan |
 | **OEE kesim sanasi** | `settings_service.OEE_START_DATE`, Tizim sozlamalari → «Ish jadvali» (§4.12) | ✅ bor (2026-09-20): kesimdan oldingi kunlar hisobotga kirmaydi |
 | **Quality hisobi** | `services/performance.py: quality_pct`, Hisobotlar → «Stanok vaqti» (§4.7, kromka — §4.11, rover — §4.15) | ✅ bor: Prisadka (2026-09-19), Kromka (2026-09-20) va Rover (2026-10-16) |
 | Brak | `part_defect` — terminal skan tasmasidagi BRAK tugmasi (§4.7) | ✅ bor (2026-09-19); qayta ishlab chiqarish (remake) YO'Q |
-| **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19) |
+| **OEE = A × P × Q** | `services/performance.py: oee_pct`, o'sha hisobot ustuni (§4.7) | ✅ bor (2026-09-19); 2026-10-16 dan xom nisbatlardan (§4.25) |
 
 ## 2. Tarix
 
@@ -43,6 +47,12 @@ OEE          = Availability × Performance × Quality
   `POST /bridge-agents/andon` ga yuboradi → `andon_event` (xom hodisalar) + Redis jonli holat;
   "Ish markazlari" sahifasida jonli holat, "Hisobotlar → Stanok vaqti" (2026-09-18 dan Availability bilan, §4.5).
 - **2026-09-16** — prod ma'lumot auditi (§5) va ish jadvali sozlamalari (§4.1).
+- **2026-09-17..21** — to'xtash sabablari, Availability, Performance, Quality va OEE (§4.4–4.7),
+  Kromka stansiyasi (§4.8–4.11), OEE kesim sanasi (§4.12), Rover kuzatuvi (§4.13), stanok taxtasi.
+- **2026-10-16** — Rover to'liq OEE (§4.15), agent uzilgan payt (§4.16), brak skanning xossasi (§4.17),
+  Kromka kalibrlash uch qadami (§4.18–4.20) va hisobot xatolari (§4.21–4.25): kunning foizi oraliqqa
+  bog'liq edi, yarim tundan o'tgan to'xtash kesilardi, sabab qo'shni yozuvdan olinardi, ochiq qulf
+  keyingi to'xtashlarga sabab berardi, OEE yaxlitlangan foizlardan hisoblanardi. Hammasi prodda.
 
 ## 3. Ma'lumot manbalari
 
@@ -1052,27 +1062,53 @@ Davr: 2026-09-14 09:36 — 2026-09-16 15:16, faqat Prisadka (ish markazi 1, agen
 Skan↔AWAIT_PART bog'lash bo'limi natija bermadi: o'shanda zaxira 30 s edi, sikl esa ~25 s,
 ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga tushirish kerak.
 
-## 6. Keyingi qadamlar (tartib bilan)
+## 6. Keyingi qadamlar (tartib bilan) — holat 2026-10-16
 
-1. **Qamrov** — Nanxing kompyuterida uyqu rejimini o'chirish; Pico'ni stanokning doimiy 24 V
-   liniyasidan quvvatlash (firmware `docs/tz.md` §3.5), shunda OFF ham yoziladi.
-2. **Smena** — harakatsizlikdan yopish qilindi (§4.3): deploy'dan keyingi birinchi cron 2026-09-05
-   dan ochiq Prisadka smenasini ham yopadi (`ended_at` = oxirgi faollik). Qolgani — tsexda smena
-   har kuni beyjik bilan ochilishini tekshirish.
-3. **Chiroq tasnifi** — tsexda yashil miltillash davrini o'lchash, firmware `MIN_STATE_MS` /
+Kod tomonidagi ma'lum xatolar yopilgan. Quyidagilar raqamlarni ISHONCHLI qiladi — ko'pi tsexda.
+
+**A. Tsexda (raqamlar shunga bog'liq):**
+
+1. **Performance koeffitsiyentlari** — Prisadka (`IdealCycle`: teshik/paz/freza soniyalari) va Rover
+   (`load_s`, `cut_s_per_m`) TAXMINIY. Sekundomer bilan bir necha detalni o'lchab Tizim sozlamalari →
+   «Ideal sikl» da to'g'rilash. Usiz Performance va OEE shartli raqam. Hisobot ostidagi kalibrlash qatori
+   (ideal vaqt va Pico o'lchagan sikl yonma-yon) yordam beradi.
+2. **Pico qamrovi** — Nanxing kompyuterida uyqu rejimini o'chirish; Pico'ni stanokning doimiy 24 V
+   liniyasidan quvvatlash (firmware `docs/tz.md` §3.5). Hozir ma'lumotsiz vaqt O'CHIQ deb sanaladi
+   (§7) va Availability real holatdan past chiqadi (sabablar jadvalidagi «Stanok o'chiq» qatori).
+3. **Prod sozlamalari** — admin tekshiradi:
+   - ish jadvali (usiz foiz hisoblanmaydi). **Juma dam olish kuni** (`days_off: [5]`) — tsex juma
+     ishlasa, olib tashlash kerak, aks holda o'sha kun taxtada «reja vaqti yo'q» chiqadi;
+   - to'xtash sabablari ro'yxati (egasining ro'yxati §4.4 da), rejali belgisi bilan;
+   - brak sabablari ro'yxati;
+   - OEE kesim sanasi (§4.12) — ishonchsiz eski kunlarni hisobotdan chiqarish uchun.
+4. **Kromka kalibrlash — tsexda birinchi marta** (§4.18–4.20):
+   - Kromka agenti 1.12.0 ga yangilanganini «MES agentlar» da tekshirish;
+   - etalonlarni (masalan 580 / 1500 / 2740 mm) shtangensirkul bilan o'lchab, sessiyada 2+ uzunlik ×
+     ikkala tezlik, ~40 o'tish; natija ±0.5 mm bo'lishi kerak;
+   - BIRINCHI qo'llash odam yonida: keyin 1–2 etalonni qayta o'tkazib tekshirish, xato bo'lsa «Qaytarish»;
+   - stansiya kiosk sahifasini (`stansiya.html`) qayta ochmaslik — u ulanishda o'z qiymatlarini
+     `SET` qilib MES qo'llaganini bosib ketadi; stansiya dasturchisiga MES endi `SET` yuborishini aytish.
+5. **Kromka o'lchovi → brak** — hozir faqat KUZATUV, avtomatik brak o'chiq (§4.10). Kalibrlashdan
+   keyin bir-ikki hafta `mos`/`nomos` ulushini kuzatib, datchikka ishonch bo'lsa yoqish masalasi.
+6. **Chiroq tasnifi** (Prisadka) — yashil miltillash davrini o'lchash, firmware `MIN_STATE_MS` /
    `BLINK_WINDOW_MS` ni moslash; `idle_timeout_s` ni mikro-to'xtash chegarasi bilan bir xil qilish.
-4. **To'xtash sabablari** — kiritish qilindi, egasining ro'yxati keldi (§4.4). Qolgani: admin ro'yxatni
-   prodda Tizim sozlamalariga kiritadi.
-5. **Availability hisoboti** — qilindi (§4.5). Qolgani: prodda ish jadvali kiritilganini tekshirish (usiz foiz
-   hisoblanmaydi); qamrov (1-band) tuzatilmaguncha foiz past chiqadi — sabablar taqsimotidagi «Stanok o'chiq» qatori shuni ko'rsatadi.
-6. **Performance** — qilindi (§4.6), koeffitsiyentlar TAXMINIY. Qolgani: tsexda sekundomer bilan o'lchab Tizim
-   sozlamalarida to'g'rilash; keyin (ixtiyoriy) skan↔sikl FIFO bog'lash (prototip `mes/bridge.py` mantiqi) —
-   koeffitsiyentlarni 2–4 haftalik o'lchovdan chiqarish uchun.
-7. **Quality** — brak qaydi va MENEJER TASDIG'I qilindi (§4.7): terminalda BRAK tugmasi,
-   `/defects` sahifasida tasdiq/rad va aybdor qadam, Quality va OEE hisobotda.
-   Qolgani: admin sabablar ro'yxatini kiritsin; keyin qayta ishlab chiqarish oqimi (§7) —
-   `-B1` nusxa, uning yangi cheki va SCX fayli (marshrutni tanlangan qadamdan qayta ochish
-   tasdiqda allaqachon qilinadi — §4.7, `reopen_from_step`).
+7. **Smena tartibi** — har kuni beyjik bilan ochilishi (sababni kiritadigan odam shu) va ishdan oldin
+   qulfni ochish. Qulf ochilmasa ham hisob buzilmaydi (§4.24), lekin sabab so'raladigan odam yo'q.
+
+**B. Kod (keyingi bosqich, shoshilinch emas):**
+
+1. **Qayta ishlab chiqarish (remake)** — brak tasdiqlangach `-B1` nusxa, uning cheki va SCX fayli
+   (marshrutni tanlangan qadamdan qayta ochish allaqachon bor — §4.7 `reopen_from_step`). Kesish joyi
+   (qoldiq varaqmi, yangisimi) — ochiq qaror (§7).
+2. **Ixtiyoriy:** skan↔sikl FIFO bog'lash (prototip `mes/bridge.py`) — koeffitsiyentlarni 2–4 haftalik
+   o'lchovdan avtomatik chiqarish uchun (A.1 ni qo'lda qilish o'rniga).
+3. **Ixtiyoriy:** maqsad OEE foizi va unga qarab rang (tablo/hisobot) — maqsad egasi bilan kelishilgach.
+
+**Tuzatilgan (2026-10-16, tarix uchun):** §4.21 kunning Availability'si oraliqqa bog'liq edi ·
+§4.22 yarim tundan o'tgan to'xtash kesilib, chegaradan tushib qolardi (+ `time.max` dagi 1 s) ·
+§4.23 sabab qo'shni yozuvning chetidan olinardi · §4.24 ochiq qulf keyingi hamma to'xtashga sabab
+berardi · §4.25 OEE yaxlitlangan foizlardan · «Jami to'xtash» «To'xtash» ustuniga mos emas edi ·
+taxtadagi oyna yangilanmasdi · reja vaqti yo'q kunda taxta izohsiz bo'sh edi.
 
 ## 7. Qarorlar
 
@@ -1155,8 +1191,10 @@ ya'ni keyingi detal skani ham sanalardi. SQL'da 5 s ga tuzatildi — qayta ishga
 ### Ochiq
 
 - Mikro-to'xtash chegarasi — Tizim sozlamalarida (sukut 5 daqiqa), tsexda sinab moslanadi.
+- Juma — dam olish kunimi (hozir `days_off: [5]`) yoki tsex ishlaydimi (§6 A.3).
 - Juda qisqa avariyalar (prod median 12 s) ham so'ralsinmi yoki chegara qo'yilsinmi.
-- Ideal sikl koeffitsiyentlarining HAQIQIY qiymatlari (hozir taxminiy, §4.6) — sekundomer o'lchovi.
+- Ideal sikl koeffitsiyentlarining HAQIQIY qiymatlari (hozir taxminiy, §4.6; Rover — §4.15) — sekundomer o'lchovi.
+- Kromka avtomatik brakni qachon yoqish (kalibrlashdan keyin, §6 A.5).
 - Brak sabablari ro'yxati; menejer uzoq tasdiqlamasa (masalan 1 soat) eslatma kerakmi.
 - Qayta ishlab chiqarilgan detalning kesish joyi: qoldiq (atxot) varaqdanmi, yangi varaqdanmi.
 - Maqsad OEE foizi (tablo/hisobot rangi uchun).
