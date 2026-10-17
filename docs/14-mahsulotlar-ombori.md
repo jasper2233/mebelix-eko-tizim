@@ -264,6 +264,13 @@ yozilmaydi, skriptni ikki marta yurgizish ham xavfsiz. Lokal bazada: qoldiq 323 
 chegara 446 ta, tavsif 2 592 ta; xarid va sotuv narxlari dizaynda ham, varaqda ham AYNAN bir xil
 (farq 0). `--apply` siz faqat hisobot beradi.
 
+⚠️ **Qoldiqqa harakati bor pozitsiyada TEGILMAYDI** (2026-10-17). Skript bo'sh maydonni to'ldiradi,
+qoldiq uchun esa «bo'sh» degani 0 — ya'ni SOTILIB nolga tushgan tovar ham bo'sh ko'rinardi va
+keyingi yurgizishda boshlang'ich qoldiq bilan qaytarib tiriltirilardi. Prodda aynan shunday
+pozitsiya topildi: `F-OS-001-03` (Kargo 200 mm) 1 dona edi, sotilgan, qoldiq 0. Endi
+`stock_movement` yozuvi bo'lgan pozitsiyaning qoldig'iga tegilmaydi va hisobotda alohida
+sanaladi («harakati bor — qoldiqqa tegilmadi»).
+
 ### 8.6 Sahifalar
 
 - `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»): sinf narxlari jadvali (LDSP / LMDF
