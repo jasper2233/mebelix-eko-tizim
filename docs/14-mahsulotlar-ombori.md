@@ -428,6 +428,20 @@ tushunchani bildiradi (`docs/06` «Belgilar lug'ati»).
 API — `GET /api/v1/stock/report?date_from=&date_to=` (`WarehouseReadUser`), hisob
 `services/stock.py: report`. «Excel'ga chiqarish» guruhlar jadvalini CSV qiladi.
 
+### 11.2 Menyu rolga qarab ikki xil (2026-10-17)
+
+| Kim | Menyuda | Nega |
+| --- | --- | --- |
+| **Omborchi** (`skladchi`) | «Mahsulotlar ombori» ochiladi: Boshqaruv paneli, Materiallar / Furnitura / Xizmatlar, Sotuv F2, Kirim F4, Sex xo'jaligi F3, Inventarizatsiya, Hujjatlar, Ombor hisoboti | Uning butun ishi shu yerda |
+| **Boshqaruv** (admin, menejer, direktor, texnolog) | BITTA band — «Mahsulotlar ombori», to'g'ri **Ombor hisobotiga** | Ularga ombor — kundalik ish emas, RAQAM: qoldiq qiymati, aylanma, ABC, harakatsizlar. To'liq ro'yxat menyuni bekorga uzaytirardi |
+
+Sahifalarning O'ZI boshqaruvga ochiq qoladi (`isWarehouseStaff`): hisobotdagi guruh qatori bosilsa
+Nomenklaturaga, harakatsiz tovar bosilsa kartochkaga tushadi. Yopilgan narsa — menyu bandlari, huquq emas.
+
+⚠️ Shu qaror bilan **narx boshqaruvi** (`/warehouse/panel` — sinf narxlari, dollar kursi, furnitura
+ustamasi) boshqaruv menyusidan ham chiqdi: unga endi faqat omborchi menyu orqali kiradi (boshqalar
+— to'g'ridan-to'g'ri manzil bilan). Narxni menejer qo'yadigan bo'lsa, bu bandni qaytarish kerak.
+
 ### 11.1 ABC tuzatildi — eng qimmat pozitsiya endi doim A
 
 `abc_classes` sinfni pozitsiya QO'SHILGANDAN KEYINGI ulush bilan belgilardi. Jami qiymatning 80%

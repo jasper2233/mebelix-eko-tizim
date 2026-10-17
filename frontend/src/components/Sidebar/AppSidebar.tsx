@@ -88,11 +88,21 @@ export const NAV_ITEMS: (Item & {
   // katalogning asosiy kategoriyasi, kodning BIRINCHI harfi (`docs/14` §1). Sahifa ichida
   // takrorlanmaydi: ilgari o'sha uchtasi sarlavha ostida tab bo'lib ham turardi — bitta tanlov
   // ikki joyda ikki xil ko'rinishda edi.
+  // Boshqaruv uchun ombor — FAQAT raqamlar: qoldiq qiymati, aylanma, ABC, harakatsiz
+  // tovarlar. To'liq menyu (kirim, sotuv, sex, inventarizatsiya, nomenklatura) omborni
+  // YURITADIGAN odamniki; boshqaruvga u kundalik ish emas va menyuni uzaytirardi.
+  // Sahifalarning o'zi ochiq qoladi: hisobotdagi qator bosilsa nomenklaturaga tushadi.
+  {
+    icon: Boxes,
+    title: "Mahsulotlar ombori",
+    path: "/warehouse/hisobot",
+    show: (u) => isWarehouseStaff(u) && !isWarehouseOnly(u),
+  },
   {
     icon: Boxes,
     title: "Mahsulotlar ombori",
     path: "/warehouse",
-    show: isWarehouseStaff,
+    show: isWarehouseOnly,
     children: [
       // «Qudrat Ombor» dizayni (docs/14 §8): narx boshqaruvi + nomenklatura bo'limlari.
       // Kartochka (`/warehouse/item/F-RC-…`) o'z kategoriyasini faol qiladi — kod harfidan.
