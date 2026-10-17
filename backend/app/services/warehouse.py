@@ -81,7 +81,11 @@ def abc_classes(items: list[CatalogItem]) -> dict[int, str]:
     jami = sum((v for _, v in qiymat), Decimal(0)) or Decimal(1)
     out: dict[int, str] = {}
     acc = Decimal(0)
-    for iid, v in qiymat:
+    for n, (iid, v) in enumerate(qiymat):
         acc += v
-        out[iid] = "A" if acc / jami <= Decimal("0.8") else "B" if acc / jami <= Decimal("0.95") else "C"
+        ulush = acc / jami
+        # Eng qimmati HAR DOIM A. Aks holda jami qiymatning 80% idan ko'pini bitta pozitsiya
+        # ushlaganda (omborda oddiy hol) u B yoki C bo'lib qolardi va ro'yxatda A sinf UMUMAN
+        # bo'lmasdi — ombor hisobotida (docs/14 §11) «A sinf 0 ta · 0%» bo'lib ko'rinardi.
+        out[iid] = "A" if n == 0 or ulush <= Decimal("0.8") else "B" if ulush <= Decimal("0.95") else "C"
     return out

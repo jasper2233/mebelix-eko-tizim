@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 from app.schemas.stock import DocIn
-from app.services.warehouse import get_pricing, reprice
+from app.services.warehouse import abc_classes, get_pricing, reprice
 
 PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
 KIND_NAME = {"kirim": "Kirim", "chiqim": "Chiqim (sotuv)", "sex": "Sexga kirim", "inv": "Inventarizatsiya"}
@@ -385,3 +385,130 @@ async def adjust_quantity(
         )
     )
     await db.flush()
+
+
+#: «Harakatsiz tovarlar» ro'yxatida ko'rsatiladigan qatorlar soni. Dizayn 5 ta beradi; bizda
+#: katalog 2 700 pozitsiya, ya'ni 5 ta qator omborchiga hech narsa aytmaydi — jami soni esa
+#: alohida qaytariladi (`dead_total`).
+DEAD_ROWS = 20
+
+
+async def report(db: AsyncSession, start: datetime, end: datetime) -> dict[str, Any]:
+    """Ombor hisoboti (docs/14 §11): guruh bo'yicha qoldiq va aylanma, ABC, harakatsizlar.
+
+    Qiymat dizayndagi `V(i)` bilan bir xil: PARTIYALAR bo'yicha (`qty_left × unit_cost`), partiyasi
+    bo'lmaganda `qoldiq × (xarid yoki sotuv)`. Partiya tannarxi — haqiqiy FIFO narxi, ya'ni
+    kurs o'zgarganda omborda turgan tovar qayta baholanmaydi.
+
+    Xizmat (`X`) chiqarib tashlanadi: unda qoldiq ham, qiymat ham yo'q."""
+    items = list(
+        (
+            await db.execute(
+                select(CatalogItem).where(
+                    CatalogItem.is_deleted == False,  # noqa: E712
+                    CatalogItem.catalog != "X",
+                )
+            )
+        ).scalars()
+    )
+    lot_value = dict(
+        (
+            await db.execute(
+                select(StockLot.item_id, func.sum(StockLot.qty_left * StockLot.unit_cost))
+                .where(StockLot.qty_left > 0, StockLot.is_deleted == False)  # noqa: E712
+                .group_by(StockLot.item_id)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    # Oraliqdagi kirim va chiqim: `qty` ishorali (+ kirim, − chiqim)
+    moves = {
+        item_id: (kirim or Decimal(0), -(chiqim or Decimal(0)))
+        for item_id, kirim, chiqim in (
+            await db.execute(
+                select(
+                    StockMovement.item_id,
+                    func.sum(StockMovement.qty).filter(StockMovement.qty > 0),
+                    func.sum(StockMovement.qty).filter(StockMovement.qty < 0),
+                )
+                .where(
+                    StockMovement.is_deleted == False,  # noqa: E712
+                    StockMovement.created_at >= start,
+                    StockMovement.created_at <= end,
+                )
+                .group_by(StockMovement.item_id)
+            )
+        )
+        .tuples()
+        .all()
+    }
+
+    def qiymat(i: CatalogItem) -> Decimal:
+        bor = lot_value.get(i.id)
+        return bor if bor is not None else i.quantity * (i.purchase_price or i.sale_price or Decimal(0))
+
+    guruh: dict[tuple[str, str], dict[str, Any]] = {}
+    for i in items:
+        kalit = (i.catalog, i.group_code)
+        row = guruh.setdefault(
+            kalit,
+            {
+                "group_name": i.group_name,
+                "positions": 0,
+                "qty_in": Decimal(0),
+                "qty_out": Decimal(0),
+                "value": Decimal(0),
+            },
+        )
+        row["positions"] += 1
+        row["value"] += qiymat(i)
+        kirim, chiqim = moves.get(i.id, (Decimal(0), Decimal(0)))
+        row["qty_in"] += kirim
+        row["qty_out"] += chiqim
+
+    sinf = abc_classes(items)
+    abc: dict[str, dict[str, Any]] = {c: {"positions": 0, "value": Decimal(0)} for c in ("A", "B", "C")}
+    for i in items:
+        hujayra = abc[sinf.get(i.id, "C")]
+        hujayra["positions"] += 1
+        hujayra["value"] += qiymat(i)
+    jami_qiymat = sum((v["value"] for v in abc.values()), Decimal(0))
+
+    # Harakatsiz: qoldig'i BOR, lekin oraliqda bitta ham harakati yo'q
+    olik = sorted(
+        ((i, qiymat(i)) for i in items if i.quantity > 0 and i.id not in moves),
+        key=lambda z: -z[1],
+    )
+    return {
+        "groups": sorted(
+            (
+                {"catalog": k[0], "group_code": k[1], **v}  # type: ignore[dict-item]
+                for k, v in guruh.items()
+            ),
+            key=lambda r: -r["value"],
+        ),
+        "abc": [
+            {
+                "cls": c,
+                "positions": abc[c]["positions"],
+                "value": abc[c]["value"],
+                "pct": round(abc[c]["value"] * 100 / jami_qiymat) if jami_qiymat else 0,
+            }
+            for c in ("A", "B", "C")
+        ],
+        "dead": [
+            {
+                "item_id": i.id,
+                "code": i.code,
+                "name": i.name,
+                "unit": i.unit,
+                "quantity": i.quantity,
+                "value": v,
+            }
+            for i, v in olik[:DEAD_ROWS]
+        ],
+        "dead_total": len(olik),
+        "value": jami_qiymat,
+        "positions": len(items),
+    }

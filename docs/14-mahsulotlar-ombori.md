@@ -392,3 +392,52 @@ tasdiqlandi (16 200, foyda 4 680), kartochka tarixi, shartnoma, F4.
 Tekshiruv — `scripts/oracles/ombor_sex_inv_oracle.py` **16/16**. Brauzerda (lokal): F-RC guruhida 2 pozitsiya
 sanab F9 (−95 dona, −347 700 so'm) — INV hujjati va kartochka qoldig'i; sex sarfi va SEX hujjati ko'rinishi
 (FIFO tannarx 448 000); F3.
+
+## 11. Ombor hisoboti — `/warehouse/hisobot` (2026-10-17)
+
+Dizayndagi **`rep`** ekrani. U dizaynning o'zida ham tugallanmagan edi: ekran va uning
+belgilanishi bor, lekin chap menyuda (`navDefs`) bandi yo'q — ya'ni ochib bo'lmasdi.
+Shuning uchun 1–3 bosqichda qolib ketgan.
+
+Uch bo'lim (dizayndagi `repRows` / `abc*` / `deadRows` bilan bir xil):
+
+| Bo'lim | Nima ko'rsatadi |
+| --- | --- |
+| **Guruh bo'yicha qoldiq va aylanma** | Har guruh: pozitsiya soni, oraliqdagi kirim va chiqim MIQDORI, qoldiq qiymati. Qiymat bo'yicha tartiblangan; qator bosilsa — o'sha guruh Nomenklaturada |
+| **ABC tahlil** | A / B / C: nechta pozitsiya, qiymati va ulushi; ulushlar bitta yo'lakda |
+| **Harakatsiz tovarlar** | Qoldig'i bor, lekin oraliqda bitta ham harakati yo'q — eng qimmat 20 tasi, jami soni alohida. Qator bosilsa — kartochka |
+
+**Qiymat dizayndagi `V(i)` bilan bir xil**: PARTIYALAR bo'yicha (`qty_left × unit_cost`), partiyasi
+bo'lmaganda `qoldiq × (xarid yoki sotuv)`. Ya'ni bu haqiqiy FIFO tannarxi — kurs o'zgarganda
+omborda turgan tovar qayta baholanmaydi. **Xizmat (`X`) uchala bo'limdan ham chiqarilgan**: unda
+qoldiq ham, qiymat ham yo'q.
+
+**Oraliq.** Dizaynda sana filtri yo'q — u brauzer sessiyasidagi harakatlarni sanardi. Bizda
+harakatlar bazada va yillarga cho'ziladi, shuning uchun ikkita sana tanlagich; sukut — **joriy oy**
+(oy boshidan bugungacha, `routes/stock.py: _range`). Qoldiq va qiymat esa HOZIRGI holat: omborchiga
+«hozir shuncha pul yotibdi, shundan bu oyda qimirlamagani shu» degan javob kerak.
+
+Menyudagi nomi — «**Ombor hisoboti**», «Hisobotlar» EMAS: yuqorida OEE hisobotlari shu nom bilan
+turibdi (`/reports`). Belgisi esa o'shaniki (`BarChart3`) — ilovada u «hisobot» degan yagona
+tushunchani bildiradi (`docs/06` «Belgilar lug'ati»).
+
+API — `GET /api/v1/stock/report?date_from=&date_to=` (`WarehouseReadUser`), hisob
+`services/stock.py: report`. «Excel'ga chiqarish» guruhlar jadvalini CSV qiladi.
+
+### 11.1 ABC tuzatildi — eng qimmat pozitsiya endi doim A
+
+`abc_classes` sinfni pozitsiya QO'SHILGANDAN KEYINGI ulush bilan belgilardi. Jami qiymatning 80%
+idan ko'pini bitta pozitsiya ushlasa (omborda oddiy hol — bitta qimmat furnitura), o'sha pozitsiya
+B yoki C bo'lib qolardi va ro'yxatda **A sinf umuman bo'lmasdi**. Hisobot sahifasida bu «A sinf
+0 ta · 0%» bo'lib ko'rinardi. Endi eng qimmati har doim A, qolgan chegaralar o'zgarmadi:
+
+```
+bitta hukmron (90%):  avval {1: B, 2: B, 3: C}   endi {1: A, 2: B, 3: C}
+10 ta teng pozitsiya: avval 8A · 1B · 1C          endi 8A · 1B · 1C   (o'zgarmadi)
+```
+
+Tekshiruv — `scripts/oracles/ombor_hisobot_oracle.py` **22/22**: xizmat chiqarilgani, guruh
+tartibi, qiymat partiyalardan va partiyasiz pozitsiyada xarid narxidan, oraliqdagi va oraliqdan
+tashqaridagi harakat, ABC yig'indisi va ulushi, eng qimmat pozitsiya A sinfda, harakatsizlar
+(qoldiqsiz pozitsiya kirmaydi, oraliq kengaytirilsa yo'qoladi), yumshoq o'chirilgan harakat
+sanalmasligi. `ombor_nomenklatura_oracle` 23/23, `catalog_oracle` 36/36 — ABC tuzatilgach ham.

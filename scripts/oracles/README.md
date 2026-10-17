@@ -67,5 +67,6 @@ Oxirgi to'liq yurgizish (2026-10-16): `oee` 31/31, `rover` 25/25, `rover_oee` 19
 | `downtime_cleanup_oracle.py` | `scripts/downtime_deleted_events.sql`: o'chirilgan hodisadan va Rover `idle-*` dan yasalgan soxta to'xtashlar tozalanadi, haqiqiylari, qulf, Kromka bo'sh yurishi va operator sababi qoladi, faqat-hisobot rejimi hech narsa o'zgartirmaydi, ikkinchi yurgizish xavfsiz |
 | `tablo_machines_oracle.py` | Stanok taxtasi (`GET /tablo/machines`) — raqamlar hisobotning aynan o'zidan |
 | `kromka_dedup_oracle.py` | `scripts/kromka_dedup.sql`: takrorlar o'chadi, haqiqiylari qoladi, hisobot to'g'rilanadi, ikkinchi yurgizish xavfsiz |
+| `ombor_hisobot_oracle.py` | Ombor hisoboti (`docs/14` §11): guruh aylanmasi, qiymat partiyalardan, ABC (eng qimmati A), harakatsiz tovarlar, yumshoq o'chirilgan harakat |
 | `catalog_oracle.py` | Mahsulotlar ombori: `catalog_import.py` CSV ni bazaga yuklashi, kategoriya daraxti, filtr va qidiruv, qoldiq yozish, qayta importda qoldiqning saqlanishi (`docs/14`) |
 | `demo_seed.py` | Orakl fixture'i ustiga lokal demo ma'lumot (skript emas, ko'rsatish uchun) |

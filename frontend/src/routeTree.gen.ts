@@ -36,6 +36,7 @@ import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders
 import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
 import { Route as LayoutWarehouseDocRouteImport } from './routes/_layout/warehouse/doc'
 import { Route as LayoutWarehouseDocsRouteImport } from './routes/_layout/warehouse/docs'
+import { Route as LayoutWarehouseHisobotRouteImport } from './routes/_layout/warehouse/hisobot'
 import { Route as LayoutWarehouseInvRouteImport } from './routes/_layout/warehouse/inv'
 import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
 import { Route as LayoutWarehouseSexSarfiRouteImport } from './routes/_layout/warehouse/sex-sarfi'
@@ -175,6 +176,11 @@ const LayoutWarehouseDocsRoute = LayoutWarehouseDocsRouteImport.update({
   path: '/warehouse/docs',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseHisobotRoute = LayoutWarehouseHisobotRouteImport.update({
+  id: '/warehouse/hisobot',
+  path: '/warehouse/hisobot',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWarehouseInvRoute = LayoutWarehouseInvRouteImport.update({
   id: '/warehouse/inv',
   path: '/warehouse/inv',
@@ -221,6 +227,7 @@ export interface FileRoutesByFullPath {
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
   '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
@@ -253,6 +260,7 @@ export interface FileRoutesByTo {
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
   '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
@@ -287,6 +295,7 @@ export interface FileRoutesById {
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/_layout/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/_layout/warehouse/docs': typeof LayoutWarehouseDocsRoute
+  '/_layout/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
   '/_layout/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/_layout/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/warehouse/doc'
     | '/warehouse/docs'
+    | '/warehouse/hisobot'
     | '/warehouse/inv'
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/warehouse/doc'
     | '/warehouse/docs'
+    | '/warehouse/hisobot'
     | '/warehouse/inv'
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
@@ -386,6 +397,7 @@ export interface FileRouteTypes {
     | '/_layout/orders/$orderId'
     | '/_layout/warehouse/doc'
     | '/_layout/warehouse/docs'
+    | '/_layout/warehouse/hisobot'
     | '/_layout/warehouse/inv'
     | '/_layout/warehouse/panel'
     | '/_layout/warehouse/sex-sarfi'
@@ -594,6 +606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseDocsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/hisobot': {
+      id: '/_layout/warehouse/hisobot'
+      path: '/warehouse/hisobot'
+      fullPath: '/warehouse/hisobot'
+      preLoaderRoute: typeof LayoutWarehouseHisobotRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/inv': {
       id: '/_layout/warehouse/inv'
       path: '/warehouse/inv'
@@ -645,6 +664,7 @@ interface LayoutRouteChildren {
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
   LayoutWarehouseDocRoute: typeof LayoutWarehouseDocRoute
   LayoutWarehouseDocsRoute: typeof LayoutWarehouseDocsRoute
+  LayoutWarehouseHisobotRoute: typeof LayoutWarehouseHisobotRoute
   LayoutWarehouseInvRoute: typeof LayoutWarehouseInvRoute
   LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
   LayoutWarehouseSexSarfiRoute: typeof LayoutWarehouseSexSarfiRoute
@@ -673,6 +693,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
   LayoutWarehouseDocRoute: LayoutWarehouseDocRoute,
   LayoutWarehouseDocsRoute: LayoutWarehouseDocsRoute,
+  LayoutWarehouseHisobotRoute: LayoutWarehouseHisobotRoute,
   LayoutWarehouseInvRoute: LayoutWarehouseInvRoute,
   LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
   LayoutWarehouseSexSarfiRoute: LayoutWarehouseSexSarfiRoute,

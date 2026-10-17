@@ -3,12 +3,14 @@
 Qoralama `POST /stock/docs` bilan saqlanadi (qoldiqqa ta'sir qilmaydi), `POST /stock/docs/confirm` —
 saqlab, BIR tranzaksiyada tasdiqlaydi. Tasdiqlangan hujjat o'zgarmaydi. Qoidalar `services/stock.py`."""
 
+from datetime import date, datetime, time
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
+from app.core.config import TASHKENT_TZ
 from app.crud import log_action
 from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 from app.schemas.stock import (
@@ -21,8 +23,9 @@ from app.schemas.stock import (
     LotRead,
     MoveRead,
     SexLogRow,
+    StockReport,
 )
-from app.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, save_draft
+from app.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, report, save_draft
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -174,6 +177,33 @@ async def confirm_stock_inventory(
     )
     await db.commit()
     return await _read(db, doc)
+
+
+def _range(date_from: date | None, date_to: date | None) -> tuple[datetime, datetime]:
+    """Sukut — joriy OY (oy boshidan bugungacha). Hisobot oyma-oy o'qiladi: kirim, chiqim va
+    harakatsizlik shu ritmda baholanadi. Chegaralar inklyuziv, mahalliy kun (Asia/Tashkent)."""
+    oxiri = date_to or datetime.now(TASHKENT_TZ).date()
+    boshi = date_from or oxiri.replace(day=1)
+    return (
+        datetime.combine(boshi, time.min, tzinfo=TASHKENT_TZ),
+        datetime.combine(oxiri, time.max, tzinfo=TASHKENT_TZ),
+    )
+
+
+@router.get("/report", response_model=StockReport, operation_id="read_stock_report")
+async def read_stock_report(
+    db: SessionDep,
+    _: WarehouseReadUser,
+    date_from: date | None = None,
+    date_to: date | None = None,
+) -> StockReport:
+    """Ombor hisoboti (docs/14 §11): guruh bo'yicha qoldiq va aylanma, ABC tahlili, harakatsiz tovarlar.
+
+    Qoldiq va qiymat — HOZIRGI holat (ombor bugun nima bilan turibdi), kirim/chiqim va harakatsizlik
+    esa so'ralgan ORALIQDA. Ikkisi ataylab aralash: omborchiga «hozir shuncha pul yotibdi, shundan
+    bu oyda qimirlamagani shu» degan javob kerak."""
+    start, end = _range(date_from, date_to)
+    return StockReport(date_from=start.date(), date_to=end.date(), **await report(db, start, end))
 
 
 @router.get("/sex-log", response_model=list[SexLogRow], operation_id="read_stock_sex_log")

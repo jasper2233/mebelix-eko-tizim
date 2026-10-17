@@ -5195,6 +5195,98 @@ export type ReadyOrder = {
 };
 
 /**
+ * ReportAbcRow
+ *
+ * ABC sinfi: nechta pozitsiya va qoldiq qiymatining qancha qismi.
+ */
+export type ReportAbcRow = {
+    /**
+     * Cls
+     */
+    cls: 'A' | 'B' | 'C';
+    /**
+     * Positions
+     */
+    positions: number;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Pct
+     */
+    pct: number;
+};
+
+/**
+ * ReportDeadRow
+ *
+ * «Harakatsiz tovar»: qoldig'i bor, lekin oraliqda bitta ham harakati yo'q.
+ */
+export type ReportDeadRow = {
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Unit
+     */
+    unit: string | null;
+    /**
+     * Quantity
+     */
+    quantity: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * ReportGroupRow
+ *
+ * «Guruh bo'yicha qoldiq va aylanma» qatori — dizayndagi `repRows`.
+ */
+export type ReportGroupRow = {
+    /**
+     * Catalog
+     */
+    catalog: string;
+    /**
+     * Group Code
+     */
+    group_code: string;
+    /**
+     * Group Name
+     */
+    group_name: string;
+    /**
+     * Positions
+     */
+    positions: number;
+    /**
+     * Qty In
+     */
+    qty_in: string;
+    /**
+     * Qty Out
+     */
+    qty_out: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
  * RouteCell
  *
  * One matrix cell: part × post.
@@ -5509,6 +5601,48 @@ export type StageAgg = {
      * Volume Done
      */
     volume_done: number;
+};
+
+/**
+ * StockReport
+ *
+ * Ombor hisoboti (docs/14 §11) — dizayndagi `rep` ekrani.
+ *
+ * Xizmat (`X`) uchala bo'limdan ham chiqarilgan: unda qoldiq ham, qiymat ham yo'q.
+ */
+export type StockReport = {
+    /**
+     * Date From
+     */
+    date_from: string;
+    /**
+     * Date To
+     */
+    date_to: string;
+    /**
+     * Groups
+     */
+    groups: Array<ReportGroupRow>;
+    /**
+     * Abc
+     */
+    abc: Array<ReportAbcRow>;
+    /**
+     * Dead
+     */
+    dead: Array<ReportDeadRow>;
+    /**
+     * Dead Total
+     */
+    dead_total: number;
+    /**
+     * Value
+     */
+    value: string;
+    /**
+     * Positions
+     */
+    positions: number;
 };
 
 /**
@@ -9788,6 +9922,40 @@ export type ConfirmStockInventoryResponses = {
 };
 
 export type ConfirmStockInventoryResponse = ConfirmStockInventoryResponses[keyof ConfirmStockInventoryResponses];
+
+export type ReadStockReportData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Date From
+         */
+        date_from?: string | null;
+        /**
+         * Date To
+         */
+        date_to?: string | null;
+    };
+    url: '/api/v1/stock/report';
+};
+
+export type ReadStockReportErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStockReportError = ReadStockReportErrors[keyof ReadStockReportErrors];
+
+export type ReadStockReportResponses = {
+    /**
+     * Successful Response
+     */
+    200: StockReport;
+};
+
+export type ReadStockReportResponse = ReadStockReportResponses[keyof ReadStockReportResponses];
 
 export type ReadStockSexLogData = {
     body?: never;

@@ -151,3 +151,55 @@ class SexLogRow(BaseModel):
     unit: str | None
     qty: Decimal
     amount: Decimal | None
+
+
+class ReportGroupRow(BaseModel):
+    """«Guruh bo'yicha qoldiq va aylanma» qatori — dizayndagi `repRows`."""
+
+    catalog: str
+    group_code: str
+    group_name: str
+    #: Guruhdagi pozitsiyalar soni
+    positions: int
+    #: Oraliqdagi kirim va chiqim MIQDORI (birliklar aralash — guruh ichida bitta birlik bo'ladi)
+    qty_in: Decimal
+    qty_out: Decimal
+    #: Qoldiq qiymati, so'm
+    value: Decimal
+
+
+class ReportAbcRow(BaseModel):
+    """ABC sinfi: nechta pozitsiya va qoldiq qiymatining qancha qismi."""
+
+    cls: Literal["A", "B", "C"]
+    positions: int
+    value: Decimal
+    pct: int
+
+
+class ReportDeadRow(BaseModel):
+    """«Harakatsiz tovar»: qoldig'i bor, lekin oraliqda bitta ham harakati yo'q."""
+
+    item_id: int
+    code: str
+    name: str
+    unit: str | None
+    quantity: Decimal
+    value: Decimal
+
+
+class StockReport(BaseModel):
+    """Ombor hisoboti (docs/14 §11) — dizayndagi `rep` ekrani.
+
+    Xizmat (`X`) uchala bo'limdan ham chiqarilgan: unda qoldiq ham, qiymat ham yo'q."""
+
+    date_from: date
+    date_to: date
+    groups: list[ReportGroupRow]
+    abc: list[ReportAbcRow]
+    dead: list[ReportDeadRow]
+    #: Harakatsizlarning JAMI soni (`dead` faqat eng qimmat bir nechtasi)
+    dead_total: int
+    #: Butun ombor qoldig'ining qiymati va pozitsiyalar soni
+    value: Decimal
+    positions: int

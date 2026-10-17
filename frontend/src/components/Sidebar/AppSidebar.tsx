@@ -158,6 +158,16 @@ export const NAV_ITEMS: (Item & {
         match: (_s: Record<string, unknown>, p: string) =>
           p === "/warehouse/docs",
       },
+      // NOMI «Hisobotlar» EMAS: yuqorida OEE hisobotlari shu nom bilan turibdi
+      // (`/reports`). BELGISI esa o'shaniki — `BarChart3` ilovada «hisobot»
+      // degan YAGONA tushunchani bildiradi (docs/06 «Belgilar lug'ati»).
+      {
+        icon: BarChart3,
+        title: "Ombor hisoboti",
+        path: "/warehouse/hisobot",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/hisobot",
+      },
     ],
   },
   { icon: UserRound, title: "Mijozlar", path: "/clients", show: isManagement },
