@@ -32,6 +32,7 @@ import {
   groupThousands,
   isAdmin,
   isManagement,
+  isoOf,
   ORDER_STATUS_LABELS,
 } from "@/lib/mes"
 import { handleError } from "@/utils"
@@ -44,12 +45,6 @@ export const Route = createFileRoute("/_layout/reports")({
 })
 
 type Kind = "productivity" | "orders" | "materials" | "machine-time"
-
-// Sana LOKAL komponentlardan (`toISOString` UTC ga siljitib kunni buzardi).
-function isoOf(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
-}
 
 // Backend bo'sh filtrda oxirgi 30 kunni qo'llaydi (`_range`: bugun-29 … bugun, inklyuziv), Excel ham.
 // DatePicker'lar shu default bilan boshlanadi (bo'sh filtr "hamma vaqt" emas).

@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { requireAccess } from "@/lib/guards"
-import { isWarehouseStaff } from "@/lib/mes"
+import { isoOf, isWarehouseStaff } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { CATALOG_NAMES, downloadCsv, fmt, fmtQty, num } from "@/lib/warehouse"
 
@@ -45,11 +45,11 @@ function StockReportPage() {
   const navigate = useNavigate()
   // Bo'sh filtr — backend joriy oyni oladi (`routes/stock.py: _range`); DatePicker'lar
   // ham shu bilan boshlanadi, aks holda «bo'sh» hamma vaqt degan ma'no berardi
-  const oy = new Date()
+  const bugun = new Date()
   const [dateFrom, setDateFrom] = useState(
-    new Date(oy.getFullYear(), oy.getMonth(), 1).toISOString().slice(0, 10),
+    isoOf(new Date(bugun.getFullYear(), bugun.getMonth(), 1)),
   )
-  const [dateTo, setDateTo] = useState(oy.toISOString().slice(0, 10))
+  const [dateTo, setDateTo] = useState(isoOf(bugun))
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["stock", "report", dateFrom, dateTo],

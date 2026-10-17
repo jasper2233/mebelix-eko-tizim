@@ -417,6 +417,10 @@ harakatlar bazada va yillarga cho'ziladi, shuning uchun ikkita sana tanlagich; s
 (oy boshidan bugungacha, `routes/stock.py: _range`). Qoldiq va qiymat esa HOZIRGI holat: omborchiga
 «hozir shuncha pul yotibdi, shundan bu oyda qimirlamagani shu» degan javob kerak.
 
+Sana maydonlari LOKAL kundan to'ldiriladi (`lib/mes: isoOf`), `toISOString()` dan EMAS: Toshkentda
+(UTC+5) oy boshi oldingi oyning oxirgi kuni bo'lib chiqardi — brauzerda `01.10` o'rniga `30.09`
+ko'rindi. O'sha yordamchi `/reports` da ham bor edi; endi ikkalasi bitta nusxadan.
+
 Menyudagi nomi — «**Ombor hisoboti**», «Hisobotlar» EMAS: yuqorida OEE hisobotlari shu nom bilan
 turibdi (`/reports`). Belgisi esa o'shaniki (`BarChart3`) — ilovada u «hisobot» degan yagona
 tushunchani bildiradi (`docs/06` «Belgilar lug'ati»).

@@ -445,6 +445,13 @@ export function moneyToWords(
   return parts.join(" ")
 }
 
+/** `YYYY-MM-DD` — LOKAL kun komponentlaridan. `toISOString()` EMAS: u UTC ga siljitadi va
+ *  Toshkentda (UTC+5) oy boshi oldingi oyning oxirgi kuni bo'lib chiqadi (01.10 → 2026-09-30). */
+export function isoOf(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 export function formatMoney(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
   const n = Math.round(Number(value))
