@@ -447,6 +447,28 @@ Quyidagilar keyingi ish. Lokal muhit, orakllar va deploy tartibi — `CLAUDE.md`
 - `GET /stock/sex-log` sukut bo'yicha oxirgi 5 000 qator, sahifa sana filtri yo'q. Yil oxirida sana
   oralig'i (`from`/`to`) kerak bo'ladi.
 
+### O7. Dekorlarga sinf berilmagan — dekor sotib bo'lmaydi (2026-10-17, prodda o'lchangan)
+
+- `warehouse_pricing.tier_prices` bo'sh, 2 131 `M` pozitsiyasidan **0 tasiga** sinf berilgan, ya'ni
+  dekorning sotuv narxi hisoblanmaydi. Omborchi `/warehouse/panel` da oltita raqamni (LDSP/LMDF × S/M/P)
+  kiritib, Nomenklaturada dekorlarga sinf berishi kerak (docs/14 §8.1).
+- `markup_all` ham qo'yilmagan: furnitura sotuvi faqat qo'lda kiritilgan `p` dan keladi.
+
+### O8. Prodda `skladchi` hisobi yo'q (2026-10-17)
+
+- Prodda `omborchi` degan hisob bor, lekin u **boshqa odam**: `UserRole.OMBORCHI` — TAYYOR mahsulot
+  (TMO) omborchisi, tsex roli (`models/enums.py:26`). Mahsulotlar ombori roli — `skladchi`. Ya'ni
+  `0cac878` dagi to'liq (tekis) ombor menyusini hozir hech kim ko'rmaydi; boshqaruv faqat
+  «Mahsulotlar ombori» → `/warehouse/hisobot` bandini ko'radi (docs/14 §11.2).
+- Kerak: `UserRole.SKLADCHI` roli bilan hisob ochish (Hisoblar sahifasidan, ombor egasi hal qiladi).
+
+### O9. Prodda 7 furnitura narxsiz + bo'sh maydonlar (2026-10-17)
+
+- `F-AK-029-01`, `F-RC-015-05`, `F-RC-025-11`, `F-RC-026-12`, `F-RL-015-01/02/03` — dizayn katalogida
+  bor, lekin narxsiz, shuning uchun `ombor_seed.json` ga ham tushmagan. Narxni egasi beradi.
+- Qolgan bo'sh maydonlar uchun prodda `ombor_seed.py --apply` yurgizish mumkin: `070b3bd` dan keyin u
+  sotilib nolga tushgan qoldiqni qaytarib tiriltirmaydi (docs/14 §8.5).
+
 ### O6. Eski brauzer listlari
 
 - 2026-10-16 gacha `/sotuv` da `localStorage` (`mebelix.sotuv-listi.v1`) da qolgan listlar ko'chirilmadi

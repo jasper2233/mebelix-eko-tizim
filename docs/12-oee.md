@@ -762,8 +762,9 @@ kodda 17/19). Tuzatish: `_bosh_yurish` endi faqat PROCESSING oraliqlarini bo'lad
 yozilgan soxta yozuvlarni `scripts/downtime_deleted_events.sql` tozalaydi (Rover `idle-*` —
 uning ikkinchi manbasi), orakli `downtime_cleanup_oracle.py` **14/14**.
 
-**Hali yo'q:** agent o'chiq paytni Pico'ning `POWER_ON`/`run_sec` hodisalaridan to'ldirish (§4.13
-dagi cheklov), koeffitsiyentlarning haqiqiy qiymatlari (sekundomer).
+**Hali yo'q:** koeffitsiyentlarning haqiqiy qiymatlari (sekundomer). Agent o'chiq paytni
+Pico'ning `POWER_ON`/`POWER_CYCLE`/`SPINDLE_IDLE` yozuvlaridan to'ldirish 2026-10-16 da
+qilindi — §4.16 (`andon.rover_spans`).
 
 ### 4.16 Agent uzilgan payt — ma'lumot yo'qotmasdan (2026-10-16)
 
