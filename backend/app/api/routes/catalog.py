@@ -20,9 +20,11 @@ from app.schemas.catalog import (
     CatalogItemUpdate,
     CatalogRow,
     CatalogTree,
+    CbRateRead,
     WarehousePricing,
 )
 from app.schemas.common import Paginated
+from app.services.cb_rate import cb_usd
 from app.services.settings_service import set_setting
 from app.services.stock import adjust_quantity
 from app.services.warehouse import SEX_GROUPS, WAREHOUSE_PRICING, abc_classes, get_pricing, reprice
@@ -71,6 +73,16 @@ async def read_catalog_all(db: SessionDep, _: WarehouseReadUser) -> list[Catalog
 @router.get("/pricing", response_model=WarehousePricing, operation_id="read_warehouse_pricing")
 async def read_warehouse_pricing(db: SessionDep, _: WarehouseReadUser) -> WarehousePricing:
     return await get_pricing(db)
+
+
+@router.get("/cb-rate", response_model=CbRateRead | None, operation_id="read_cb_rate")
+async def read_cb_rate(_: WarehouseReadUser) -> CbRateRead | None:
+    """Markaziy bank dollar kursi (`cbu.uz`, soatiga bir marta keshlanadi).
+
+    Panel uni sexdagi kurs YONIDA ko'rsatadi — hisobga tushmaydi. Bank javob bermasa `null`:
+    bu yordamchi ma'lumot, usiz ham narx boshqaruvi to'liq ishlaydi."""
+    kurs = await cb_usd()
+    return CbRateRead(rate=kurs.rate, date=kurs.date, diff=kurs.diff) if kurs else None
 
 
 @router.put("/pricing", response_model=WarehousePricing, operation_id="update_warehouse_pricing")

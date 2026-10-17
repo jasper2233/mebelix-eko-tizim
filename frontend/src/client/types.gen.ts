@@ -976,6 +976,30 @@ export type CatalogTree = {
 };
 
 /**
+ * CbRateRead
+ *
+ * Markaziy bank dollar kursi — FAQAT solishtirish uchun (`services/cb_rate.py`).
+ *
+ * Hisob-kitobga tushmaydi: narx sexdagi kurs bilan hisoblanadi, bankniki panelda uning
+ * YONIDA turadi. Bank javob bermasa endpoint `null` qaytaradi va panel kursni
+ * solishtirmasdan ishlayveradi.
+ */
+export type CbRateRead = {
+    /**
+     * Rate
+     */
+    rate: string;
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Diff
+     */
+    diff?: string | null;
+};
+
+/**
  * ClientCreate
  */
 export type ClientCreate = {
@@ -9547,6 +9571,24 @@ export type UpdateWarehousePricingResponses = {
 };
 
 export type UpdateWarehousePricingResponse = UpdateWarehousePricingResponses[keyof UpdateWarehousePricingResponses];
+
+export type ReadCbRateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/cb-rate';
+};
+
+export type ReadCbRateResponses = {
+    /**
+     * Response Read Cb Rate
+     *
+     * Successful Response
+     */
+    200: CbRateRead | null;
+};
+
+export type ReadCbRateResponse = ReadCbRateResponses[keyof ReadCbRateResponses];
 
 export type ReadCatalogItemsData = {
     body?: never;

@@ -233,6 +233,23 @@ Narx endi OMBORNIKI — katalog varag'i uni qayta yozmaydi (quyida 8.4). Qoidala
 | LDSP / LMDF dekori (`M-LD`, `M-LM`) | sinf (Standart / Medium / Premium) belgilangan bo'lsa — shu sinfning BITTA list narxi | sinf yoki sinf narxi o'zgarganda — shu sinfdagi HAMMA dekor birdan |
 | Xarid dollarda (`purchase_usd`) | so'mdagi xarid = `round($ × kurs)` | kurs o'zgarganda (so'mda qo'lda kiritilsa dollar narxi bekor bo'ladi) |
 
+**Dollar kursi QO'LDA qo'yiladi va hisobning yagona manbasi shu.** Markaziy bank kursi (2026-10-17 dan)
+uning YONIDA ko'rsatiladi, lekin hisobga TUSHMAYDI: kurs o'zgarishi butun katalogning xaridini va
+furnitura sotuvini qayta hisoblaydi, bunday o'zgarishni odam ko'rib tasdiqlashi kerak. Panelda
+«Markaziy bank: 12 055,9 so'm · 17.10.2026 · −744,1» deb turadi va farq bo'lsa «**Bank kursini
+qo'yish**» tugmasi chiqadi (so'mgacha yaxlitlab qo'yadi); mos bo'lsa — «kurs mos».
+
+Manba `cbu.uz` ning ochiq JSON'i (`services/cb_rate.py`, `GET /catalog/cb-rate`). Yangi bog'liqlik
+qo'shilmadi — bitta GET uchun `urllib` yetadi. Javob Redis'da **1 soat** saqlanadi (bank kuniga bir
+marta e'lon qiladi), bank javob bermasa 5 daqiqalik «yo'q» belgisi qo'yiladi va panel kursni
+solishtirmasdan, lekin to'liq ishlab turaveradi. Partiya kursi tasdiqda QOTADI (`stock_lot.rate`),
+ya'ni omborda turgan tovar kurs o'zgarganda qayta baholanmaydi.
+
+Tekshiruv — `scripts/oracles/cb_rate_oracle.py` **18/18**: javobni o'qish, yettita buzuq shakl
+(bo'sh, boshqa valyuta, kurssiz, son emas, manfiy, nominal 100, umuman boshqa), kesh (bankka bir
+marta chiqiladi, muddat qo'yiladi), bank javob bermagani (`None`, qayta-qayta urinmaydi) va
+tiklangani; bankning o'ziga ham bitta haqiqiy so'rov.
+
 Sozlama bitta JSON — `system_setting.warehouse_pricing` (`WarehousePricing`: `usd_rate`, `tier_prices`,
 `markup_all`, `markup_groups`). `PUT /catalog/pricing` uni saqlaydi va HAMMA pozitsiyaning narxini
 qayta hisoblaydi (≈2 700 qator — bir zumda); o'zgarish auditga eski va yangi qiymat bilan yoziladi.

@@ -37,6 +37,20 @@ class WarehousePricing(BaseModel):
     markup_groups: dict[str, Pct] = Field(default_factory=dict)
 
 
+class CbRateRead(BaseModel):
+    """Markaziy bank dollar kursi — FAQAT solishtirish uchun (`services/cb_rate.py`).
+
+    Hisob-kitobga tushmaydi: narx sexdagi kurs bilan hisoblanadi, bankniki panelda uning
+    YONIDA turadi. Bank javob bermasa endpoint `null` qaytaradi va panel kursni
+    solishtirmasdan ishlayveradi."""
+
+    rate: Decimal
+    #: Bank bergan sana, `17.10.2026`
+    date: str
+    #: Oldingi kundan farq
+    diff: Decimal | None = None
+
+
 class CatalogItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

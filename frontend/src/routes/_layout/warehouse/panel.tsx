@@ -15,6 +15,7 @@ import { toast } from "sonner"
 import { CatalogService, type WarehousePricingOutput } from "@/client"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -25,6 +26,7 @@ import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import {
   fmt,
+  fmtQty,
   groupKey,
   num,
   parseNum,
@@ -144,6 +146,11 @@ function PanelPage() {
             o'zgarsa, dollardagi xarid narxi va furnitura sotuv narxlari qayta
             hisoblanadi.
           </p>
+          <CbRate
+            shopRate={num(p.usd_rate)}
+            canWrite={canWrite}
+            onApply={(v) => put({ ...p, usd_rate: v })}
+          />
         </div>
         <div className="flex items-center gap-2 text-lg font-semibold">
           1 $ =
@@ -310,5 +317,66 @@ function NumInput({
         if (e.key === "Enter") (e.target as HTMLInputElement).blur()
       }}
     />
+  )
+}
+
+/** Markaziy bank kursi sexdagi kurs YONIDA. Hisobga tushmaydi — narx sexdagi kurs bilan
+ *  hisoblanadi; bu yerda faqat «bankda qancha» va farqi turadi. Bank javob bermasa (yoki
+ *  kurs hali olinmagan bo'lsa) umuman chizilmaydi: usiz ham panel to'liq ishlaydi. */
+function CbRate({
+  shopRate,
+  canWrite,
+  onApply,
+}: {
+  shopRate: number
+  canWrite: boolean
+  onApply: (rate: string) => void
+}) {
+  const { data } = useQuery({
+    queryKey: ["catalog", "cb-rate"],
+    queryFn: async () => (await CatalogService.readCbRate()).data ?? null,
+    staleTime: 30 * 60_000,
+  })
+  if (!data) return null
+  const bank = num(data.rate)
+  // 1 so'mgacha farq — bir xil deb hisoblanadi (bank kasr bilan beradi)
+  const mos = Math.abs(bank - shopRate) < 1
+  const farq = bank - shopRate
+  return (
+    <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className="text-muted-foreground">Markaziy bank:</span>
+      {/* Bank kursni tiyin bilan beradi (12 055.90) — yaxlitlab ko'rsatsak, tugma
+          qo'yadigan qiymat ekrandagidan boshqa bo'lib qolardi */}
+      <span className="num font-semibold">{fmtQty(data.rate)} so'm</span>
+      <span className="num text-muted-foreground">{data.date}</span>
+      {mos ? (
+        <span className="text-muted-foreground">· kurs mos</span>
+      ) : (
+        <>
+          <span
+            className={cn(
+              "num font-semibold",
+              farq > 0 ? "text-amber-700" : "text-muted-foreground",
+            )}
+            title="Sexdagi kursdan farqi"
+          >
+            · {farq > 0 ? "+" : "−"}
+            {fmtQty(Math.abs(farq))}
+          </span>
+          {canWrite && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7"
+              // So'mgacha yaxlitlanadi: sexdagi kurs ish raqami, tiyin unga shovqin —
+              // maydon baribir butun son ko'rsatadi, saqlangani boshqa bo'lib qolmasin
+              onClick={() => onApply(String(Math.round(bank)))}
+            >
+              Bank kursini qo'yish
+            </Button>
+          )}
+        </>
+      )}
+    </p>
   )
 }
