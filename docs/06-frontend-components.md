@@ -177,6 +177,13 @@ Ataylab chetlanish bo'lsa `biome-ignore` izohida SABABI yoziladi (namuna:
 `anketa.$orderId.tsx` dagi forma jadvallari — ular reyestr emas, kataklarida
 kiritish maydonlari turadi).
 
+**Menyu guruhi ikki xil chiziladi** (`Main.tsx`): odatda ota band + chevron, bosilganda ochiladi
+(`NavGroup`); `Item.flat` berilsa esa ota band UMUMAN chizilmaydi va bo'limlar yuqori daraja
+sifatida, doim ochiq turadi. Ikkinchisi butun menyusi bitta bo'limdan iborat rol uchun (mahsulot
+omborchisi, `docs/14` §11.2): u yerda ota band hech qayerga olib bormaydi va har kirganda bitta
+ortiqcha bosish qo'shardi. Bo'lim havolasi ikkalasida ham bitta komponent (`SubLink`) — `nested`
+bilan chekinma va kichik shrift oladi.
+
 ### Belgilar lug'ati (lucide) — bitta tushuncha, bitta belgi
 
 Ma'noni foydalanuvchi oldingi tajribasidan oladi (NN/g, «Icon Usability»), yig'ilgan yon menyuda esa yozuv

@@ -432,7 +432,7 @@ API — `GET /api/v1/stock/report?date_from=&date_to=` (`WarehouseReadUser`), hi
 
 | Kim | Menyuda | Nega |
 | --- | --- | --- |
-| **Omborchi** (`skladchi`) | «Mahsulotlar ombori» ochiladi: Boshqaruv paneli, Materiallar / Furnitura / Xizmatlar, Sotuv F2, Kirim F4, Sex xo'jaligi F3, Inventarizatsiya, Hujjatlar, Ombor hisoboti | Uning butun ishi shu yerda |
+| **Omborchi** (`skladchi`) | Bandlar TEKIS va doim ko'rinadi: Boshqaruv paneli, Materiallar / Furnitura / Xizmatlar, Sotuv F2, Kirim F4, Sex xo'jaligi F3, Inventarizatsiya, Hujjatlar, Ombor hisoboti. «Mahsulotlar ombori» degan ota band YO'Q | Uning butun menyusi shu bo'limdan iborat: ota band hech qayerga olib bormaydi, ochilib-yopiladigan guruh esa har kirganda bir bosish qo'shardi (`Item.flat`, 2026-10-17) |
 | **Boshqaruv** (admin, menejer, direktor, texnolog) | BITTA band — «Mahsulotlar ombori», to'g'ri **Ombor hisobotiga** | Ularga ombor — kundalik ish emas, RAQAM: qoldiq qiymati, aylanma, ABC, harakatsizlar. To'liq ro'yxat menyuni bekorga uzaytirardi |
 
 Sahifalarning O'ZI boshqaruvga ochiq qoladi (`isWarehouseStaff`): hisobotdagi guruh qatori bosilsa

@@ -100,8 +100,12 @@ export const NAV_ITEMS: (Item & {
   },
   {
     icon: Boxes,
+    // Omborchining butun menyusi SHU bo'limdan iborat: ota band («Mahsulotlar
+    // ombori») hech qayerga olib bormaydi va ochilib-yopiladigan guruh ham
+    // ortiqcha — bandlar tekis va doim ko'rinadi (`flat`).
     title: "Mahsulotlar ombori",
     path: "/warehouse",
+    flat: true,
     show: isWarehouseOnly,
     children: [
       // «Qudrat Ombor» dizayni (docs/14 §8): narx boshqaruvi + nomenklatura bo'limlari.

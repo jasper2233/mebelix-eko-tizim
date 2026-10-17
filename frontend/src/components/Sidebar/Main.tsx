@@ -40,6 +40,10 @@ export type Item = {
   path: string
   /** Bo'limlar — ota sahifa ichida bo'lganda ostida ko'rinadi (`NavGroup`) */
   children?: SubItem[]
+  /** Bo'limlar OTASIZ va doim ochiq chiziladi: menyuda bir xil balandlikda turadi,
+   *  ochilib-yopilmaydi. Butun menyusi shu bitta bo'limdan iborat rol uchun
+   *  (mahsulot omborchisi) — u yerda ota band ham, chevron ham ortiqcha */
+  flat?: boolean
   /** Yonida ko'rinadigan jonli son (0 yoki undefined bo'lsa chiqmaydi) */
   badge?: number
   /** Son nimani sanashi (hover'da) */
@@ -86,7 +90,18 @@ export function Main({ items }: MainProps) {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) =>
-            item.children ? (
+            item.children && item.flat ? (
+              // Otasiz, doim ochiq: bandlar yuqori daraja sifatida chiziladi
+              item.children.map((sub) => (
+                <SidebarMenuItem key={sub.title}>
+                  <SubLink
+                    sub={sub}
+                    isActive={sub.match(currentSearch, currentPath)}
+                    onNavigate={handleMenuClick}
+                  />
+                </SidebarMenuItem>
+              ))
+            ) : item.children ? (
               <NavGroup
                 key={item.title}
                 item={item}
@@ -208,6 +223,40 @@ function NavLink({
  *  o'sha; butun katalog yoki bo'limlar yopiq bo'lsa — ota; bir vaqtda bitta. Telefonda ota
  *  bosilganda menyu yopilmaydi (bo'limlar ko'rinsin / yopilgani ko'rinsin), bo'lim bosilganda
  *  yopiladi. Yig'ilgan railda bo'limlar yo'q — ota oddiy havola (48 px ustunda joy yo'q). */
+/** Bo'lim havolasi. `nested` — guruh ICHIDA (kichikroq, chekinma bilan); tekis
+ *  menyuda esa yuqori darajadagi band kabi ko'rinadi. */
+function SubLink({
+  sub,
+  isActive,
+  nested,
+  onNavigate,
+}: {
+  sub: SubItem
+  isActive: boolean
+  nested?: boolean
+  onNavigate: () => void
+}) {
+  const { isMobile } = useSidebar()
+  return (
+    <SidebarMenuButton
+      tooltip={sub.title}
+      isActive={isActive}
+      size={isMobile ? "lg" : "default"}
+      // Ichki band kichikroq va chekinma bilan; telefonda baribir 44 px
+      className={cn(
+        ACTIVE_BAR,
+        nested && (isMobile ? "h-11 pl-7" : "h-8 pl-7 text-sm"),
+      )}
+      asChild
+    >
+      <RouterLink to={sub.path} search={sub.search ?? {}} onClick={onNavigate}>
+        <sub.icon />
+        <span>{sub.title}</span>
+      </RouterLink>
+    </SidebarMenuButton>
+  )
+}
+
 function NavGroup({
   item,
   subItems,
@@ -271,25 +320,12 @@ function NavGroup({
         <SidebarMenu id={listId} aria-label={item.title} className="mt-1">
           {subItems.map((sub) => (
             <SidebarMenuItem key={sub.title}>
-              <SidebarMenuButton
-                tooltip={sub.title}
+              <SubLink
+                sub={sub}
                 isActive={sub === current}
-                // Ichki band kichikroq va chekinma bilan; telefonda baribir 44 px
-                className={cn(
-                  ACTIVE_BAR,
-                  isMobile ? "h-11 pl-7" : "h-8 pl-7 text-sm",
-                )}
-                asChild
-              >
-                <RouterLink
-                  to={sub.path}
-                  search={sub.search ?? {}}
-                  onClick={onNavigate}
-                >
-                  <sub.icon />
-                  <span>{sub.title}</span>
-                </RouterLink>
-              </SidebarMenuButton>
+                nested
+                onNavigate={onNavigate}
+              />
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
