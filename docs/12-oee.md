@@ -687,7 +687,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni (OEE kutilgani §4.25 da 4.0 → 4.1) |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
-| `kromka_juft_oracle.py` (28/28) | §4.26 — PAKET: 2–4 kichik detal birga o'tkazilganda yig'indi bo'yicha har qirra yopiladi, yolg'iz detal + to'ldiruvchi, noaniq yig'indi hech narsani yopmaydi |
+| `kromka_juft_oracle.py` (31/31) | §4.26 — PAKET: 2–4 kichik detal birga o'tkazilganda yig'indi bo'yicha har qirra yopiladi, yolg'iz detal + to'ldiruvchi, noaniq yig'indi hech narsani yopmaydi |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
 | `lock_end_oracle.py` (3/3) | §4.24 — qulf stanok ishlay boshlaguncha amal qiladi: keyingi to'xtash qulf sababini olmaydi (eski kodda 1/3) |
 | `oee_rounding_oracle.py` (9/9) | §4.25 — OEE xom nisbatlardan: 100 000 tasodifiy holatda aniq kasr bilan bir xil (eski usul ~13% da 0.1 farq) |
@@ -1066,7 +1066,8 @@ yonida saqlanadi (`kromka_filler_mm`).
 **Qoida** (`services/kromka.py: _paket`, `_juft`, `_paketni_yoz`):
 
 1. Bitta uya dopusk ichida mos kelsa — hamma narsa avvalgidek (§4.10), paket qidirilmaydi.
-2. Mos kelmasa va oynada `kromka_short_mm` (sukut 150) dan kichik ochiq qirra bo'lsa:
+2. Mos kelmasa va oynada `kromka_short_mm` (sukut 150) dan kichik ochiq qirra bo'lsa
+   (taqqoslash QAT'IY `<`: aynan 150 mm li detal yakka o'tadi va paketga ham qo'shilmaydi):
    - oynadagi KICHIK ochiq uyalardan **2–4 talik** to'plam qidiriladi, dopusk `3·√n` mm
      (n=2 → 4.2, n=3 → 5.2, n=4 → 6.0);
    - bitta skandan paketga ko'pi bilan BITTA uya olinadi — bitta skan = bitta qirra o'tishi;
@@ -1093,13 +1094,14 @@ Qidiruv narxi: median 0.01 ms, eng ko'pi 0.66 ms (oynada xil kichik uzunlik medi
 detal BOR edi (tanlov nuqsoniga o'xshaydi), 390 tasi izohsiz (datchik aniqligi — avval §4.18–4.20
 bo'yicha kalibrlash kerak).
 
-Tekshiruv — `scripts/oracles/kromka_juft_oracle.py` **28/28**, HAQIQIY `POST /bridge-agents/andon`
+Tekshiruv — `scripts/oracles/kromka_juft_oracle.py` **31/31**, HAQIQIY `POST /bridge-agents/andon`
 Postgres ustida: 2/3/4 bo'lakli paket har qirrani yopadi va `pack_n` yoziladi; 5 bo'lak paket emas;
 yolg'iz detal + 100 mm to'ldiruvchi bitta qirrani yopadi; `kromka_filler_mm = 0` da u ishlamaydi;
 ikki xil to'plam bir xil yig'indi bersa hech narsa yopilmaydi; bitta skanning ikki qirrasi bitta
 paketga tushmaydi; katta detal paketga qo'shilmaydi; yolg'iz o'tgan kichik detal avvalgidek `mos`
 (delta bilan); dopusk chegarasi `3·√2`; `kromka_short_mm = 0` da eski xulq (`nomos`); kvota
-tugagach ikkinchi paket yopilmaydi va `expected`/`delta` ko'rsatilmaydi.
+tugagach ikkinchi paket yopilmaydi va `expected`/`delta` ko'rsatilmaydi; aynan 150 mm li detal
+yakka o'tadi (oddiy `mos`) va boshqa birovning paketiga qo'shiluvchi bo'lmaydi.
 Kromka orakllari (bind 23, kirish 4, v122 19, dedup 18, kal 8, kalib 23) va `oee` 31 o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)

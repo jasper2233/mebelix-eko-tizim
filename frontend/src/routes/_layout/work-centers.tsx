@@ -43,6 +43,10 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { KromkaLive } from "@/components/WorkCenters/KromkaLive"
+import {
+  hasMachineSettings,
+  MachineSettingsDialog,
+} from "@/components/WorkCenters/MachineSettingsDialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
@@ -146,6 +150,7 @@ function WorkCentersPage() {
   const [adding, setAdding] = useState(false)
   const [editFor, setEditFor] = useState<MachineRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<MachineRead | null>(null)
+  const [settingsFor, setSettingsFor] = useState<MachineRead | null>(null)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
   const ovById = new Map((overview ?? []).map((o) => [o.machine_id, o]))
   // Marshrut tartibida: ARRA, KROMKA, OVAL... Ilgari id tartibida chiqardi,
@@ -219,7 +224,21 @@ function WorkCentersPage() {
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
-                      <div className="font-medium">{m.name}</div>
+                      {/* Sozlamasi bor postda nom — tugma: tsexda odam sozlamani
+                          STANOKDAN izlaydi, sozlamalar sahifasining tabidan emas.
+                          Yozish adminniki, shuning uchun boshqalarda oddiy matn. */}
+                      {admin && hasMachineSettings(post?.code) ? (
+                        <button
+                          type="button"
+                          className="font-medium underline-offset-4 hover:underline"
+                          title="Stanok sozlamalari"
+                          onClick={() => setSettingsFor(m)}
+                        >
+                          {m.name}
+                        </button>
+                      ) : (
+                        <div className="font-medium">{m.name}</div>
+                      )}
                       {/* Bog'lamlar nom ostida: agent (onlayn nuqtasi bilan) va
                           qurilma hisobi — ular o'chirishga ham to'siq */}
                       {o && (o.agents.length > 0 || o.accounts.length > 0) && (
@@ -394,6 +413,15 @@ function WorkCentersPage() {
           butun blok chizilmaydi (komponentning o'zi qaror qiladi). */}
       <KromkaLive />
       <DeleteMachine machine={deleteFor} onClose={() => setDeleteFor(null)} />
+      {settingsFor && (
+        <MachineSettingsDialog
+          machineId={settingsFor.id}
+          machineName={settingsFor.name}
+          postCode={postById.get(settingsFor.post_id)?.code}
+          open
+          onOpenChange={(v) => !v && setSettingsFor(null)}
+        />
+      )}
     </div>
   )
 }

@@ -286,6 +286,21 @@ async def main() -> None:  # noqa: PLR0915
         tekshir("A da faqat bitta mos qatori",
                 len([x for x in await m.yopilgan(a) if x[0] == "mos"]), 1)
 
+        # --- 14. AYNAN chegaradagi detal (150 mm) YAKKA o'tadi: `<` qat'iy
+        await m.qur()
+        yakka = await m.detal("Chegara", 150, 80)
+        sherik = await m.detal("Kichik", 100, 80)
+        await m.skan(yakka, BOSH)
+        await m.skan(sherik, BOSH + timedelta(seconds=2))
+        await db.commit()
+        r = await m.olchov(150.4, KEYIN)
+        tekshir("150 mm yakka o'tadi — oddiy mos", (r.verdict, r.pack_n), (KromkaVerdict.MOS, None))
+        tekshir("150 mm qirrasi paketga tortilmadi", await m.yopilgan(sherik), [])
+        # 150 + 100 = 250: chegaradagi detal paket qo'shiluvchisi BO'LMAYDI,
+        # 100 lik esa yolg'iz qolib to'ldiruvchi bilan 200 kutadi — 250 hech narsaga mos emas
+        r2 = await m.olchov(250.3, KEYIN + timedelta(seconds=30))
+        tekshir("150 mm yig'indi qo'shiluvchisi bo'lmaydi", r2.verdict, KromkaVerdict.SHUBHALI)
+
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:
         print(f"  {'OK ' if olingan == kutilgan else 'XATO'} {nom}: olingan={olingan} kutilgan={kutilgan}")
