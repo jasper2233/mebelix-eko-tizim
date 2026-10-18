@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import DateTime, ForeignKey, Index, Numeric, SmallInteger, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,6 +48,12 @@ class KromkaMeasurement(BaseModel):
     side_group: Mapped[str | None] = mapped_column(String(10), default=None, kw_only=True)
     expected_mm: Mapped[float | None] = mapped_column(Numeric(9, 1), default=None, kw_only=True)
     delta_mm: Mapped[float | None] = mapped_column(Numeric(9, 1), default=None, kw_only=True)
+    #: PAKET bo'lsa — unda nechta bo'lak bo'lgani (detallar + to'ldiruvchi), aks holda bo'sh.
+    #: 15 sm dan kichik detal lentada qaltiraydi, shuning uchun 4 tagacha detal zich tiqilib
+    #: birga o'tkaziladi va Pico paketni BITTA detal deb o'lchaydi (docs/12 §4.26). Shunday
+    #: qatorda `measured_mm` — PAKETNING uzunligi, bu detalning emas, `delta_mm` esa bo'sh:
+    #: yig'indi mos kelgani ma'lum, lekin har bo'lakning uzunligi alohida o'lchanmagan.
+    pack_n: Mapped[int | None] = mapped_column(SmallInteger, default=None, kw_only=True)
 
 
 class KromkaKalibSession(BaseModel):

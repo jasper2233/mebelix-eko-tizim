@@ -18,6 +18,12 @@ ba'zan bir necha detal oldindan. Ular orasidan O'LCHAMGA mos keladigani tanlanad
 «Joriy detal» degan alohida holat saqlanmaydi: terminal qulasa ham, agent qayta
 ulansa ham skan bazada turaveradi.
 
+PAKET (2026-10-18, docs/12 §4.26): 15 sm dan kichik detal lentada qaltiraydi, shuning
+uchun tsexda 4 tagacha detal zich tiqilib BIRGA o'tkaziladi (yolg'iz qolsa — ustiga
+100 mm lik to'ldiruvchi bo'lak). Pico paketni BITTA detal deb o'lchaydi, ya'ni uzunlik
+— bo'laklarning YIG'INDISI. Bitta uya mos kelmaganda yig'indi qidiriladi (`_juft`) va
+mos kelsa paketdagi HAR qirra yopiladi.
+
 Tomonlar GURUH bo'yicha sanaladi, nom bo'yicha emas: 430x520 detalning t/b qirrasi
 520 mm, l/r qirrasi 430 mm — bir xil uzunlikdagi ikki qirrani o'lchov ajrata
 olmaydi va ajratishi SHART EMAS, ikkalasi ham lentalanadi. Shuning uchun tartib
@@ -25,8 +31,10 @@ ham ahamiyatsiz: operator qaysi tomonni oldin qo'ysa — o'sha guruhdan bitta jo
 yopiladi.
 """
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from itertools import combinations
 from typing import Any
 
 from sqlalchemy import func, select
@@ -142,6 +150,8 @@ async def bind_measurement(
     tolerance_mm: float,
     before: timedelta,
     after: timedelta,
+    short_mm: float = 0.0,
+    filler_mm: float = 0.0,
 ) -> BindResult:
     """Bitta `olchov` hodisasini detalga bog'laydi va hukm yozadi. `flush` chaqiruvchida.
 
@@ -156,6 +166,10 @@ async def bind_measurement(
       Brak emas — ikki marta o'tkazish (qayta lentalash) normal hodisa.
     * `nomos` — hech bir guruhga to'g'ri kelmadi. HOZIRCHA hech narsa qilmaydi:
       faqat ekranda ko'rinadi (datchik ishonchsiz — yuqoridagi izoh).
+
+    `nomos` chiqsa va oynada `short_mm` dan kichik ochiq qirra bo'lsa — PAKET qidiriladi
+    (`_juft`): yig'indi mos kelsa paketdagi har qirra uchun bitta `mos` qatori yoziladi,
+    kelmasa hukm `shubhali` bo'ladi (brak oynasi kichik detalga umuman ochilmaydi).
     """
     measured = payload.get("L")
     code = str(payload.get("kod") or "?")[:10]
@@ -185,6 +199,33 @@ async def bind_measurement(
             if row.verdict == KromkaVerdict.MOS and row.side_group:
                 # Yangi qator hali yozilmagan — terminal ko'radigan hisobga qo'lda qo'shiladi
                 progress[row.side_group]["done"] += 1
+            if row.verdict == KromkaVerdict.NOMOS and short_mm > 0:
+                # Paket — faqat `nomos` yo'lida qidiriladi (o'lchovlarning ~5%), shuning
+                # uchun nomzodlarning hisobi shu yerda, hot yo'lda emas
+                juft, kichik_bor = await _paket(
+                    db,
+                    machine_id,
+                    _kirish(at, payload),
+                    before,
+                    after,
+                    float(measured),
+                    tolerance_mm,
+                    short_mm,
+                    filler_mm,
+                )
+                if juft is not None:
+                    uyalar, bolak = juft
+                    row, progress, part_name, qr_text = await _paketni_yoz(db, row, uyalar, bolak)
+                elif kichik_bor:
+                    # Oynada kichik detal bor, lekin yig'indi bir ma'noli chiqmadi: o'lchov
+                    # PAKETGA tegishli, bitta detalga emas — hukm chiqarilmaydi. `nomos`
+                    # qoldirilsa terminal kichik detalga brak oynasini ochardi, holbuki
+                    # datchik juftlikni ajratmaydi va detal aybdor emas.
+                    # `expected`/`delta` ham o'chiriladi: paket uzunligini bitta detalning
+                    # kutilgani bilan solishtirish ma'nosiz («farq +120.4 mm» deb qo'rqitardi)
+                    row.verdict = KromkaVerdict.SHUBHALI
+                    row.expected_mm = None
+                    row.delta_mm = None
 
     db.add(row)
     return BindResult(row=row, progress=progress, scan_id=row.scan_id, part_name=part_name, qr_text=qr_text)
@@ -298,3 +339,133 @@ async def _progress(db: AsyncSession, instance_id: int | None, part: Part | None
         if group in quota:
             quota[group]["done"] = count
     return quota
+
+
+# --- PAKET: 15 sm dan kichik detallar birga o'tkazilganda (docs/12 §4.26) -------------------
+
+#: Paketdagi bo'laklarning ko'pi: tsexda 4 tagacha kichik detal zich tiqiladi (egasining
+#: aytgani 2026-10-18). Ko'proq ruxsat berish kombinatsiyalarni ham, noaniqlikni ham oshiradi.
+_PAKET_MAX = 4
+#: Yig'indi qidiriladigan ochiq uyalarning chegarasi. Prodda oynada median 4, eng ko'pi 56 ta
+#: kichik uya kuzatilgan — cheklovsiz C(56,4) = 367 ming kombinatsiya bo'lardi. Eng ESKI
+#: uyalar olinadi (FIFO): lentada detallar bir-birini quvib o'tmaydi.
+_UYA_MAX = 24
+
+
+@dataclass(slots=True)
+class _Uya:
+    """Bitta OCHIQ kichik qirra: qaysi skan, qaysi guruh, kutilgan uzunlik."""
+
+    scan: Scan
+    group: str
+    expected: float
+    progress: dict[str, dict[str, float]]
+
+
+async def _paket(
+    db: AsyncSession,
+    machine_id: int,
+    kirish: datetime,
+    before: timedelta,
+    after: timedelta,
+    measured: float,
+    tol: float,
+    short_mm: float,
+    filler_mm: float,
+) -> tuple[tuple[list[_Uya], int] | None, bool]:
+    """Oynadagi kichik ochiq qirralardan paket yechimini topadi.
+
+    Qaytaradi: `((uyalar, bo'laklar soni) yoki None, oynada kichik qirra bor edimi)`.
+    Ikkinchi qiymat kerak: yechim topilmasa ham, kichik detal bor bo'lsa hukm `nomos`
+    bo'lmasligi shart."""
+    uyalar: list[_Uya] = []
+    #: Oynada kichik detal BOR edimi — kvotasi yopilgani ham sanaladi: paket ikkinchi marta
+    #: o'tkazilsa (qayta lentalash) yopadigan qirra qolmaydi, lekin bu ham `nomos` emas
+    kichik_bor = False
+    for scan in await _nomzodlar(db, machine_id, kirish, before, after):
+        progress = await _progress(db, scan.instance_id, await db.get(Part, scan.part_id))
+        for group, slot in progress.items():
+            if slot["expected"] >= short_mm:
+                continue
+            kichik_bor = True
+            if slot["done"] < slot["quota"]:
+                uyalar.append(_Uya(scan=scan, group=group, expected=float(slot["expected"]), progress=progress))
+    if not uyalar:
+        return None, kichik_bor
+    return _juft(uyalar[:_UYA_MAX], measured, tol, filler_mm), kichik_bor
+
+
+def _juft(uyalar: list[_Uya], measured: float, tol: float, filler_mm: float) -> tuple[list[_Uya], int] | None:
+    """2–4 kichik detalning yig'indisi yoki «yolg'iz detal + to'ldiruvchi».
+
+    FAQAT AYNAN BITTA yechim qaytariladi. Ikki xil uzunlik to'plami bir xil yig'indi bersa
+    qaysi qirra yopilganini ayta olmaymiz — o'lchov `shubhali` bo'lib qoladi (prodda
+    2026-09/10 ma'lumotida bunday noaniqlik 439 holatdan 14 tasida chiqdi). Bir xil
+    uzunliklarning boshqa skanlardagi takrori esa yechim SONINI oshirmaydi: qaysi nusxaning
+    qirrasi yopilgani o'lchov uchun farqsiz, eng eskisi (FIFO) olinadi.
+
+    Dopusk `tol·√n`: bo'laklarning o'lchov xatosi mustaqil, n bo'lakda yig'indining xatosi
+    √n marta kattalashadi. Prodda qoldiq (o'lchov − yig'indi) median 0.7 mm, eng kattasi
+    3.8 mm — bo'laklar rostdan zich tegib o'tadi.
+    """
+    yechim: dict[tuple[float, ...], list[_Uya]] = {}
+    for n in range(2, _PAKET_MAX + 1):
+        cheg = tol * math.sqrt(n)
+        for combo in combinations(uyalar, n):
+            # Bitta skan = bitta qirra o'tishi: bir skandan ikki uya bitta paketga tushmaydi
+            if len({u.scan.id for u in combo}) != n:
+                continue
+            if abs(measured - sum(u.expected for u in combo)) <= cheg:
+                yechim.setdefault(tuple(sorted(u.expected for u in combo)), list(combo))
+    if len(yechim) == 1:
+        uyalar_mos = next(iter(yechim.values()))
+        return uyalar_mos, len(uyalar_mos)
+    if yechim or filler_mm <= 0:
+        return None
+    # Yolg'iz detal + to'ldiruvchi: paketda ikki bo'lak, lekin yopiladigan qirra bitta
+    # (to'ldiruvchi buyurtma detali emas — skani ham, qirrasi ham yo'q)
+    cheg = tol * math.sqrt(2)
+    mos = [u for u in uyalar if abs(measured - (u.expected + filler_mm)) <= cheg]
+    return ([mos[0]], 2) if len({u.expected for u in mos}) == 1 else None
+
+
+async def _paketni_yoz(
+    db: AsyncSession, row: KromkaMeasurement, uyalar: list[_Uya], bolak: int
+) -> tuple[KromkaMeasurement, dict[str, dict[str, float]], str | None, str | None]:
+    """Paketdagi har qirra uchun `mos` qatori. Birinchisi — kelgan `row` ning o'zi.
+
+    Hamma qatorda `measured_mm` bir xil: u PAKETNING uzunligi, bitta detalning emas.
+    `delta_mm` bo'sh — yig'indi mos kelgani ma'lum, har bo'lakning uzunligi alohida
+    o'lchanmagan."""
+    bosh: KromkaMeasurement | None = None
+    bosh_progress: dict[str, dict[str, float]] = {}
+    part_name: str | None = None
+    qr_text: str | None = None
+    for i, uya in enumerate(uyalar):
+        qator = (
+            row
+            if i == 0
+            else KromkaMeasurement(
+                machine_id=row.machine_id,
+                measured_at=row.measured_at,
+                code=row.code,
+                verdict=KromkaVerdict.MOS,
+                measured_mm=row.measured_mm,
+            )
+        )
+        qator.verdict = KromkaVerdict.MOS
+        qator.scan_id, qator.instance_id, qator.order_id = uya.scan.id, uya.scan.instance_id, uya.scan.order_id
+        qator.side_group = uya.group
+        qator.expected_mm = uya.expected
+        qator.delta_mm = None
+        qator.pack_n = bolak
+        uya.progress[uya.group]["done"] += 1
+        if i == 0:
+            bosh, bosh_progress = qator, uya.progress
+            part = await db.get(Part, uya.scan.part_id)
+            instance = await db.get(PartInstance, uya.scan.instance_id)
+            part_name, qr_text = (part.name if part else None), (instance.qr_text if instance else None)
+        else:
+            db.add(qator)
+    assert bosh is not None  # `uyalar` bo'sh bo'lmasligini `_juft` kafolatlaydi
+    return bosh, bosh_progress, part_name, qr_text

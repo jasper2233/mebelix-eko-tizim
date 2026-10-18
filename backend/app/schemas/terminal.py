@@ -201,6 +201,9 @@ class KromkaMeasurement(BaseModel):
     qr_text: str | None
     #: NOMOS bo'lganda terminal shu skan uchun brak oynasini ochadi
     scan_id: int | None
+    #: Paket bo'lsa — unda nechta bo'lak o'tgani (kichik detallar birga tiqiladi, docs/12
+    #: §4.26). Bo'sh bo'lmasa `length_mm` PAKETNING uzunligi, bu detalning emas.
+    pack_n: int | None = None
 
 
 class PrisadkaFile(BaseModel):

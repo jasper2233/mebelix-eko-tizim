@@ -819,6 +819,7 @@ async def read_kromka_measurements(db: SessionDep, _: TerminalUser, ctx: Termina
             part_name=part_name,
             qr_text=qr_text,
             scan_id=row.scan_id,
+            pack_n=row.pack_n,
         )
         for row, part_name, qr_text in rows
     ]

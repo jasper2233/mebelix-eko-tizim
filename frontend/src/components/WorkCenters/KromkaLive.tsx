@@ -87,6 +87,12 @@ export function KromkaLive() {
             >
               {KROMKA_VERDICT_LABELS[r.verdict] ?? r.verdict}
             </span>
+            {/* Paket: o'lchov bir nechta kichik bo'lakning yig'indisi (docs/12 §4.26) */}
+            {r.pack_n != null && (
+              <span className="shrink-0 rounded-md bg-sky-100 px-2 py-0.5 text-xs font-black text-sky-900">
+                paket {r.pack_n} ta
+              </span>
+            )}
             {/* Datchik muammosi bo'lgandagina Pico kodi ko'rsatiladi */}
             {r.code !== "OK" && (
               <span

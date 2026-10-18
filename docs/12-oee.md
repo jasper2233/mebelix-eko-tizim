@@ -523,6 +523,8 @@ nol dopusk har detalni brak qilardi; `kromka_bind_before_s` (sukut **60 s**, 5..
 `kromka_bind_window_s` (sukut **20 s**, 5..600) — kirish lahzasidan shuncha soniya OLDIN va
 KEYIN yozilgan skanlar nomzod bo'ladi. Operator odatda detalni lentaga qo'yishdan oldin, ba'zan
 bir necha detal oldindan skanerlaydi; keyin ham skanerlashi mumkin (chek qo'lida qoladi).
+`kromka_short_mm` va `kromka_filler_mm` — PAKET qoidasi (§4.26): kichik detallar birga
+o'tkazilganda o'lchov YIG'INDI bo'ladi.
 
 > **2026-10-16 tuzatishi** (stansiya repo'si bilan solishtirildi — `jasper2233/kromka-stansiya-OYY`:
 > `docs/onlayn_mes_hodisalar.md` §5, `stansiya.html: kirishVaqti`):
@@ -685,13 +687,14 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `rover_oee_oracle.py` (19/19) | §4.15 — Rover A/P/Q/OEE va to'xtash sinxroni (OEE kutilgani §4.25 da 4.0 → 4.1) |
 | `downtime_cleanup_oracle.py` (14/14) | `scripts/downtime_deleted_events.sql` — soxta to'xtashlarni tozalash |
 | `kromka_kirish_oracle.py` (4/4) | §4.10 — kirish `ts − (ish_ms + d2)`, oyna −60 … +20 s, skan darajasida FIFO |
+| `kromka_juft_oracle.py` (28/28) | §4.26 — PAKET: 2–4 kichik detal birga o'tkazilganda yig'indi bo'yicha har qirra yopiladi, yolg'iz detal + to'ldiruvchi, noaniq yig'indi hech narsani yopmaydi |
 | `kromka_kal_oracle.py` (8/8) | §4.18 — Pico'dagi joriy kalibrlash agentdan MES gacha (o'zgarganda, takrorsiz) |
 | `lock_end_oracle.py` (3/3) | §4.24 — qulf stanok ishlay boshlaguncha amal qiladi: keyingi to'xtash qulf sababini olmaydi (eski kodda 1/3) |
 | `oee_rounding_oracle.py` (9/9) | §4.25 — OEE xom nisbatlardan: 100 000 tasodifiy holatda aniq kasr bilan bir xil (eski usul ~13% da 0.1 farq) |
 | `reason_lookup_oracle.py` (4/4) | §4.23 — qisqa to'xtash qo'shni yozuvning sababini (rejali «Tushlik») olmaydi (eski kodda 0/4) |
 | `day_boundary_stop_oracle.py` (4/4) | §4.22 — yarim tundan o'tgan to'xtash bir kunlik hisobotda chegaradan tushib qolmaydi (eski kodda 2/4) |
 | `availability_range_oracle.py` (7/7) | §4.21 — kunning Availability'si so'ralgan oraliqqa bog'liq emas (eski kodda 2/7) |
-| `kromka_kalib_oracle.py` (28/28) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
+| `kromka_kalib_oracle.py` (23/23) | §4.19 — hisob stansiya JS bilan raqamma-raqam bir xil, ma'lum parametrlar qaytarib topiladi, sessiya o'tishlari skanga bog'lanmaydi; §4.20 — qo'llash server → agent → Pico → tasdiq, chegaralar, qaytarish, muddat |
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
@@ -930,7 +933,7 @@ qiymatlari) yangi buyruq bo'lib xuddi shu yo'ldan ketadi va xuddi shunday tasdiq
 qiymatlarini `SET` bilan yuboradi. Hozir portni agent ushlaydi, kiosk ishlamaydi; uni qayta ochish
 MES qo'llagan kalibrlashni stansiya sozlamasi bilan ustidan yozadi.
 
-Tekshiruv — `scripts/oracles/kromka_kalib_oracle.py` **28/28** (+12): ochiq sessiya qo'llanmaydi;
+Tekshiruv — `scripts/oracles/kromka_kalib_oracle.py` **23/23**: ochiq sessiya qo'llanmaydi;
 qiymatlar hisobdan, `previous` saqlanadi; kutilayotganda ikkinchisi 409; andon javobida buyruq bor;
 HAQIQIY agent uni soxta portga aynan bir marta yozdi; `ALARM`, `SET TD=1`, `SET D=1;ALARM`,
 `KALIB 1` portga tushmadi; Pico'ning float32 javobi agent orqali kelib tasdiq bo'ldi va buyruq
@@ -1038,6 +1041,66 @@ natija `Fraction` bilan aniq hisoblangan qiymatga teng (aniq .x5 tengliklari —
 suzuvchi nuqtada ifodalanmaydi, har `round()` ning xususiyati); eski usul 5% dan ko'p holatda farq
 qilardi; `None` holatlari. `oee` 31/31 (6.0 va 3.4 aniq qiymatga mos edi), `rover_oee` 19/19 (kutilgani
 4.1 ga tuzatildi), `tablo_machines` 29/29.
+
+### 4.26 PAKET: 15 sm dan kichik detallar birga o'tkaziladi (2026-10-18)
+
+**Tsexdagi haqiqat (egasining aytgani).** 150 mm dan kichik detal kromka lentasida QALTIRAYDI.
+Shuning uchun operator ularni zich tiqib birga o'tkazadi — **4 tagacha** detal; mos keladigan
+sherik detal bo'lmasa ustiga **to'ldiruvchi bo'lak** qo'shiladi. Pico esa nurni to'sib turgan
+vaqtni o'lchaydi, ya'ni paketni BITTA detal deb ko'radi: uzunlik — bo'laklarning YIG'INDISI.
+MES bitta skanning bitta qirrasini kutgani uchun natija `nomos` — «o'lcham mos emas» bo'lardi.
+
+**Prodda o'lchangan (2026-09-18 … 2026-10-18, 30 kun, 29 428 o'lchov):**
+
+| | |
+| --- | --- |
+| `nomos` | 1 323 (4.5%) |
+| shundan oynada 150 mm dan kichik ochiq qirra bor | 455 |
+| 150 mm dan kichik YOLG'IZ o'lchov | atigi 103 ta — kichik detal yolg'iz deyarli o'tmaydi |
+| qoldiq (o'lchov − yig'indi) | median **0.7 mm**, eng kami −3.6, eng ko'pi +3.8 — bo'laklar zich tegadi |
+| ishlatilgan to'ldiruvchi uzunligi | 150 mm — 193 marta, ~100 mm — 26, qolgani tarqoq |
+
+Egasining qarori 2026-10-18: to'ldiruvchi bundan keyin **aynan 100 mm**, markerlanadi va stanok
+yonida saqlanadi (`kromka_filler_mm`).
+
+**Qoida** (`services/kromka.py: _paket`, `_juft`, `_paketni_yoz`):
+
+1. Bitta uya dopusk ichida mos kelsa — hamma narsa avvalgidek (§4.10), paket qidirilmaydi.
+2. Mos kelmasa va oynada `kromka_short_mm` (sukut 150) dan kichik ochiq qirra bo'lsa:
+   - oynadagi KICHIK ochiq uyalardan **2–4 talik** to'plam qidiriladi, dopusk `3·√n` mm
+     (n=2 → 4.2, n=3 → 5.2, n=4 → 6.0);
+   - bitta skandan paketga ko'pi bilan BITTA uya olinadi — bitta skan = bitta qirra o'tishi;
+   - yig'indi topilmasa va uya bitta bo'lsa: `uya + kromka_filler_mm` (sukut 100) sinaladi;
+   - **aynan bitta** yechim bo'lsa paketdagi har qirra uchun `mos` qatori yoziladi.
+3. Yechim bir ma'noli chiqmasa — hukm `shubhali`: brak oynasi OCHILMAYDI va `expected`/`delta`
+   ko'rsatilmaydi (paket uzunligini bitta detalning kutilgani bilan solishtirish ma'nosiz).
+   Kichik detalning kvotasi allaqachon yopilgan bo'lsa ham (paket ikkinchi marta o'tkazilgan)
+   hukm `shubhali` — `nomos` emas.
+
+`kromka_measurement.pack_n` — paketdagi BO'LAKLAR soni (detallar + to'ldiruvchi). Shunday
+qatorda `measured_mm` paketning uzunligi, `delta_mm` esa bo'sh. Ekranda «paket N ta» belgisi
+(terminal va admin jonli oqimi).
+
+**Operator tartibi:** har bir detalni skanerla → paketni o'tkaz → o'lchov kelgach keyingisini
+boshla. To'ldiruvchi skanerlanmaydi. Ikkinchi qirra uchun qaytadan skanerlanadi.
+
+**Shu qoida o'sha 30 kunlik ma'lumotda yurgizilganda:** 455 holatning 362 tasi (80%) yopilardi
+(yolg'iz + to'ldiruvchi 201, yig'indi 161 — 2 ta: 138, 3 ta: 22, 4 ta: 1), 77 tasi `shubhali`
+bo'lib qolardi, qolgan 868 `nomos` ga qoida umuman tegmaydi (ularda kichik detal yo'q).
+Qidiruv narxi: median 0.01 ms, eng ko'pi 0.66 ms (oynada xil kichik uzunlik median 1, eng ko'pi 4).
+
+**Hali ochiq:** kichik detalsiz 868 `nomos` ning 333 tasida oynada 3 mm ichida mos keladigan
+detal BOR edi (tanlov nuqsoniga o'xshaydi), 390 tasi izohsiz (datchik aniqligi — avval §4.18–4.20
+bo'yicha kalibrlash kerak).
+
+Tekshiruv — `scripts/oracles/kromka_juft_oracle.py` **28/28**, HAQIQIY `POST /bridge-agents/andon`
+Postgres ustida: 2/3/4 bo'lakli paket har qirrani yopadi va `pack_n` yoziladi; 5 bo'lak paket emas;
+yolg'iz detal + 100 mm to'ldiruvchi bitta qirrani yopadi; `kromka_filler_mm = 0` da u ishlamaydi;
+ikki xil to'plam bir xil yig'indi bersa hech narsa yopilmaydi; bitta skanning ikki qirrasi bitta
+paketga tushmaydi; katta detal paketga qo'shilmaydi; yolg'iz o'tgan kichik detal avvalgidek `mos`
+(delta bilan); dopusk chegarasi `3·√2`; `kromka_short_mm = 0` da eski xulq (`nomos`); kvota
+tugagach ikkinchi paket yopilmaydi va `expected`/`delta` ko'rsatilmaydi.
+Kromka orakllari (bind 23, kirish 4, v122 19, dedup 18, kal 8, kalib 23) va `oee` 31 o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)
 

@@ -93,3 +93,6 @@ class KromkaMeasurementRow(BaseModel):
     part_name: str | None
     qr_text: str | None
     scan_id: int | None
+    #: Paket bo'lsa — unda nechta bo'lak o'tgani (kichik detallar birga tiqiladi, docs/12
+    #: §4.26). Bo'sh bo'lmasa `length_mm` PAKETNING uzunligi, bu detalning emas.
+    pack_n: int | None = None

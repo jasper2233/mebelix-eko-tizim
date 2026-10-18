@@ -3285,6 +3285,10 @@ export type KromkaMeasurement = {
      * Scan Id
      */
     scan_id: number | null;
+    /**
+     * Pack N
+     */
+    pack_n?: number | null;
 };
 
 /**
@@ -3340,6 +3344,10 @@ export type KromkaMeasurementRow = {
      * Scan Id
      */
     scan_id: number | null;
+    /**
+     * Pack N
+     */
+    pack_n?: number | null;
 };
 
 /**

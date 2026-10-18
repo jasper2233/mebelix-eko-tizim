@@ -325,6 +325,10 @@ const KROMKA_BIND_KEY = "kromka_bind_window_s"
 const KROMKA_BEFORE_KEY = "kromka_bind_before_s"
 const KROMKA_BIND_MIN = 5
 const KROMKA_BIND_MAX = 600
+// Backend `settings_service.KROMKA_SHORT_MM` / `KROMKA_FILLER_MM` va `INT_RANGES` bilan bir xil
+const KROMKA_SHORT_KEY = "kromka_short_mm"
+const KROMKA_FILLER_KEY = "kromka_filler_mm"
+const KROMKA_PAKET_MAX = 500
 
 const REASONS_KEY = ["system-settings", "downtime-reasons"]
 
@@ -845,12 +849,20 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
   const savedBind = settings.find((x) => x.key === KROMKA_BIND_KEY)?.value ?? ""
   const savedBefore =
     settings.find((x) => x.key === KROMKA_BEFORE_KEY)?.value ?? ""
+  const savedShort =
+    settings.find((x) => x.key === KROMKA_SHORT_KEY)?.value ?? ""
+  const savedFiller =
+    settings.find((x) => x.key === KROMKA_FILLER_KEY)?.value ?? ""
   const [tol, setTol] = useState("")
   const [bind, setBind] = useState("")
   const [before, setBefore] = useState("")
+  const [short, setShort] = useState("")
+  const [filler, setFiller] = useState("")
   useEffect(() => setTol(savedTol), [savedTol])
   useEffect(() => setBind(savedBind), [savedBind])
   useEffect(() => setBefore(savedBefore), [savedBefore])
+  useEffect(() => setShort(savedShort), [savedShort])
+  useEffect(() => setFiller(savedFiller), [savedFiller])
   const ok = (v: string, min: number, max: number) =>
     /^\d+$/.test(v) && Number(v) >= min && Number(v) <= max
   const saqla = (key: string, value: string) =>
@@ -866,9 +878,18 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
     },
     ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
   })
+  const savePaket = useMutation({
+    mutationFn: async () => {
+      if (short !== savedShort) await saqla(KROMKA_SHORT_KEY, short)
+      if (filler !== savedFiller) await saqla(KROMKA_FILLER_KEY, filler)
+    },
+    ...crudCallbacks(queryClient, ["system-settings"], "Sozlama saqlandi"),
+  })
   const bindOk =
     ok(bind, KROMKA_BIND_MIN, KROMKA_BIND_MAX) &&
     ok(before, KROMKA_BIND_MIN, KROMKA_BIND_MAX)
+  const paketOk =
+    ok(short, 0, KROMKA_PAKET_MAX) && ok(filler, 0, KROMKA_PAKET_MAX)
 
   return (
     <div className={cn(cardSurface, "space-y-5 p-4")}>
@@ -955,6 +976,53 @@ function KromkaBindCard({ settings }: { settings: SystemSettingRead[] }) {
         4–10 soniyada bir marta skanerlaydi — o'lchov keyingi detalga yopishib
         qolardi. Skan topilmasa o'lchov «skansiz» bo'lib yoziladi va hech kimni
         ayblamaydi. Oraliq: {KROMKA_BIND_MIN}–{KROMKA_BIND_MAX}.
+      </p>
+      <div className="flex items-end gap-3">
+        <Field label="Kichik detal, mm dan kichik">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={KROMKA_PAKET_MAX}
+            value={short}
+            aria-invalid={!ok(short, 0, KROMKA_PAKET_MAX)}
+            className="w-44"
+            onChange={(e) => setShort(e.target.value)}
+          />
+        </Field>
+        <Field label="To'ldiruvchi bo'lak, mm">
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={KROMKA_PAKET_MAX}
+            value={filler}
+            aria-invalid={!ok(filler, 0, KROMKA_PAKET_MAX)}
+            className="w-44"
+            onChange={(e) => setFiller(e.target.value)}
+          />
+        </Field>
+        <LoadingButton
+          loading={savePaket.isPending}
+          disabled={
+            !paketOk || (short === savedShort && filler === savedFiller)
+          }
+          onClick={() => savePaket.mutate()}
+        >
+          Saqlash
+        </LoadingButton>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        <b>Paket.</b> Shu chegaradan kichik detal lentada qaltiraydi, shuning
+        uchun 4 tagacha detal zich tiqilib birga o'tkaziladi; yolg'iz qolsa
+        ustiga to'ldiruvchi bo'lak qo'shiladi. Stansiya paketni BITTA detal deb
+        o'lchaydi — uzunlik yig'indi bo'ladi. MES yig'indini oynadagi
+        skanerlangan kichik qirralardan qidiradi va aynan bitta javob chiqsa har
+        qirrani yopadi; chiqmasa o'lchov «shubhali» bo'lib qoladi va brak
+        so'ralmaydi. Operator tartibi:{" "}
+        <b>har bir detalni skanerla → paketni o'tkaz</b>. To'ldiruvchi
+        skanerlanmaydi, shuning uchun uzunligi har safar AYNAN shu bo'lishi
+        kerak (markerlab, stanok yonida saqlanadi). Nol — qoida o'chadi.
       </p>
     </div>
   )

@@ -44,6 +44,15 @@ KROMKA_BIND_WINDOW_S = "kromka_bind_window_s"
 #: endi faqat KEYINGI qismi: operator odatda detalni qo'yishdan oldin, ba'zan bir necha detal
 #: oldindan skanerlaydi — stansiya egasining tavsiyasi −60 s … +20 s.
 KROMKA_BIND_BEFORE_S = "kromka_bind_before_s"
+#: KICHIK detal chegarasi, mm (2026-10-18). Shundan qisqa detal kromkada YOLG'IZ o'tmaydi —
+#: lentada qaltiraydi, shuning uchun tsexda 4 tagacha detal zich tiqilib birga o'tkaziladi.
+#: Pico esa paketni BITTA detal deb o'lchaydi: uzunlik — yig'indi. Chegaradan kichik ochiq
+#: qirra oynada bo'lsa, o'lchov yig'indi bo'yicha qidiriladi (`services/kromka.py: _juft`).
+KROMKA_SHORT_MM = "kromka_short_mm"
+#: TO'LDIRUVCHI bo'lagning uzunligi, mm. Kichik detal yolg'iz qolsa unga shu bo'lak qo'shib
+#: tiqiladi (egasining qarori 2026-10-18: aynan 100 mm, markerlangan, kromka yonida turadi).
+#: `0` — to'ldiruvchi qoidasi o'chiriladi. Buyurtma detali emas, shuning uchun skanerlanmaydi.
+KROMKA_FILLER_MM = "kromka_filler_mm"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -54,6 +63,8 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     KROMKA_TOLERANCE_MM: (1, 50),
     KROMKA_BIND_WINDOW_S: (5, 600),
     KROMKA_BIND_BEFORE_S: (5, 600),
+    KROMKA_SHORT_MM: (0, 500),
+    KROMKA_FILLER_MM: (0, 500),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -66,6 +77,8 @@ DEFAULTS: dict[str, str] = {
     KROMKA_TOLERANCE_MM: "3",
     KROMKA_BIND_WINDOW_S: "20",
     KROMKA_BIND_BEFORE_S: "60",
+    KROMKA_SHORT_MM: "150",
+    KROMKA_FILLER_MM: "100",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

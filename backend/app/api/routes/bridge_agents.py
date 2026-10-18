@@ -63,6 +63,8 @@ from app.services.scanning import (
 from app.services.settings_service import (
     KROMKA_BIND_BEFORE_S,
     KROMKA_BIND_WINDOW_S,
+    KROMKA_FILLER_MM,
+    KROMKA_SHORT_MM,
     KROMKA_TOLERANCE_MM,
     get_setting,
 )
@@ -503,6 +505,9 @@ async def push_andon_events(
             tolerance = float(await get_setting(db, KROMKA_TOLERANCE_MM) or 3)
             after = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_WINDOW_S) or 20))
             before = timedelta(seconds=int(await get_setting(db, KROMKA_BIND_BEFORE_S) or 60))
+            # PAKET: 15 sm dan kichik detallar birga o'tkaziladi (docs/12 §4.26)
+            short_mm = float(await get_setting(db, KROMKA_SHORT_MM) or 0)
+            filler_mm = float(await get_setting(db, KROMKA_FILLER_MM) or 0)
             natijalar = [
                 await bind_measurement(
                     db,
@@ -512,6 +517,8 @@ async def push_andon_events(
                     tolerance_mm=tolerance,
                     before=before,
                     after=after,
+                    short_mm=short_mm,
+                    filler_mm=filler_mm,
                 )
                 for row in olchovlar
             ]
@@ -533,6 +540,7 @@ async def push_andon_events(
                         "part_name": natija.part_name,
                         "qr_text": natija.qr_text,
                         "scan_id": natija.scan_id,
+                        "pack_n": natija.row.pack_n,
                         "progress": natija.progress,
                     },
                     machine_id=machine_id,

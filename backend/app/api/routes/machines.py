@@ -339,6 +339,7 @@ async def read_kromka_measurement_feed(db: SessionDep, _: StaffReadUser) -> list
             part_name=part_name,
             qr_text=qr_text,
             scan_id=row.scan_id,
+            pack_n=row.pack_n,
         )
         for row, machine_name, part_name, qr_text in rows
     ]

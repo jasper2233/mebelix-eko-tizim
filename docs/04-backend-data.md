@@ -48,7 +48,7 @@ class BaseModel(Base):
 | `SessionStatus` | `active`, `ended` |
 | `DowntimeKind` | `fault` (qizil — avariya), `off` (hamma chiroq o'chiq), `idle` (sariq chegaradan uzoq), `lock` (operator qulf tugmasi) — `downtime.kind` |
 | `DefectStatus` | `pending` (menejer hali ko'rmagan), `confirmed`, `rejected` («brak emas» — Quality'ga kirmaydi) — `part_defect.status` |
-| `KromkaVerdict` | `mos`, `nomos`, `ortiqcha`, `shubhali`, `skanersiz` — `kromka_measurement.verdict` |
+| `KromkaVerdict` | `mos`, `nomos`, `ortiqcha`, `shubhali`, `skanersiz` — `kromka_measurement.verdict`. `shubhali` ning ikki sababi: Pico kodi OK emas, yoki kichik detallar PAKETLAB o'tkazilgan va yig'indi bir ma'noli chiqmadi (docs/12 §4.26) |
 
 `POST_ROLES: dict[UserRole, PostCode]` — 9 operator rolini o'z postiga bog'laydi (`ARRACHI→ARRA`, `KROMKACHI→KROMKA`, `OVALCHI→OVAL`, `PRISADKACHI→PRISADKA`, `ROVERCHI→ROVER`, `STOLYAR→STOLYARKA`, `BOYOQCHI→BOYOQ`, `UPAKOVKACHI→UPAKOVKA`, `OMBORCHI→TMO` (rol kodi odamning kasbi; ekran yozuvi "TMO omborchisi")). Operator rollari tsexda odatda **BEYJIK bilan kiradi** (`POST /login/badge`). Parol bilan kirish esa hisobning TURIGA bog'liq, ROLIGA emas: `is_system=True` hisob (seed yaratgani) 401 oladi, odamning SHAXSIY hisobi esa kiradi va smenasi shu zahoti ochiladi (`login._open_shift_for`). Bu skaneri yo'q post uchun: ARRA da monoblok bor, skaner yo'q — u yerda chek chiqarishning o'zi skan hisoblanadi (`cut_by_print`), ya'ni skaner FAQAT kirish uchun kerak bo'lib qolardi. Ilgari butun rol yopiq edi, chunki har postda bitta umumiy hisob bor edi va uning paroli butun smenaga ma'lum bo'lardi; `is_system` o'sha ikki xil hisobni ajratdi (`e7a35c19d840`). Ish markazi binding'i esa talab qilinmaydi (`TERMINAL` qurilma akkauntlaridan farqli): post rolning o'zidan (`POST_ROLES`), ish markazi `scanning.post_machine` dan topiladi. Shu sababli shaxsiy hisob bilan TELEFONDAN kirgan arrachining cheki ham ARRA postidagi printerdan chiqardi (2026-09-24 — bitta nusxaning ikki bir xil cheki ikki xil detalga yopishtirilgan); endi ish markazida ulangan chek qurilmasi bo'lsa, chek faqat o'sha monoblok brauzeridan chiqadi (`terminal_device`, 1.4.3-bo'lim), skan, xarita va smena esa telefondan ham ishlayveradi. Tafsilot — `docs/03-backend-api.md` (login.py) va `docs/09-mes-domain.md` §3.0.1.
 
@@ -143,8 +143,11 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   skan» modeli, u prodda xato bog'lardi, docs/12 §4.10);
   `kromka_idle_minutes = "10"` (1..240) — kromkada lenta yuryapti-yu shuncha daqiqa detal o'tmasa,
   bo'sh yurish deb sanaladi (`services/andon.split_idle`);
+  `kromka_short_mm = "150"` va `kromka_filler_mm = "100"` (0..500) — PAKET qoidasi: shundan kichik
+  detal lentada qaltiraydi va 4 tagacha qilib birga o'tkaziladi, yolg'iz qolsa to'ldiruvchi bo'lak
+  qo'shiladi; o'lchov yig'indi bo'yicha qidiriladi (docs/12 §4.26, 0 — qoida o'chadi);
   `PUT /settings/{key}` butun son kalitlarini `INT_RANGES` bo'yicha tekshiradi (ikkala idle 10..1440,
-  stop_prompt 1..120, kromka_idle 1..240, kromka_tolerance_mm 1..50, kromka_bind_before_s va kromka_bind_window_s 5..600;
+  stop_prompt 1..120, kromka_idle 1..240, kromka_tolerance_mm 1..50, kromka_bind_before_s va kromka_bind_window_s 5..600, kromka_short_mm va kromka_filler_mm 0..500;
   tashqarisi 422 «Qiymat {min} dan {max} gacha butun son bo'lishi kerak.»). `work_schedule` kaliti — ish jadvali
   JSON'i (`schemas/settings.py: WorkSchedule` — smenalar, tanaffuslar, haftalik dam olish kunlari,
   bayram sanalari); u `DEFAULTS` da YO'Q, o'z endpointi bor (`GET/PUT /settings/work-schedule`),
@@ -193,7 +196,10 @@ Barcha MES modellari `BaseModel` dan meros oladi (id + timestamp + soft-delete),
   `code(10)` (Pico kodi), `verdict` (`KromkaVerdict`: `mos`/`nomos`/`ortiqcha`/`shubhali`/
   `skanersiz`, index), `measured_mm` NULL (kod OK bo'lmasa o'lcham yo'q), `scan_id`/`instance_id`/
   `order_id` FK NULL, `side_group(10)` (`length` yoki `width` — qaysi GURUHdan bitta qirra
-  yopildi), `expected_mm`, `delta_mm` (hammasi `Numeric(9,1)`). Indekslar:
+  yopildi), `expected_mm`, `delta_mm` (hammasi `Numeric(9,1)`), `pack_n` SmallInteger NULL
+  (`c9f3a70b5e21`, 2026-10-18) — PAKET bo'lsa undagi bo'laklar soni: 15 sm dan kichik detallar
+  birga o'tkaziladi va bitta o'lchov bir nechta qirrani yopadi, shunday qatorda `measured_mm`
+  paketning uzunligi, `delta_mm` esa bo'sh (docs/12 §4.26). Indekslar:
   `ix_kromka_measurement_machine_at` `(machine_id, measured_at)`, `ix_kromka_measurement_instance`.
   Tomon NOMI (t/b/l/r) ATAYLAB saqlanmaydi: bir xil uzunlikdagi ikki qirrani o'lchov ajrata
   olmaydi va ajratishi shart emas — ikkalasi ham lentalanadi, tartib befarq. Bog'lash mantiqi
@@ -612,6 +618,7 @@ va 7 yetim ustun**; hammasi `migrations/env.py` dagi
 | 60 | `d058ecddc8fe` | `d058ecddc8fe_pg_stat_statements.py` | `CREATE EXTENSION IF NOT EXISTS pg_stat_statements` — kutubxona `shared_preload_libraries` bilan yuklanadi (docker-compose.*.yml); yuklanmagan serverda CREATE o'tadi, ko'rinishni o'qish xato beradi va «Tizim holati» «yoqilmagan» deydi. Downgrade kengaytmani o'chiradi |
 | 59 | `6d9d9f645802` | `6d9d9f645802_catalog_item_mahsulotlar_ombori_katalogi.py` | **`catalog_item`** — mahsulotlar ombori katalogi (`docs/14`); ma'lumot bu migratsiyada yozilmaydi (`scripts/catalog_import.py`) |
 | — | `b8e2f4a6c013` | `b8e2f4a6c013_stock_line_book_qty.py` | **`stock_doc_line.book_qty`** Numeric NULL — inventarizatsiya qatorida hisobdagi (sanashdan oldingi) qoldiq (docs/14 §10); boshqa hujjatlarda bo'sh |
+| — | `c9f3a70b5e21` | `c9f3a70b5e21_kromka_measurement_pack_n.py` | **`kromka_measurement.pack_n`** SmallInteger NULL — paketda nechta bo'lak o'tgani (kichik detallar birga tiqiladi, docs/12 §4.26); yolg'iz o'tgan detalda bo'sh |
 | — | `a5d9e3c71f28` | `a5d9e3c71f28_stock_docs_lots_movements.py` | **`stock_doc`**, **`stock_doc_line`**, **`stock_lot`**, **`stock_movement`** — ombor hujjatlari, FIFO partiyalar va harakatlar (docs/14 §9.1); nomlar eski bo'sh `stock_item`/`stock_move` bilan to'qnashmaydi |
 | — | `f3c8a2d6e915` | `f3c8a2d6e915_catalog_warehouse_pricing.py` | `catalog_item` ga ombor narxi ustunlari: `description` String(200), `purchase_usd` Numeric(14,4), `tier` String(1), `markup_pct` Numeric(6,2), `tracked` Boolean (server_default false) — docs/14 §8.2; ma'lumot `scripts/ombor_seed.py` bilan |
 | 58 | `c7a2f4e19b03` | `c7a2f4e19b03_bazis_modeli_va_ochiq_havola.py` | **`order.share_token(36)`** + PARTIAL UNIQUE `ix_order_share_token` (`NOT is_deleted`) — yig'uvchiga beriladigan ochiq 3D havola ([13-bazis-3d.md](13-bazis-3d.md)). `FileKind.BAZIS` uchun DDL YO'Q: `db_enum` `native_enum=False` bilan VARCHAR yaratadi, check-cheklov yo'q |

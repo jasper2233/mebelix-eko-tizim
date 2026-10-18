@@ -211,5 +211,7 @@ class KromkaVerdict(StrEnum):
     MOS = "mos"  # kutilgan tomonga to'g'ri keldi — qirra yopildi
     NOMOS = "nomos"  # o'lcham mos emas: brak oynasi ochiladi
     ORTIQCHA = "ortiqcha"  # o'lcham to'g'ri, lekin bu tomon kvotasi tugagan — OGOHLANTIRISH, brak emas
-    SHUBHALI = "shubhali"  # Pico kodi OK emas (FARQ/FAQAT1/FAQAT2) — hukm chiqarilmaydi
+    # Hukm chiqarilmaydi: Pico kodi OK emas (FARQ/FAQAT1/FAQAT2), yoki kichik detallar
+    # PAKETLAB o'tkazilgan va yig'indi bir ma'noli chiqmadi (docs/12 §4.26)
+    SHUBHALI = "shubhali"
     SKANERSIZ = "skanersiz"  # skan topilmadi — o'lchov tarixga yoziladi, hukm yo'q

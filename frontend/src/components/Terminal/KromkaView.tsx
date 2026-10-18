@@ -354,6 +354,12 @@ function StationStrip() {
       >
         {KROMKA_VERDICT_LABELS[last.verdict] ?? last.verdict}
       </span>
+      {/* Paket: kichik detallar birga o'tkazilgan, raqam — YIG'INDI (docs/12 §4.26) */}
+      {last.pack_n != null && (
+        <span className="rounded-md bg-sky-200 px-2 py-0.5 text-xs font-black text-sky-900">
+          paket {last.pack_n} ta
+        </span>
+      )}
       {/* Pico kodi: OK — ikkala datchik mos; FARQ/FAQAT1/FAQAT2 — datchik muammosi */}
       {last.code !== "OK" && (
         <span className="rounded-md bg-amber-200 px-2 py-0.5 text-xs font-black text-amber-900">
