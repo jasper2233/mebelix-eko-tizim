@@ -29,17 +29,24 @@ export const TIERS = [
   ["P", "Premium"],
 ] as const
 export const TIER_NAME: Record<string, string> = Object.fromEntries(TIERS)
-//: Sinf narxi qo'llanadigan guruhlar: `[guruh, nom, narx nimaga]`. Dekorlarda narx BITTA LIST
-//: uchun, kromkada BITTA METR uchun (rulon metrlab sotiladi). Bu guruhlarda furnitura ustamasi
-//: ishlamaydi — narxni egasi sinf bo'yicha qo'yadi. Backenddagi nusxasi:
-//: `services/warehouse.py: TIER_GROUPS`.
+//: Sinf narxi qo'llanadigan guruhlar: `[guruh, nom, narx nimaga]` — LDSP va LMDF dekorlari,
+//: narx BITTA LIST uchun. Backenddagi nusxasi: `services/warehouse.py: TIER_GROUPS`.
 export const TIER_GROUPS = [
   ["M-LD", "LDSP", "1 list"],
   ["M-LM", "LMDF", "1 list"],
-  ["F-KM", "Kromka", "1 metr"],
 ] as const
 //: Sinf qo'yish mumkin bo'lgan guruhlar — yuqoridagining kalitlari
 export const TIERABLE = new Set<string>(TIER_GROUPS.map(([gk]) => gk))
+
+//: Kromka guruhi: narxi SINF emas, O'LCHAM bo'yicha (1 metr uchun) — `services/warehouse.py`
+export const KROMKA_GROUP = "F-KM"
+const KROMKA_OLCHAM = /(\d+)\s*[×xXхХ]\s*(\d+(?:[.,]\d+)?)\s*mm/i
+/** Kromka nomidan o'lcham kaliti: «Kromka PVC 19×1 mm krem» → `19×1`. Varaqda alohida ustun
+ *  yo'q, manba — nom. Backenddagi nusxasi: `services/warehouse.py: kromka_size`. */
+export const kromkaSize = (name: string): string | null => {
+  const m = KROMKA_OLCHAM.exec(name ?? "")
+  return m ? `${m[1]}×${m[2].replace(".", ",")}` : null
+}
 
 export const num = (v: string | number | null | undefined): number =>
   v === null || v === undefined || v === "" ? 0 : Number(v) || 0

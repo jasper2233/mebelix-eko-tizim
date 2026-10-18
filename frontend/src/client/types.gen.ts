@@ -947,6 +947,10 @@ export type CatalogRow = {
      */
     tracked: boolean;
     /**
+     * Narx Qolda
+     */
+    narx_qolda?: boolean;
+    /**
      * Image Url
      */
     image_url: string | null;
@@ -7010,6 +7014,12 @@ export type WarehousePricingInput = {
     markup_groups?: {
         [key: string]: number | string;
     };
+    /**
+     * Kromka Prices
+     */
+    kromka_prices?: {
+        [key: string]: number | string;
+    };
 };
 
 /**
@@ -7038,6 +7048,12 @@ export type WarehousePricingOutput = {
      * Markup Groups
      */
     markup_groups?: {
+        [key: string]: string;
+    };
+    /**
+     * Kromka Prices
+     */
+    kromka_prices?: {
         [key: string]: string;
     };
 };

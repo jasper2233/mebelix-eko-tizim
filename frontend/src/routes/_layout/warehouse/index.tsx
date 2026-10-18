@@ -655,6 +655,16 @@ function NomenklaturaPage() {
                           )}
                           <TableCell className="num text-right">
                             {r.sale_price != null ? fmt(r.sale_price) : "—"}
+                            {/* Qo'lda qo'yilgan narx guruh qoidasiga bo'ysunmaydi
+                                (`extra.narx_qolda`, docs/14 §8.1) */}
+                            {r.narx_qolda && (
+                              <span
+                                className="ml-1 text-[10px] text-muted-foreground"
+                                title="Narx qo'lda qo'yilgan — ustama va kromka o'lchami unga tegmaydi"
+                              >
+                                qo'lda
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="num text-right font-semibold">
                             {r.sale_price != null

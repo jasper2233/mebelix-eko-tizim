@@ -73,7 +73,12 @@ async def read_catalog_all(db: SessionDep, _: WarehouseReadUser) -> list[Catalog
     items = await _all_items(db)
     abc = abc_classes(items)
     return [
-        CatalogRow.model_validate(i).model_copy(update={"abc": None if i.catalog == "X" else abc.get(i.id, "C")})
+        CatalogRow.model_validate(i).model_copy(
+            update={
+                "abc": None if i.catalog == "X" else abc.get(i.id, "C"),
+                "narx_qolda": bool(i.extra.get("narx_qolda")),
+            }
+        )
         for i in items
     ]
 
@@ -270,7 +275,7 @@ async def bulk_update_catalog_items(
     )
     touched = []
     for item in items:
-        if body.tier is not None and group_key(item) in TIER_GROUPS:
+        if body.tier is not None and group_key(item) in TIER_GROUPS:  # faqat dekorlar
             item.tier = body.tier or None
             reprice(item, cfg)
             touched.append(item.code)
@@ -403,6 +408,12 @@ async def update_catalog_item(
         setattr(item, field, value)
     if "purchase_price" in data and "purchase_usd" not in data:
         item.purchase_usd = None  # so'mda qo'lda kiritildi — dollar narxi endi amal qilmaydi
+    if "sale_price" in data:
+        # Sotuv narxi QO'LDA kiritildi — guruh qoidasi (ustama, kromka o'lchami, sinf) endi
+        # bu pozitsiyaga tegmaydi (docs/14 §8.1). Qaytarish: ustama yoki sinf berilsa.
+        item.extra = {**item.extra, "narx_qolda": True}
+    if data.keys() & {"tier", "markup_pct"} and item.extra.get("narx_qolda"):
+        item.extra = {k: v for k, v in item.extra.items() if k != "narx_qolda"}
     if data.keys() & {"purchase_price", "purchase_usd", "tier", "markup_pct"}:
         reprice(item, await get_pricing(db))
     log_action(

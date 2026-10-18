@@ -6,10 +6,15 @@ Narx katalog varag'idan emas, OMBORDAN boshqariladi:
   bo'lmasa guruhniki, u ham bo'lmasa umumiy. Ustama berilmagan pozitsiyada sotuv qo'lda qoladi.
 * LDSP / LMDF dekorlari (`M-LD`, `M-LM`): sinf (Standart / Medium / Premium) belgilangan bo'lsa
   sotuv = shu sinfning BITTA list narxi — sinf narxi o'zgarsa hamma dekor birdan yangilanadi.
+* Kromka (`F-KM`, 2026-10-18): narxni O'LCHAM belgilaydi (19×0,6 · 19×1 · 21×1 · 35×1 …),
+  1 METR uchun. O'lcham kromkaning nomidan olinadi. Narxi qo'yilmagan o'lcham — ustama bilan.
+* Sotuv narxi QO'LDA kiritilgan pozitsiya (`extra.narx_qolda`) hech bir guruh qoidasiga
+  bo'ysunmaydi: tsexdagi istisnolar (metallik, tilla, astatka) shu bilan saqlanadi.
 * Xarid dollarda (`purchase_usd`) bo'lsa so'mdagi xarid = $ × kurs; kurs o'zgarsa qayta hisoblanadi.
 
 Qoidalar dizayndagi `markupPrice` / `setTierPrice` / `setUsd` bilan bir xil."""
 
+import re
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,10 +34,21 @@ SEX_GROUPS = {
     "S-UP": "Upakovka materiali",
 }
 #: Sinf narxi qo'llanadigan guruhlar — LDSP va LMDF dekorlari
-#: Sotuv narxi SINF bo'yicha qo'yiladigan guruhlar: LDSP va LMDF dekorlari (1 list uchun) va
-#: KROMKA (2026-10-18, 1 METR uchun — kromka rulon bo'lib keladi va metrlab sotiladi).
-#: Bu guruhlarda ustama ISHLAMAYDI: narxni egasi sinf bo'yicha qo'yadi.
-TIER_GROUPS = ("M-LD", "M-LM", "F-KM")
+#: Sotuv narxi SINF bo'yicha qo'yiladigan guruhlar — LDSP va LMDF dekorlari (1 list uchun)
+TIER_GROUPS = ("M-LD", "M-LM")
+
+#: Kromka guruhi: narxi SINF emas, O'LCHAM bo'yicha qo'yiladi (1 metr uchun)
+KROMKA_GROUP = "F-KM"
+#: Kromka nomidagi o'lcham: «Kromka PVC 19×1 mm krem» -> `19×1`. Varaqda alohida ustun yo'q,
+#: shuning uchun manba — nom. `x` ham, `×` ham; kasr nuqta bilan ham, vergul bilan ham bo'ladi
+#: (prodda 48 kromkadan 46 tasi shunday nomlangan, qolgan 2 tasi «Kromka qog'oz»).
+_OLCHAM = re.compile(r"(\d+)\s*[×xXхХ]\s*(\d+(?:[.,]\d+)?)\s*mm", re.IGNORECASE)
+
+
+def kromka_size(name: str) -> str | None:
+    """Kromka nomidan o'lcham kaliti (`19×1`, `19×0,6`) yoki `None`."""
+    m = _OLCHAM.search(name or "")
+    return f"{m.group(1)}×{m.group(2).replace('.', ',')}" if m else None
 
 
 async def get_pricing(db: AsyncSession) -> WarehousePricing:
@@ -59,17 +75,34 @@ def reprice(item: CatalogItem, cfg: WarehousePricing) -> None:
     """Pozitsiyaning so'mdagi xaridi va sotuvini qoidalar bo'yicha yangilaydi (joyida)."""
     if item.purchase_usd is not None:
         item.purchase_price = _butun(item.purchase_usd * cfg.usd_rate)
-    # Sinf narxi ustamadan USTUN: kromka ham furnitura katalogida, lekin uning sotuvi
-    # tannarxdan emas, egasi qo'ygan metr narxidan keladi (docs/14 §8.2)
+    # Qo'lda qo'yilgan sotuv narxi QOTADI: guruh qoidasi (ustama, kromka o'lchami, sinf) unga
+    # tegmaydi. Usiz omborchi kiritgan istisno (masalan 21×1 metallik 1 500) kurs o'zgarganda
+    # yoki panel saqlanganda guruh narxiga qaytib ketardi.
+    if item.extra.get("narx_qolda"):
+        return
     if group_key(item) in TIER_GROUPS and item.tier:
         narx = cfg.tier_prices.get(group_key(item), {}).get(item.tier)  # type: ignore[call-overload]
         if narx:
             item.sale_price = narx
+    elif group_key(item) == KROMKA_GROUP:
+        # Kromka: narx O'LCHAMNIKI (1 metr). O'lchami yo'q yoki narxi qo'yilmagan bo'lsa —
+        # oddiy furnitura kabi ustama bilan
+        olcham = kromka_size(item.name)
+        narx_km = cfg.kromka_prices.get(olcham) if olcham else None
+        if narx_km:
+            item.sale_price = narx_km
+        else:
+            _ustama(item, cfg)
     elif item.catalog == "F":
-        mk = markup_of(item, cfg)
-        if mk is not None and item.purchase_price:
-            # 100 so'mgacha: dizayndagi `Math.round(b * (1 + v / 100) / 100) * 100`
-            item.sale_price = _butun(item.purchase_price * (1 + mk / 100) / 100) * 100
+        _ustama(item, cfg)
+
+
+def _ustama(item: CatalogItem, cfg: WarehousePricing) -> None:
+    """Furnitura narxi: tannarx + ustama, 100 so'mgacha (dizayndagi `markupPrice`)."""
+    mk = markup_of(item, cfg)
+    if mk is not None and item.purchase_price:
+        # 100 so'mgacha: dizayndagi `Math.round(b * (1 + v / 100) / 100) * 100`
+        item.sale_price = _butun(item.purchase_price * (1 + mk / 100) / 100) * 100
 
 
 def abc_classes(items: list[CatalogItem]) -> dict[int, str]:

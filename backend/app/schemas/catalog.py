@@ -35,6 +35,11 @@ class WarehousePricing(BaseModel):
     #: Furnitura ustamasi: umumiy va guruh bo'yicha (`F-RC`: 35)
     markup_all: Pct | None = None
     markup_groups: dict[str, Pct] = Field(default_factory=dict)
+    #: Kromka narxi O'LCHAM bo'yicha, 1 METR uchun: `{"19×1": 1100, "21×1": 1300}`.
+    #: O'lcham kromkaning NOMIDAN olinadi (`services/warehouse.py: kromka_size`) — varaqda
+    #: alohida ustun yo'q. Dekor sinflaridan farqi: kromkada sinf emas, O'LCHAM narxni
+    #: belgilaydi (tsexdagi varaq shunday: 19×0,6 — 600, 19×1 — 1100, 21×1 — 1300).
+    kromka_prices: dict[str, Money] = Field(default_factory=dict)
 
 
 class CbRateRead(BaseModel):
@@ -110,6 +115,8 @@ class CatalogRow(BaseModel):
     tier: str | None
     markup_pct: Decimal | None
     tracked: bool
+    #: Sotuv narxi QO'LDA qo'yilgan — guruh qoidasi (ustama, kromka o'lchami) unga tegmaydi
+    narx_qolda: bool = False
     image_url: str | None
     #: ABC sinfi — qoldiq qiymati bo'yicha (A — qiymatning 80% i); xizmatda None
     abc: str | None = None

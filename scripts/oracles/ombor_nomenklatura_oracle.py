@@ -35,6 +35,7 @@ from app.api.routes.catalog import (
 )
 from app.core.db import local_session
 from app.models import CatalogItem
+from app.services.warehouse import kromka_size
 from app.schemas.catalog import (
     CatalogBulk,
     CatalogIds,
@@ -115,34 +116,59 @@ async def main() -> None:
         await bulk_update_catalog_items(db, user, CatalogBulk(ids=[f.id], tier="P"), req)  # type: ignore[arg-type]
         natija.append(("furnituraga sinf berilmaydi", (await by("F-RC-002-01")).tier, None))
 
-        # --- 4b. KROMKA ham sinf narxi bilan (2026-10-18): rulon METRLAB sotiladi,
-        #        narxi ustamadan emas, egasi qo'ygan metr narxidan keladi
-        km = (
+        # --- 4b. KROMKA narxi O'LCHAM bo'yicha (2026-10-18): rulon metrlab sotiladi va
+        #        tsexdagi varaqda narx o'lchamga bog'liq (19×0,6 — 600, 19×1 — 1100, 21×1 — 1300)
+        kromkalar = (
             await db.execute(
                 select(CatalogItem).where(
                     CatalogItem.catalog == "F",
                     CatalogItem.group_code == "KM",
-                    CatalogItem.purchase_price.is_not(None),
+                    CatalogItem.is_deleted == False,  # noqa: E712
                 )
             )
-        ).scalars().first()
-        assert km is not None, "F-KM guruhida narxli pozitsiya yo'q"
-        ustamali = km.sale_price
-        cfg3 = cfg2.model_copy(update={"tier_prices": {**cfg2.tier_prices, "F-KM": {"S": D(3500), "P": D(9000)}}})
+        ).scalars().all()
+        olchamlar = {kromka_size(k.name) for k in kromkalar}
+        natija.append(("kromka o'lchami nomidan olinadi", "19×1" in olchamlar, True))
+        bir = [k for k in kromkalar if kromka_size(k.name) == "19×1"]
+        boshqa = [k for k in kromkalar if kromka_size(k.name) == "21×1"]
+        natija.append(("19×1 va 21×1 kromkalar bor", (len(bir) > 1, len(boshqa) > 1), (True, True)))
+        cfg3 = cfg2.model_copy(update={"kromka_prices": {"19×1": D(1100), "21×1": D(1300)}})
         await update_warehouse_pricing(db, user, cfg3, req)  # type: ignore[arg-type]
-        natija.append(("sinfsiz kromka ustama bilan qoladi", (await by(km.code)).sale_price, ustamali))
-        await bulk_update_catalog_items(db, user, CatalogBulk(ids=[km.id], tier="S"), req)  # type: ignore[arg-type]
-        natija.append(("kromkaga sinf berildi — 1 metr 3 500", (await by(km.code)).sale_price, D(3500)))
-        cfg4 = cfg3.model_copy(update={"tier_prices": {**cfg3.tier_prices, "F-KM": {"S": D(4200), "P": D(9000)}}})
+        natija.append(("19×1 ning HAMMASI 1 100 bo'ldi",
+                       {(await by(k.code)).sale_price for k in bir}, {D(1100)}))
+        natija.append(("21×1 ning HAMMASI 1 300 bo'ldi",
+                       {(await by(k.code)).sale_price for k in boshqa}, {D(1300)}))
+        cfg4 = cfg3.model_copy(update={"kromka_prices": {"19×1": D(1250), "21×1": D(1300)}})
         await update_warehouse_pricing(db, user, cfg4, req)  # type: ignore[arg-type]
-        natija.append(("sinf narxi o'zgardi — kromka birdan yangilandi", (await by(km.code)).sale_price, D(4200)))
-        natija.append(("kromkaning birligi metr", (await by(km.code)).unit, "metr"))
-        # Sinfi bor kromkaga ustama ta'sir qilmaydi
-        await update_catalog_item(db, user, req, km.id, CatalogItemUpdate(markup_pct=D(90)))  # type: ignore[arg-type]
-        natija.append(("sinf narxi ustamadan USTUN", (await by(km.code)).sale_price, D(4200)))
-        # Narxi qo'yilmagan sinf — eski narx saqlanadi, nolga tushmaydi
-        await bulk_update_catalog_items(db, user, CatalogBulk(ids=[km.id], tier="M"), req)  # type: ignore[arg-type]
-        natija.append(("narxsiz sinfda eski narx qoladi", (await by(km.code)).sale_price, D(4200)))
+        natija.append(("o'lcham narxi o'zgardi — 19×1 birdan 1 250",
+                       {(await by(k.code)).sale_price for k in bir}, {D(1250)}))
+        natija.append(("21×1 tegilmadi", {(await by(k.code)).sale_price for k in boshqa}, {D(1300)}))
+
+        # Istisno: qo'lda qo'yilgan narx guruh narxiga QAYTMAYDI (metallik, tilla, astatka)
+        istisno = bir[0]
+        await update_catalog_item(db, user, req, istisno.id, CatalogItemUpdate(sale_price=D(1500)))  # type: ignore[arg-type]
+        natija.append(("qo'lda narx qo'yildi", (await by(istisno.code)).sale_price, D(1500)))
+        cfg5 = cfg4.model_copy(update={"kromka_prices": {"19×1": D(1400), "21×1": D(1300)}})
+        await update_warehouse_pricing(db, user, cfg5, req)  # type: ignore[arg-type]
+        natija.append(("qo'lda narx guruh narxiga qaytmadi", (await by(istisno.code)).sale_price, D(1500)))
+        natija.append(("qolgan 19×1 lar 1 400 bo'ldi",
+                       {(await by(k.code)).sale_price for k in bir[1:]}, {D(1400)}))
+        natija.append(("qo'lda belgisi ko'rinadi", (await by(istisno.code)).extra.get("narx_qolda"), True))
+        # Ustama berilsa belgi olinadi va pozitsiya yana guruh qoidasiga qaytadi
+        await update_catalog_item(db, user, req, istisno.id, CatalogItemUpdate(markup_pct=D(40)))  # type: ignore[arg-type]
+        natija.append(("ustama berilsa qo'lda belgisi olinadi",
+                       (await by(istisno.code)).extra.get("narx_qolda"), None))
+        await update_warehouse_pricing(db, user, cfg5, req)  # type: ignore[arg-type]
+        natija.append(("qaytgach yana o'lcham narxi", (await by(istisno.code)).sale_price, D(1400)))
+
+        # Narxi qo'yilmagan o'lcham — oddiy furnitura kabi ustama bilan
+        kichik = [k for k in kromkalar if kromka_size(k.name) == "19×0,6" and k.purchase_price]
+        if kichik:
+            kut = (kichik[0].purchase_price * D("1.35") / 100).quantize(D(1)) * 100
+            natija.append(("narxsiz o'lcham — ustama bilan", (await by(kichik[0].code)).sale_price, kut))
+        # Kromkaga sinf berilmaydi: uning narxi o'lchamdan
+        await bulk_update_catalog_items(db, user, CatalogBulk(ids=[bir[1].id], tier="P"), req)  # type: ignore[arg-type]
+        natija.append(("kromkaga sinf berilmaydi", (await by(bir[1].code)).tier, None))
 
         # --- 5. Zaxira: faqat material
         await bulk_update_catalog_items(db, user, CatalogBulk(ids=[d1.id, f.id], tracked=True), req)  # type: ignore[arg-type]

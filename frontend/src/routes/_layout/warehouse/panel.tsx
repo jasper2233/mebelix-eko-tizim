@@ -28,6 +28,8 @@ import {
   fmt,
   fmtQty,
   groupKey,
+  KROMKA_GROUP,
+  kromkaSize,
   num,
   parseNum,
   TIER_GROUPS,
@@ -62,6 +64,31 @@ function PanelPage() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: ["catalog"] }),
   })
 
+  //: Kromka o'lchamlari KATALOGDAN keladi — ro'yxat kodga yozilmagan: yangi o'lcham qo'shilsa
+  //: (masalan 42×2) panelda o'zi paydo bo'ladi. Qo'lda narx qo'yilganlari alohida sanaladi.
+  const kromka = useMemo(() => {
+    const m = new Map<string, { n: number; qolda: number }>()
+    let olchamsiz = 0
+    for (const r of rows ?? []) {
+      if (groupKey(r) !== KROMKA_GROUP) continue
+      const o = kromkaSize(r.name)
+      if (!o) {
+        olchamsiz++
+        continue
+      }
+      const g = m.get(o) ?? { n: 0, qolda: 0 }
+      g.n++
+      if (r.narx_qolda) g.qolda++
+      m.set(o, g)
+    }
+    return {
+      sizes: [...m].sort(([a], [b]) =>
+        a.localeCompare(b, "uz", { numeric: true }),
+      ),
+      olchamsiz,
+    }
+  }, [rows])
+
   const counts = useMemo(() => {
     const tier: Record<string, number> = {}
     const fg = new Map<string, { name: string; n: number }>()
@@ -87,6 +114,7 @@ function PanelPage() {
     tier_prices: pricingQ.data.tier_prices ?? {},
     markup_all: pricingQ.data.markup_all ?? null,
     markup_groups: pricingQ.data.markup_groups ?? {},
+    kromka_prices: pricingQ.data.kromka_prices ?? {},
   }
   const put = (next: Pricing) => canWrite && save.mutate(next)
 
@@ -94,17 +122,16 @@ function PanelPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Ombor holati"
-        description="Narx boshqaruvi: dekor va kromka sinflari, dollar kursi va furnitura ustamasi"
+        description="Narx boshqaruvi: dekor sinflari, kromka o'lchamlari, dollar kursi va furnitura ustamasi"
         actions={<GotoSearch />}
       />
 
       <section className={cn(cardSurface, "space-y-3 p-4")}>
         <h2 className="font-semibold">
-          Sinf narxlari: LDSP · LMDF · Kromka{" "}
+          LDSP / LMDF sinflari va sotuv narxi{" "}
           <span className="text-sm font-normal text-muted-foreground">
-            Narxni o'zgartirsangiz, shu sinfdagi barcha pozitsiyaning sotuv
-            narxi birdan yangilanadi · so'mda, dekorda 1 list, kromkada 1 metr
-            uchun · bu guruhlarda furnitura ustamasi ishlamaydi
+            Narxni o'zgartirsangiz, shu sinfdagi barcha dekorning sotuv narxi
+            birdan yangilanadi · 1 list uchun, so'm
           </span>
         </h2>
         <div className="grid grid-cols-[4rem_repeat(3,minmax(0,1fr))] items-start gap-3">
@@ -133,6 +160,60 @@ function PanelPage() {
             />
           ))}
         </div>
+      </section>
+
+      <section className={cn(cardSurface, "space-y-3 p-4")}>
+        <h2 className="font-semibold">
+          Kromka narxi{" "}
+          <span className="text-sm font-normal text-muted-foreground">
+            O'LCHAM bo'yicha, 1 metr uchun · narx qo'yilsa shu o'lchamdagi hamma
+            kromka birdan yangilanadi · o'lcham kromkaning nomidan olinadi
+          </span>
+        </h2>
+        {kromka.sizes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Katalogda kromka yo'q.
+          </p>
+        ) : (
+          <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+            {kromka.sizes.map(([o, g]) => (
+              <div
+                key={o}
+                className="flex items-center gap-2 border-b py-1.5 text-sm"
+              >
+                <span className="num w-20 font-semibold">{o} mm</span>
+                <span className="text-xs text-muted-foreground">
+                  {g.n} ta
+                  {g.qolda > 0 && (
+                    <span title="Sotuv narxi qo'lda qo'yilgan — guruh narxi ularga tegmaydi">
+                      {" "}
+                      · {g.qolda} tasi qo'lda
+                    </span>
+                  )}
+                </span>
+                <NumInput
+                  className="ml-auto w-28 text-right"
+                  value={p.kromka_prices[o] ?? null}
+                  placeholder="narx"
+                  disabled={!canWrite}
+                  onSave={(v) => {
+                    const next = { ...p.kromka_prices }
+                    if (v == null) delete next[o]
+                    else next[o] = String(v)
+                    put({ ...p, kromka_prices: next })
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-sm text-muted-foreground">
+          Narxi qo'yilmagan o'lcham furnitura ustamasi bilan hisoblanadi. Sotuv
+          narxi QO'LDA kiritilgan kromka (masalan «21×1 metallik») guruh narxiga
+          qaytmaydi — uni nomenklaturada narxni tozalab qaytarasiz.
+          {kromka.olchamsiz > 0 &&
+            ` O'lchamsiz ${kromka.olchamsiz} ta kromka (qog'oz va h.k.) — narxi faqat qo'lda.`}
+        </p>
       </section>
 
       <section
