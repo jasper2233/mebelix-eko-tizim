@@ -27,7 +27,15 @@ from app.schemas.common import Paginated
 from app.services.cb_rate import cb_usd
 from app.services.settings_service import set_setting
 from app.services.stock import adjust_quantity
-from app.services.warehouse import SEX_GROUPS, WAREHOUSE_PRICING, abc_classes, get_pricing, reprice
+from app.services.warehouse import (
+    SEX_GROUPS,
+    TIER_GROUPS,
+    WAREHOUSE_PRICING,
+    abc_classes,
+    get_pricing,
+    group_key,
+    reprice,
+)
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
@@ -262,7 +270,7 @@ async def bulk_update_catalog_items(
     )
     touched = []
     for item in items:
-        if body.tier is not None and item.catalog == "M" and item.group_code in ("LD", "LM"):
+        if body.tier is not None and group_key(item) in TIER_GROUPS:
             item.tier = body.tier or None
             reprice(item, cfg)
             touched.append(item.code)

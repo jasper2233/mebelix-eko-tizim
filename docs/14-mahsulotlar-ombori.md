@@ -231,6 +231,12 @@ Narx endi OMBORNIKI — katalog varag'i uni qayta yozmaydi (quyida 8.4). Qoidala
 |---|---|---|
 | Furnitura (`F`) | `round(xarid × (1 + ustama/100) / 100) × 100` — 100 so'mgacha. Ustama: pozitsiyaniki → guruhniki → umumiy; hech biri yo'q — sotuv qo'lda qoladi | ustama, xarid yoki kurs o'zgarganda |
 | LDSP / LMDF dekori (`M-LD`, `M-LM`) | sinf (Standart / Medium / Premium) belgilangan bo'lsa — shu sinfning BITTA list narxi | sinf yoki sinf narxi o'zgarganda — shu sinfdagi HAMMA dekor birdan |
+| **Kromka** (`F-KM`, 2026-10-18) | sinf belgilangan bo'lsa — shu sinfning BITTA METR narxi. Kromka furnitura katalogida turadi, lekin rulon metrlab keladi va metrlab sotiladi, ya'ni narxi tannarx + ustamadan emas, egasi qo'ygan metr narxidan keladi | sinf yoki sinf narxi o'zgarganda — shu sinfdagi HAMMA kromka birdan |
+
+**Sinf narxi ustamadan USTUN** (`reprice`): `TIER_GROUPS` (`M-LD`, `M-LM`, `F-KM`) dagi pozitsiyaga
+sinf qo'yilgan bo'lsa, furnitura ustamasi unga umuman qo'llanmaydi. Sinfi yo'q kromka esa oddiy
+furnitura kabi ustama bilan hisoblanadi — ya'ni sinf berilmaguncha hech narsa o'zgarmaydi.
+Sinf narxi hali kiritilmagan bo'lsa eski sotuv narxi JOYIDA qoladi (nolga tushmaydi).
 | Xarid dollarda (`purchase_usd`) | so'mdagi xarid = `round($ × kurs)` | kurs o'zgarganda (so'mda qo'lda kiritilsa dollar narxi bekor bo'ladi) |
 
 **Dollar kursi QO'LDA qo'yiladi va hisobning yagona manbasi shu.** Markaziy bank kursi (2026-10-17 dan)
@@ -290,13 +296,16 @@ sanaladi («harakati bor — qoldiqqa tegilmadi»).
 
 ### 8.6 Sahifalar
 
-- `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»): sinf narxlari jadvali (LDSP / LMDF
-  × S / M / P, ostida nechta dekor), dollar kursi, furnitura ustamasi — umumiy va 18 guruh bo'yicha.
+- `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»): sinf narxlari jadvali
+  (LDSP / LMDF / **Kromka** × S / M / P, ostida nechta pozitsiya; dekorda 1 list, kromkada 1 metr
+  uchun), dollar kursi, furnitura ustamasi — umumiy va 18 guruh bo'yicha.
   Maydon fokusdan chiqqanda saqlanadi.
 - `/warehouse?katalog=M|F|X&guruh=…` — **Nomenklatura**: butun katalog bitta so'rovda
   (`GET /catalog/all`) va qidiruv/filtr brauzerda — darhol; ekranda 100 qator, «Yana ko'rsatish».
   Ustunlar: kod, nom (ostida tavsif), birlik, qoldiq, xarid, xarid $, min, (furniturada) ustama %
-  — qatorning o'zida tahrirlanadi, (materialda) sinf, sotuv, sotuv $, ABC. Xizmatda — xarajat va sotuv.
+  — qatorning o'zida tahrirlanadi, (sinf narxli guruhlarda — LDSP, LMDF, Kromka) sinf, sotuv,
+  sotuv $, ABC. Sinf ustuni va filtri endi KATALOG harfiga emas, ko'rinayotgan guruhlarga qarab
+  chiqadi (2026-10-18): kromka furnitura katalogida bo'lsa ham sinfi bor. Xizmatda — xarajat va sotuv.
   Kam qoldiq — qizil chap chiziq va pushti fon. Materialda: zaxira va sinf filtrlari,
   «Ko'rinayotgan N ta dekorga: Standart / Medium / Premium». Belgilanganlarga: sinf, zaxiraga olish /
   chiqarish, o'chirish. Jadval ustida «Yangi mahsulot» QATORI (kod oldindan ko'rinadi, saqlangach qator
@@ -358,7 +367,15 @@ Nomlar ATAYLAB `stock_move`/`stock_item` emas — o'sha nomdagi eski bo'sh jadva
   «Saqlash (Ctrl+S)» — qoralama, «Tasdiqlash (F9)». Klaviatura oqimi dizayndagidek: nom → takliflar (kod,
   nom, dekor, artikul; ↑↓, Enter yoki Tab) → soni (fokus DARHOL o'tadi — skanerning keyingi belgisi nom
   maydoniga tushmasin, lokal sinovda topilgan) → Enter → keyingi qator; qator ostida «omborda 15 → 12»,
-  yetmasa qizil. «Excel'dan yuklash» — kod (yoki to'liq nom) + soni ustunlari. Sotuvda «Shartnoma» — oldingi
+  yetmasa qizil.
+  **Takliflar (2026-10-18):** BITTA belgidan boshlanadi (ilgari ikkitadan) va MOS KELGANNING HAMMASI
+  chiqadi — ro'yxat kesilmaydi, oyna aylantiriladi (`max-h-72`), tanlangan qator ko'rinib turadi
+  (`scrollIntoView`). Qidiruv so'zlarga bo'linadi va har biri topilishi kerak: «ldsp beliy» ham,
+  «beliy ldsp» ham ishlaydi; qator ostida «N ta topildi» deb turadi. Ilgari faqat 6 tasi
+  ko'rsatilardi va omborchiga «topilmadi» bo'lib tuyulardi.
+  **Oxirgi qatorda Tab — yangi qator (2026-10-18):** oxirgi qatorning oxirgi maydonidan (izoh)
+  Tab bosilsa yangi bo'sh qator ochiladi va fokus uning nomiga tushadi; ilgari fokus tasdiqlash
+  tugmasiga o'tib ketardi. Shift+Tab odatdagidek orqaga qaytaradi, boshqa qatorlarda Tab o'zgarmagan. «Excel'dan yuklash» — kod (yoki to'liq nom) + soni ustunlari. Sotuvda «Shartnoma» — oldingi
   `/sotuv` dagi chop etiladigan shartnoma (huquqiy matn o'zgarmagan, `Warehouse/Shartnoma.tsx`).
   Saqlanmagan ish brauzerda (`mebelix.ombor.hujjat.<tur>`). Tasdiqlangach — toast (summa, FIFO tannarx,
   foyda) va yangi bo'sh list. `?id=` — qoralamani davom ettirish yoki tasdiqlanganni ko'rish (qulflangan).
@@ -368,6 +385,10 @@ Nomlar ATAYLAB `stock_move`/`stock_item` emas — o'sha nomdagi eski bo'sh jadva
 - Kartochka — **Partiyalar (FIFO)** (keyingi chiqim narxi, qoldiq qiymati) va **Harakat tarixi** (hujjatga havola).
 - `F2` / `F4` — har ombor sahifasida yangi sotuv / kirim (`routes/_layout.tsx`); menyuda «Sotuv (chiqim) · F2»,
   «Kirim · F4», «Hujjatlar».
+- Menyuda **«Kromka»** (2026-10-18) — `/warehouse?guruh=F-KM`: kromka furnitura katalogining guruhi,
+  lekin omborchi uchun alohida bo'lim. U yerda yangi kromka qo'shiladi, qoldig'i METRDA yuritiladi
+  (oddiy kirim/sotuv hujjatlari bilan) va sinf ustuni bor — narxi §8.1 dagi sinf narxidan keladi.
+  «Furnitura» bandi endi kromka guruhini o'ziga faol qilib olmaydi.
 - `/sotuv` — eski manzil, yangi Sotuv hujjatiga yo'naltiradi. Brauzerda saqlangan eski listlar
   (`mebelix.sotuv-listi.v1`) ko'chirilmadi — ular bazaga hech qachon yozilmagan edi.
 

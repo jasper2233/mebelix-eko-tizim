@@ -200,7 +200,7 @@ olmaydi. 2026-09-26 auditi (100 belgi, 219 joy, skript bilan sanalgan) shu qoida
 | Tasdiqlash | `Check` | `CheckCheck` (ikki belgi — «o'qildi») emas |
 | Kattalashtirish / kichraytirish | `ZoomIn` / `ZoomOut` | `Plus` ilovada faqat «qo'shish» |
 | Yangi hujjat (list) | `FilePlus` | `RotateCcw` — «qaytarish/tiklash» (3D ko'rinishni tiklash) |
-| Ombor kategoriyalari | Material `Layers`, Furnitura `Bolt`, Xizmat `Hammer` (ota «Mahsulotlar ombori» — `Boxes`) | Furnitura — mahkamlagich (lucide teglari: nut, screw, parts), asbob emas |
+| Ombor kategoriyalari | Material `Layers`, Furnitura `Bolt`, **Kromka `Ruler`**, Xizmat `Hammer` (ota «Mahsulotlar ombori» — `Boxes`) | Furnitura — mahkamlagich (lucide teglari: nut, screw, parts), asbob emas; kromka metrlab o'lchanadi — chizg'ich |
 | Havola ishlamaydi | `Link2Off` | Havolani yopish ham shu belgi (`BazisPanel`) |
 | 3D ko'rinishni ochish / modeli yo'q mahsulot | `Rotate3d` / `Box` | «Ko'rish» tugmasi (`BazisPanel`); `Box` — ro'yxatda eskiz o'rnidagi punktir katak. Yuklash — `.project` bilan bir xil `FileUp` |
 | Umumiy ogohlantirish / xato | `TriangleAlert` | Brak ham shu (menyu, terminal BRAK tugmasi, brak dialogi) — brak «muammo» sinfi; alternativalar qadoq (`PackageX`), bekor qilish (`CircleX`) yoki xavfsizlik (`ShieldX`) ma'nosi bilan to'qnashardi |

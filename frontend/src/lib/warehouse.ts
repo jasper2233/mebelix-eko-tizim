@@ -29,11 +29,17 @@ export const TIERS = [
   ["P", "Premium"],
 ] as const
 export const TIER_NAME: Record<string, string> = Object.fromEntries(TIERS)
-//: Sinf narxi qo'llanadigan guruhlar — LDSP va LMDF dekorlari
+//: Sinf narxi qo'llanadigan guruhlar: `[guruh, nom, narx nimaga]`. Dekorlarda narx BITTA LIST
+//: uchun, kromkada BITTA METR uchun (rulon metrlab sotiladi). Bu guruhlarda furnitura ustamasi
+//: ishlamaydi — narxni egasi sinf bo'yicha qo'yadi. Backenddagi nusxasi:
+//: `services/warehouse.py: TIER_GROUPS`.
 export const TIER_GROUPS = [
-  ["M-LD", "LDSP"],
-  ["M-LM", "LMDF"],
+  ["M-LD", "LDSP", "1 list"],
+  ["M-LM", "LMDF", "1 list"],
+  ["F-KM", "Kromka", "1 metr"],
 ] as const
+//: Sinf qo'yish mumkin bo'lgan guruhlar — yuqoridagining kalitlari
+export const TIERABLE = new Set<string>(TIER_GROUPS.map(([gk]) => gk))
 
 export const num = (v: string | number | null | undefined): number =>
   v === null || v === undefined || v === "" ? 0 : Number(v) || 0

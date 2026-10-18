@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   MonitorCog,
+  Ruler,
   ScrollText,
   SlidersHorizontal,
   TriangleAlert,
@@ -58,6 +59,8 @@ const KATEGORIYA_NOM = {
   X: "Xizmatlar",
 } as const
 const KATEGORIYA_IKONKA = { M: Layers, F: Bolt, X: Hammer } as const
+//: Kromka guruhining kodi — yon menyuda o'z bandi bor (`lib/warehouse.ts: TIER_GROUPS`)
+const KROMKA = "F-KM"
 //: Ombor sahifasi katalogni qanday o'qisa shunday: guruh berilsa undan (`M-LD` -> M), aks holda
 //: `katalog`; ikkalasi yo'q — butun katalog (`routes/_layout/warehouse/index.tsx`)
 const katalogOf = (s: Record<string, unknown>): string =>
@@ -117,16 +120,40 @@ export const NAV_ITEMS: (Item & {
         match: (_s: Record<string, unknown>, p: string) =>
           p === "/warehouse/panel",
       },
-      ...(["M", "F", "X"] as const).map((harf) => ({
+      ...(["M", "F"] as const).map((harf) => ({
         icon: KATEGORIYA_IKONKA[harf],
         title: KATEGORIYA_NOM[harf],
         path: "/warehouse",
         search: { katalog: harf },
         match: (s: Record<string, unknown>, p: string) =>
           p.startsWith("/warehouse/item/")
-            ? p.slice(16, 17) === harf
-            : p === "/warehouse" && katalogOf(s) === harf,
+            ? p.slice(16, 17) === harf && !(harf === "F" && s.guruh === KROMKA)
+            : p === "/warehouse" &&
+              katalogOf(s) === harf &&
+              s.guruh !== (harf === "F" ? KROMKA : undefined),
       })),
+      // Kromka — furnitura katalogining guruhi, lekin o'z bandi bilan: rulon METRLAB
+      // keladi va sotiladi, narxi sinf bo'yicha qo'yiladi (dekorlardek), ustamadan emas
+      // (`services/warehouse.py: TIER_GROUPS`, docs/14 §8.2). Qoldiq ham o'zinikicha —
+      // metrda, oddiy kirim/sotuv hujjatlari bilan.
+      {
+        icon: Ruler,
+        title: "Kromka",
+        path: "/warehouse",
+        search: { guruh: KROMKA },
+        match: (s: Record<string, unknown>, p: string) =>
+          p === "/warehouse" && s.guruh === KROMKA,
+      },
+      {
+        icon: KATEGORIYA_IKONKA.X,
+        title: KATEGORIYA_NOM.X,
+        path: "/warehouse",
+        search: { katalog: "X" },
+        match: (s: Record<string, unknown>, p: string) =>
+          p.startsWith("/warehouse/item/")
+            ? p.slice(16, 17) === "X"
+            : p === "/warehouse" && katalogOf(s) === "X",
+      },
       // Hujjatlar (docs/14 §9): F2 — sotuv, F4 — kirim (tugmalar `routes/_layout.tsx` da)
       {
         icon: Upload,

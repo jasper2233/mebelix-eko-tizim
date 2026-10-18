@@ -650,6 +650,7 @@ function Editor({
                 need={l.item_id ? (need.get(l.item_id) ?? 0) : 0}
                 active={active === l.key}
                 sugIx={sugIx}
+                isLast={ix === doc.lines.length - 1}
                 disabled={!canWrite}
                 onFocus={() => {
                   setActive(l.key)
@@ -837,6 +838,7 @@ function LineRow({
   need,
   active,
   sugIx,
+  isLast,
   disabled,
   onFocus,
   onBlur,
@@ -855,6 +857,8 @@ function LineRow({
   need: number
   active: boolean
   sugIx: number
+  //: Oxirgi qatormi — undan Tab bilan chiqilganda yangi qator ochiladi
+  isLast: boolean
   disabled: boolean
   onFocus: () => void
   onBlur: () => void
@@ -874,19 +878,24 @@ function LineRow({
       : isK
         ? r.catalog !== "X"
         : r.catalog !== "S"
-  const sug =
-    active && !item && t.length >= 2
-      ? catalog
-          .filter(
-            (r) =>
-              allowed(r) &&
-              (r.code.toLowerCase().includes(t) ||
-                r.name.toLowerCase().includes(t) ||
-                (r.decor_name ?? "").toLowerCase().includes(t) ||
-                (r.article ?? "").toLowerCase().includes(t)),
-          )
-          .slice(0, 6)
+  // Qidiruv so'zlarga bo'linadi va HAMMASI topilishi kerak: «ldsp beliy» ham, «beliy ldsp» ham
+  // ishlaydi. Bitta belgidan boshlanadi — omborchi ko'pincha kodning boshini («f-rc») yoki
+  // nomning birinchi harfini teradi.
+  const sozlar = t.split(/\s+/).filter(Boolean)
+  const mos =
+    active && !item && sozlar.length
+      ? catalog.filter((r) => {
+          if (!allowed(r)) return false
+          const xas =
+            `${r.code} ${r.name} ${r.decor_name ?? ""} ${r.article ?? ""}`.toLowerCase()
+          return sozlar.every((w) => xas.includes(w))
+        })
       : []
+  // Ekranga chiziladigani cheklangan: bitta harf 1 700 dan ortiq pozitsiyaga mos keladi va
+  // har bosishda shuncha tugma chizish tsexdagi kompyuterni sekinlashtiradi. Nechtasi
+  // topilgani qator ostida AYTILADI — «topilmadi» degan taassurot qolmasin. Oyna
+  // aylantiriladi (ilgari 6 tasi ko'rinardi va qolgani yo'qdek tuyulardi).
+  const sug = mos.slice(0, SUG_MAX)
   const six = Math.min(sugIx, Math.max(0, sug.length - 1))
   const svc = item?.catalog === "X"
   const q = units(l)
@@ -897,8 +906,8 @@ function LineRow({
     : item
       ? `${item.code} · omborda ${fmtQty(item.quantity)} ${item.unit ?? ""}${q ? ` → ${fmtQty(isK ? num(item.quantity) + q : num(item.quantity) - q)}` : ""}`
       : unknown
-        ? sug.length
-          ? "Ro'yxatdan tanlang"
+        ? mos.length
+          ? `${mos.length} ta topildi · ↑↓ va Enter${mos.length > sug.length ? ` · ${sug.length} tasi ko'rinadi, yozishni davom ettiring` : ""}`
           : "Nomenklaturada topilmadi"
         : ""
   const s = lineSum(l)
@@ -965,11 +974,15 @@ function LineRow({
           </div>
         )}
         {sug.length > 0 && (
-          <div className="absolute top-full left-2 z-20 w-[min(36rem,90vw)] overflow-hidden rounded-md border bg-popover shadow-lg">
+          <div className="absolute top-full left-2 z-20 max-h-72 w-[min(36rem,90vw)] overflow-y-auto rounded-md border bg-popover shadow-lg">
             {sug.map((r, n) => (
               <button
                 key={r.id}
                 type="button"
+                // Klaviatura bilan tanlangan qator oynadan chiqib ketmasin
+                ref={(el) => {
+                  if (n === six) el?.scrollIntoView({ block: "nearest" })
+                }}
                 className={cn(
                   "flex w-full items-center gap-3 px-3 py-1.5 text-left text-sm",
                   n === six && "bg-accent",
@@ -1064,6 +1077,15 @@ function LineRow({
           value={l.note}
           disabled={disabled}
           onChange={(e) => onChange({ note: e.target.value })}
+          onKeyDown={(e) => {
+            // Oxirgi qatorning oxirgi maydonidan Tab — YANGI QATOR (ilgari fokus
+            // tasdiqlash tugmasiga o'tib ketardi va omborchi qo'li bilan «Yangi qator»
+            // tugmasini izlardi). Shift+Tab odatdagidek orqaga qaytadi.
+            if (e.key === "Tab" && !e.shiftKey && isLast && !disabled) {
+              e.preventDefault()
+              onNext()
+            }
+          }}
         />
       </TableCell>
       <TableCell>
@@ -1082,6 +1104,9 @@ function LineRow({
     </TableRow>
   )
 }
+
+//: Taklif oynasida bir vaqtda ko'rinadigan eng ko'p qator (qolgani — qidiruvni aniqlashtirib)
+const SUG_MAX = 100
 
 /** «Excel'dan yuklash» — kod (yoki to'liq nom) va soni ustunli qatorlar (dizayndagi `parseImport`). */
 function ImportLinesDialog({

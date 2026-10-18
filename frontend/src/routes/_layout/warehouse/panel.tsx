@@ -94,16 +94,17 @@ function PanelPage() {
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Ombor holati"
-        description="Narx boshqaruvi: dekor sinflari, dollar kursi va furnitura ustamasi"
+        description="Narx boshqaruvi: dekor va kromka sinflari, dollar kursi va furnitura ustamasi"
         actions={<GotoSearch />}
       />
 
       <section className={cn(cardSurface, "space-y-3 p-4")}>
         <h2 className="font-semibold">
-          LDSP / LMDF sinflari va sotuv narxi{" "}
+          Sinf narxlari: LDSP · LMDF · Kromka{" "}
           <span className="text-sm font-normal text-muted-foreground">
-            Narxni o'zgartirsangiz, shu sinfdagi barcha dekorlarning sotuv narxi
-            birdan yangilanadi · 1 list uchun, so'm
+            Narxni o'zgartirsangiz, shu sinfdagi barcha pozitsiyaning sotuv
+            narxi birdan yangilanadi · so'mda, dekorda 1 list, kromkada 1 metr
+            uchun · bu guruhlarda furnitura ustamasi ishlamaydi
           </span>
         </h2>
         <div className="grid grid-cols-[4rem_repeat(3,minmax(0,1fr))] items-start gap-3">
@@ -119,10 +120,11 @@ function PanelPage() {
               {n}
             </span>
           ))}
-          {TIER_GROUPS.map(([gk, label]) => (
+          {TIER_GROUPS.map(([gk, label, birlik]) => (
             <TierRow
               key={gk}
               label={label}
+              birlik={birlik}
               gk={gk}
               p={p}
               counts={counts.tier}
@@ -229,6 +231,7 @@ function PanelPage() {
 
 function TierRow({
   label,
+  birlik,
   gk,
   p,
   counts,
@@ -236,6 +239,7 @@ function TierRow({
   onSave,
 }: {
   label: string
+  birlik: string
   gk: string
   p: Pricing
   counts: Record<string, number>
@@ -244,7 +248,12 @@ function TierRow({
 }) {
   return (
     <>
-      <span className="pt-2 font-semibold">{label}</span>
+      <span className="pt-2 font-semibold">
+        {label}
+        <span className="block text-xs font-normal text-muted-foreground">
+          {birlik}
+        </span>
+      </span>
       {TIERS.map(([k]) => (
         <div key={k} className="space-y-1">
           <NumInput
@@ -260,7 +269,7 @@ function TierRow({
             }}
           />
           <p className="text-xs text-muted-foreground">
-            {counts[`${gk}:${k}`] ?? 0} ta dekor
+            {counts[`${gk}:${k}`] ?? 0} ta pozitsiya
           </p>
         </div>
       ))}

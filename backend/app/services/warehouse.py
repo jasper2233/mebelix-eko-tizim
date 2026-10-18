@@ -29,7 +29,10 @@ SEX_GROUPS = {
     "S-UP": "Upakovka materiali",
 }
 #: Sinf narxi qo'llanadigan guruhlar — LDSP va LMDF dekorlari
-TIER_GROUPS = ("M-LD", "M-LM")
+#: Sotuv narxi SINF bo'yicha qo'yiladigan guruhlar: LDSP va LMDF dekorlari (1 list uchun) va
+#: KROMKA (2026-10-18, 1 METR uchun — kromka rulon bo'lib keladi va metrlab sotiladi).
+#: Bu guruhlarda ustama ISHLAMAYDI: narxni egasi sinf bo'yicha qo'yadi.
+TIER_GROUPS = ("M-LD", "M-LM", "F-KM")
 
 
 async def get_pricing(db: AsyncSession) -> WarehousePricing:
@@ -56,15 +59,17 @@ def reprice(item: CatalogItem, cfg: WarehousePricing) -> None:
     """Pozitsiyaning so'mdagi xaridi va sotuvini qoidalar bo'yicha yangilaydi (joyida)."""
     if item.purchase_usd is not None:
         item.purchase_price = _butun(item.purchase_usd * cfg.usd_rate)
-    if item.catalog == "F":
+    # Sinf narxi ustamadan USTUN: kromka ham furnitura katalogida, lekin uning sotuvi
+    # tannarxdan emas, egasi qo'ygan metr narxidan keladi (docs/14 §8.2)
+    if group_key(item) in TIER_GROUPS and item.tier:
+        narx = cfg.tier_prices.get(group_key(item), {}).get(item.tier)  # type: ignore[call-overload]
+        if narx:
+            item.sale_price = narx
+    elif item.catalog == "F":
         mk = markup_of(item, cfg)
         if mk is not None and item.purchase_price:
             # 100 so'mgacha: dizayndagi `Math.round(b * (1 + v / 100) / 100) * 100`
             item.sale_price = _butun(item.purchase_price * (1 + mk / 100) / 100) * 100
-    elif group_key(item) in TIER_GROUPS and item.tier:
-        narx = cfg.tier_prices.get(group_key(item), {}).get(item.tier)  # type: ignore[call-overload]
-        if narx:
-            item.sale_price = narx
 
 
 def abc_classes(items: list[CatalogItem]) -> dict[int, str]:

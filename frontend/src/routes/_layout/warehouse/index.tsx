@@ -52,6 +52,7 @@ import {
   num,
   parseNum,
   TIER_NAME,
+  TIERABLE,
   TIERS,
   usdOf,
 } from "@/lib/warehouse"
@@ -80,7 +81,6 @@ export const Route = createFileRoute("/_layout/warehouse/")({
 })
 
 const STEP = 100
-const TIERABLE = new Set(["M-LD", "M-LM"])
 
 function NomenklaturaPage() {
   const { currentUser } = useCurrentUser()
@@ -137,7 +137,7 @@ function NomenklaturaPage() {
     if (onlyLow) out = out.filter(isLow)
     if (cat === "M" && zaxira !== "all")
       out = out.filter((r) => r.tracked === (zaxira === "yes"))
-    if (cat === "M" && tierF !== "all")
+    if (tierF !== "all")
       out = out.filter(
         (r) =>
           TIERABLE.has(groupKey(r)) &&
@@ -158,6 +158,9 @@ function NomenklaturaPage() {
   const visible = rows.slice(0, limit)
   const lowCount = useMemo(() => all.filter(isLow).length, [all])
   const tierable = rows.filter((r) => TIERABLE.has(groupKey(r)))
+  //: Sinf ustuni va filtri FAQAT sinf narxi ishlaydigan guruhlar ko'rinayotganda
+  //: (LDSP, LMDF, Kromka) — qolgan guruhda sinf tushunchasi yo'q
+  const tierView = inCat.some((r) => TIERABLE.has(groupKey(r)))
   const sel = all.filter((r) => checked.has(r.id))
 
   const invalidate = () =>
@@ -277,13 +280,14 @@ function NomenklaturaPage() {
       />
       {cat === "S" && <SexTabs active="list" />}
 
-      {cat === "M" && (
+      {(cat === "M" || tierView) && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             Ko'rsatish
           </span>
+          {/* Zaxira — faqat materialda: furnitura va kromka zaxiraga olinmaydi */}
           <SelectField
-            className="h-9 w-56"
+            className={cn("h-9 w-56", cat !== "M" && "hidden")}
             value={zaxira}
             onChange={(v) => {
               setZaxira(v as typeof zaxira)
@@ -299,7 +303,7 @@ function NomenklaturaPage() {
             ]}
           />
           <SelectField
-            className="h-9 w-44"
+            className={cn("h-9 w-44", !tierView && "hidden")}
             value={tierF}
             onChange={(v) => {
               setTierF(v)
@@ -314,7 +318,7 @@ function NomenklaturaPage() {
           {canWrite && tierable.length > 0 && (
             <div className="ml-auto flex flex-wrap items-center gap-1.5">
               <span className="text-muted-foreground">
-                Ko'rinayotgan {fmt(tierable.length)} ta dekorga:
+                Ko'rinayotgan {fmt(tierable.length)} ta pozitsiyaga:
               </span>
               {TIERS.map(([k, n]) => (
                 <Button
@@ -537,9 +541,7 @@ function NomenklaturaPage() {
                         Ustama %
                       </TableHead>
                     )}
-                    {cat === "M" && (
-                      <TableHead className="w-20">Sinf</TableHead>
-                    )}
+                    {tierView && <TableHead className="w-20">Sinf</TableHead>}
                     <TableHead className="text-right">Sotuv</TableHead>
                     <TableHead className="text-right">Sotuv $</TableHead>
                     <TableHead className="w-10 text-center">ABC</TableHead>
@@ -640,7 +642,7 @@ function NomenklaturaPage() {
                               />
                             </TableCell>
                           )}
-                          {cat === "M" && (
+                          {tierView && (
                             <TableCell>
                               {r.tier ? (
                                 <span className="rounded bg-primary px-1.5 py-0.5 text-xs font-bold text-primary-foreground">
