@@ -44,16 +44,17 @@ export const Route = createFileRoute("/_layout")({
     if (me.role === "terminal" || OPERATOR_ROLES.includes(me.role))
       throw redirect({ to: "/terminal" })
     if (me.role === "tablo") throw redirect({ to: "/tablo" })
-    // Mahsulot omborchisining boshqa sahifasi yo'q — boshqaruv paneli o'rniga
-    // to'g'ri omborga. Aks holda kirgan joyi bo'm-bo'sh ekran bo'lardi.
-    // Yo'nalish FAQAT uning O'Z sahifalaridan TASHQARIDA: ular ham shu layout
-    // ichida, ya'ni shartsiz yo'naltirish cheksiz halqa berardi (`/terminal`
-    // va `/tablo` da bunday emas — ular layoutdan tashqarida).
+    // Mahsulot omborchisining tsex boshqaruv paneli yo'q — u o'z OMBOR panelida
+    // boshlaydi (`/warehouse/panel`, 2026-10-18: ilgari nomenklatura ochilardi va
+    // omborchi har safar panelni o'zi izlardi). Aks holda kirgan joyi bo'm-bo'sh
+    // ekran bo'lardi. Yo'nalish FAQAT uning O'Z sahifalaridan TASHQARIDA: ular ham
+    // shu layout ichida, ya'ni shartsiz yo'naltirish cheksiz halqa berardi
+    // (`/terminal` va `/tablo` da bunday emas — ular layoutdan tashqarida).
     if (
       isWarehouseOnly(me) &&
       !OMBOR_YOLLARI.some((p) => location.pathname.startsWith(p))
     )
-      throw redirect({ to: "/warehouse" })
+      throw redirect({ to: "/warehouse/panel" })
   },
 })
 

@@ -530,7 +530,7 @@ function Editor({
         </div>
       </div>
 
-      <div className="grid max-w-5xl gap-3 md:grid-cols-2">
+      <div className="grid max-w-6xl gap-3 md:grid-cols-2">
         <section className={cn(cardSurface, "space-y-3 p-4")}>
           <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
             {isK ? "Yetkazib beruvchi" : isSx ? "Kim oldi" : "Mijoz"}
@@ -609,7 +609,7 @@ function Editor({
         </section>
       </div>
 
-      <section className={cn(cardSurface, "max-w-5xl overflow-visible")}>
+      <section className={cn(cardSurface, "max-w-6xl overflow-visible")}>
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h3 className="font-semibold">Mahsulotlar</h3>
           <span className="text-sm text-muted-foreground">
@@ -624,16 +624,18 @@ function Editor({
           <TableHeader>
             <TableRow className="bg-muted/50 text-xs uppercase">
               <TableHead className="w-8">№</TableHead>
-              <TableHead>Mahsulot nomi</TableHead>
-              <TableHead className="w-24 text-right">Soni</TableHead>
-              <TableHead className="w-28 text-right">
+              {/* Nom — eng muhim ustun: qolgan ustunlar toraytirilib, joy unga berilgan
+                  (2026-10-18, omborchi: «nomi ko'rinmay qolyapti») */}
+              <TableHead className="min-w-[22rem]">Mahsulot nomi</TableHead>
+              <TableHead className="w-20 text-right">Soni</TableHead>
+              <TableHead className="w-24 text-right">
                 {isK ? "Narx, $" : isSx ? "Tannarx" : "Narxi"}
               </TableHead>
               {isC && (
-                <TableHead className="w-28 text-right">Chegirma</TableHead>
+                <TableHead className="w-24 text-right">Chegirma</TableHead>
               )}
-              <TableHead className="w-32 text-right">Summa</TableHead>
-              <TableHead className="w-40">Izoh</TableHead>
+              <TableHead className="w-28 text-right">Summa</TableHead>
+              <TableHead className="w-36">Izoh</TableHead>
               <TableHead className="w-8" />
             </TableRow>
           </TableHeader>
@@ -705,12 +707,12 @@ function Editor({
       </section>
 
       {err && (
-        <div className="max-w-5xl rounded-md border border-destructive bg-destructive/5 p-3 text-sm text-destructive">
+        <div className="max-w-6xl rounded-md border border-destructive bg-destructive/5 p-3 text-sm text-destructive">
           {err}
         </div>
       )}
 
-      <div className="flex max-w-5xl flex-wrap items-end justify-between gap-6">
+      <div className="flex max-w-6xl flex-wrap items-end justify-between gap-6">
         <div className="flex gap-10 text-sm">
           {(isK
             ? ["Qabul qildi (omborchi)", "Topshirdi (yetkazib beruvchi)"]
@@ -1280,7 +1282,7 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
           ["Topshirish muddati", h.due],
         ]
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
+    <div className="flex max-w-6xl flex-col gap-4">
       <Link
         to="/warehouse/docs"
         className="text-sm font-semibold text-primary hover:underline"
@@ -1408,7 +1410,7 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
 /** Tasdiqlangan inventarizatsiya: hisobdagi va sanalgan miqdor, farq va uning summasi */
 function InvDoc({ doc }: { doc: DocRead }) {
   return (
-    <div className="flex max-w-5xl flex-col gap-4">
+    <div className="flex max-w-6xl flex-col gap-4">
       <Link
         to="/warehouse/docs"
         className="text-sm font-semibold text-primary hover:underline"

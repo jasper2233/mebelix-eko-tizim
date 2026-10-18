@@ -308,7 +308,8 @@ sanaladi («harakati bor — qoldiqqa tegilmadi»).
 
 ### 8.6 Sahifalar
 
-- `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»): sinf narxlari jadvali
+- `/warehouse/panel` — **Boshqaruv paneli** (dizayndagi «Ombor holati»). Mahsulot omborchisi
+  kirganda SHU sahifa ochiladi (`_layout.tsx` rol-routeri, 2026-10-18): sinf narxlari jadvali
   (LDSP / LMDF × S / M / P, ostida nechta pozitsiya, 1 list uchun), **«Kromka narxi»** kartasi —
   katalogda uchragan HAR o'lcham uchun bitta maydon (1 metr uchun; yonida nechta pozitsiya va
   nechtasining narxi qo'lda qo'yilgani), dollar kursi, furnitura ustamasi — umumiy va 18 guruh
@@ -395,6 +396,9 @@ Nomlar ATAYLAB `stock_move`/`stock_item` emas — o'sha nomdagi eski bo'sh jadva
   Saqlanmagan ish brauzerda (`mebelix.ombor.hujjat.<tur>`). Tasdiqlangach — toast (summa, FIFO tannarx,
   foyda) va yangi bo'sh list. `?id=` — qoralamani davom ettirish yoki tasdiqlanganni ko'rish (qulflangan).
   `?add=KOD` — kartochkadagi «Kirimga / Sotuv listiga qo'shish».
+  **Ustun kengliklari (2026-10-18):** hujjat kartasi `max-w-6xl` (ilgari `5xl`) va Soni / Narxi /
+  Chegirma / Summa / Izoh ustunlari toraytirilgan — «Mahsulot nomi» maydoni 272 px dan 442 px ga
+  chiqdi (1.6 baravar): «Kromka PVC 19×1 mm metallik» kabi nomlar kesilib qolardi.
 - `/warehouse/docs` — **Hujjatlar**: qoralamalar (o'chirish mumkin) va tasdiqlanganlar (summa, foyda),
   «Hujjatlarni / Harakatlarni Excel'ga chiqarish».
 - Kartochka — **Partiyalar (FIFO)** (keyingi chiqim narxi, qoldiq qiymati) va **Harakat tarixi** (hujjatga havola).
