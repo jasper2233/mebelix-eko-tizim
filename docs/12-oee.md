@@ -1112,8 +1112,12 @@ bo'lsa juftlik SHERIK bilan quriladi.
 o'lcham 150 mm dan kichik emas; `shubhali` 7. Shu 13 paketdan 2 tasi NOTO'G'RI qurilgan edi:
 bitta detal ikki marta skanerlangani uchun o'zi bilan juftlangan (skanlar 55027+55028 va
 57242+57247) — o'sha detalning bitta qirrasi ikki marta yopilgan. Qoida 2026-10-23 da nusxa
-bo'yicha tekshiradigan qilib tuzatildi; prodda o'sha 4 qator ta'sirsiz qolmoqda (kvota
-o'rnini egallab turadi), tozalash kerak.
+bo'yicha tekshiradigan qilib tuzatildi (`e8a54a4`) va o'sha ikki paket shu kuni prodda
+to'g'rilandi: `261291` yumshoq o'chirildi (16442 ning 100 mm qirrasi bir marta yopiladi,
+eng eski skan `55027` qoldi), `262125` esa haqiqiy sherikka ko'chirildi (nusxa 17391 →
+17392, skan 57247 → 57248 — ikkisi bitta detalning ikki nusxasi, 540×80, har birining
+ikkinchi `eni` qirrasi o'sha o'tishda lentalangan). Tekshirildi: 16442 `length` 2, 17391
+`width` 2, 17392 `width` 2; takror qolmadi.
 Kromka orakllari (bind 23, kirish 4, v122 19, dedup 18, kal 8, kalib 23) va `oee` 31 o'zgarmadi.
 
 ## 5. Prod auditi natijalari (2026-09-16)

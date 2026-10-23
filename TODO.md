@@ -462,10 +462,8 @@ Quyidagilar keyingi ish. Lokal muhit, orakllar va deploy tartibi — `CLAUDE.md`
   `seq` lari farq qiladi — agent 1.8.0 qayta o'ynatgan). Boshqa kunlarda kuniga 0–10 ta, ya'ni
   muammo o'tib ketgan, tarix esa qolgan. `scripts/kromka_dedup.sql` (yumshoq o'chirish, qaytarish
   bo'limi bor) faqat-hisobot rejimida yurgizilgan — qo'llash uchun egasining ruxsati kerak.
-- **4 qator noto'g'ri paket**: `kromka_measurement` id 261291, 261292 (nusxa 16442) va
-  262125, 262126 (nusxa 17391) — bitta detal ikki marta skanerlangani uchun o'zi bilan
-  juftlangan (docs/12 §4.26). Qoida tuzatildi, lekin bu qatorlar o'sha detallarning qirra
-  kvotasini egallab turadi: har juftdan bittasi o'chirilishi kerak.
+- ~~4 qator noto'g'ri paket~~ — 2026-10-23 da to'g'rilandi: `261291` yumshoq o'chirildi,
+  `262125` nusxa 17392 / skan 57248 ga ko'chirildi (docs/12 §4.26). Takror qolmadi.
 
 ### O9. Prodda 7 furnitura narxsiz + bo'sh maydonlar (2026-10-17)
 
