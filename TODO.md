@@ -447,20 +447,25 @@ Quyidagilar keyingi ish. Lokal muhit, orakllar va deploy tartibi — `CLAUDE.md`
 - `GET /stock/sex-log` sukut bo'yicha oxirgi 5 000 qator, sahifa sana filtri yo'q. Yil oxirida sana
   oralig'i (`from`/`to`) kerak bo'ladi.
 
-### O7. Dekorlarga sinf berilmagan — dekor sotib bo'lmaydi (2026-10-17, prodda o'lchangan)
+### O7. LMDF dekorlari narxsiz (2026-10-23 da prodda qayta o'lchandi)
 
-- `warehouse_pricing.tier_prices` bo'sh, 2 131 `M` pozitsiyasidan **0 tasiga** sinf berilgan, ya'ni
-  dekorning sotuv narxi hisoblanmaydi. Omborchi `/warehouse/panel` da oltita raqamni (LDSP/LMDF × S/M/P)
-  kiritib, Nomenklaturada dekorlarga sinf berishi kerak (docs/14 §8.1).
-- `markup_all` ham qo'yilmagan: furnitura sotuvi faqat qo'lda kiritilgan `p` dan keladi.
+- Katta qismi bajarilgan: `tier_prices` ga `M-LD` kiritilgan (S 380 000 / M 500 000 / P 480 000),
+  `markup_all` 30, `kromka_prices` to'rt o'lchamga qo'yilgan, LDSP ning 1 044 pozitsiyasi ham
+  sinfli ham narxli, 48 kromkaning hammasi narxli.
+- Qolgani: **`M-LM` (LMDF) uchun uchta raqam**. 1 044 LMDF pozitsiyasiga sinf berilgan, lekin
+  `tier_prices` da `M-LM` yo'q — shuning uchun hammasi narxsiz (`sale_price IS NULL`).
+  `/warehouse/panel` dan kiritiladi (docs/14 §8.1).
 
-### O8. Prodda `skladchi` hisobi yo'q (2026-10-17)
+### O10. Prodda tozalanmagan kromka qatorlari (2026-10-23 da o'lchandi)
 
-- Prodda `omborchi` degan hisob bor, lekin u **boshqa odam**: `UserRole.OMBORCHI` — TAYYOR mahsulot
-  (TMO) omborchisi, tsex roli (`models/enums.py:26`). Mahsulotlar ombori roli — `skladchi`. Ya'ni
-  `0cac878` dagi to'liq (tekis) ombor menyusini hozir hech kim ko'rmaydi; boshqaruv faqat
-  «Mahsulotlar ombori» → `/warehouse/hisobot` bandini ko'radi (docs/14 §11.2).
-- Kerak: `UserRole.SKLADCHI` roli bilan hisob ochish (Hisoblar sahifasidan, ombor egasi hal qiladi).
+- **2026-09-24**: bitta kunda 236 881 `ortiqcha` o'lchov (o'sha kuni 231 895 `olchov` hodisasi,
+  `seq` lari farq qiladi — agent 1.8.0 qayta o'ynatgan). Boshqa kunlarda kuniga 0–10 ta, ya'ni
+  muammo o'tib ketgan, tarix esa qolgan. `scripts/kromka_dedup.sql` (yumshoq o'chirish, qaytarish
+  bo'limi bor) faqat-hisobot rejimida yurgizilgan — qo'llash uchun egasining ruxsati kerak.
+- **4 qator noto'g'ri paket**: `kromka_measurement` id 261291, 261292 (nusxa 16442) va
+  262125, 262126 (nusxa 17391) — bitta detal ikki marta skanerlangani uchun o'zi bilan
+  juftlangan (docs/12 §4.26). Qoida tuzatildi, lekin bu qatorlar o'sha detallarning qirra
+  kvotasini egallab turadi: har juftdan bittasi o'chirilishi kerak.
 
 ### O9. Prodda 7 furnitura narxsiz + bo'sh maydonlar (2026-10-17)
 

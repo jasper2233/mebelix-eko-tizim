@@ -5,7 +5,8 @@ keladi, sozlamalar (`kromka_short_mm`, `kromka_filler_mm`) bazadan o'qiladi.
 
 Nima tekshiriladi: 2/3/4 bo'lakli paket har qirrani yopadi; 5 bo'lak paket emas; yolg'iz
 detal + 100 mm to'ldiruvchi; noaniq yig'indi yopmaydi; bitta skanning ikki qirrasi bitta
-paketga tushmaydi; katta detal paketga qo'shilmaydi; kvota ikkinchi marta yopilmaydi;
+paketga tushmaydi; bitta detal ikki marta skanerlansa o'zi bilan juftlanmaydi; katta detal
+paketga qo'shilmaydi; kvota ikkinchi marta yopilmaydi;
 dopusk `3·√n`; sozlama 0 bo'lsa eski xulq saqlanadi.
 
 Yurgizish (lokal sinov bazasi, prod EMAS):
@@ -300,6 +301,35 @@ async def main() -> None:  # noqa: PLR0915
         # 100 lik esa yolg'iz qolib to'ldiruvchi bilan 200 kutadi — 250 hech narsaga mos emas
         r2 = await m.olchov(250.3, KEYIN + timedelta(seconds=30))
         tekshir("150 mm yig'indi qo'shiluvchisi bo'lmaydi", r2.verdict, KromkaVerdict.SHUBHALI)
+
+        # --- 15. Bitta detal IKKI MARTA skanerlangan: o'zi bilan juftlanmaydi
+        # (prodda 2026-10-18 07:39 — 100 mm lik detal ikki skani 199.6 ni "paket" qilgan edi)
+        await m.qur()
+        q = await m.detal("Qayta", 100, 80)
+        await m.skan(q, BOSH)
+        await m.skan(q, BOSH + timedelta(seconds=2))
+        await db.commit()
+        r = await m.olchov(199.6, KEYIN)
+        tekshir("ikki marta skanerlangan detal o'zi bilan juftlanmaydi",
+                (r.verdict, r.pack_n), (KromkaVerdict.MOS, 2))
+        tekshir("qayta skanda BITTA qirra yopiladi (to'ldiruvchi yo'li)",
+                await m.yopilgan(q), [("mos", "length", 2)])
+
+        # --- 16. Qayta skan + haqiqiy sherik: juftlik SHERIK bilan quriladi
+        # (prodda 2026-10-21 11:24 — 17391 ning ikki skani 17392 o'rniga olingan edi)
+        await m.qur()
+        a, b = await m.detal("A", 100, 80), await m.detal("B", 100, 80)
+        await m.skan(a, BOSH)
+        await m.skan(b, BOSH + timedelta(seconds=1))
+        await m.skan(a, BOSH + timedelta(seconds=2))
+        await db.commit()
+        r = await m.olchov(199.9, KEYIN)
+        tekshir("qayta skan bo'lsa ham juftlik ikki DETALdan", (r.verdict, r.pack_n),
+                (KromkaVerdict.MOS, 2))
+        tekshir("qayta skanlangan detalda bitta mos qatori",
+                len([x for x in await m.yopilgan(a) if x[0] == "mos"]), 1)
+        tekshir("sherik detalning qirrasi ham yopildi",
+                await m.yopilgan(b), [("mos", "length", 2)])
 
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:

@@ -404,6 +404,8 @@ def _juft(uyalar: list[_Uya], measured: float, tol: float, filler_mm: float) -> 
     uzunliklarning boshqa skanlardagi takrori esa yechim SONINI oshirmaydi: qaysi nusxaning
     qirrasi yopilgani o'lchov uchun farqsiz, eng eskisi (FIFO) olinadi.
 
+    Bir NUSXA paketda bitta bo'lak: detal ikki marta skanerlangan bo'lsa ham lentada u bitta.
+
     Dopusk `tol·√n`: bo'laklarning o'lchov xatosi mustaqil, n bo'lakda yig'indining xatosi
     √n marta kattalashadi. Prodda qoldiq (o'lchov − yig'indi) median 0.7 mm, eng kattasi
     3.8 mm — bo'laklar rostdan zich tegib o'tadi.
@@ -412,8 +414,11 @@ def _juft(uyalar: list[_Uya], measured: float, tol: float, filler_mm: float) -> 
     for n in range(2, _PAKET_MAX + 1):
         cheg = tol * math.sqrt(n)
         for combo in combinations(uyalar, n):
-            # Bitta skan = bitta qirra o'tishi: bir skandan ikki uya bitta paketga tushmaydi
-            if len({u.scan.id for u in combo}) != n:
+            # Bitta DETAL = bitta qirra o'tishi: bir o'tishda detal lentaga bitta qirrasi bilan
+            # tegadi. Nusxa bo'yicha (skan bo'yicha emas) tekshiriladi — operator bitta detalni
+            # ikki marta skanerlasa, o'sha detal paketda ikki bo'lak bo'lib ko'rinmasin
+            # (prodda 2026-10-18 va 10-21 da 13 paketdan 2 tasi shunday qurilgan edi)
+            if len({u.scan.instance_id for u in combo}) != n:
                 continue
             if abs(measured - sum(u.expected for u in combo)) <= cheg:
                 yechim.setdefault(tuple(sorted(u.expected for u in combo)), list(combo))
