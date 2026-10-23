@@ -4,7 +4,7 @@
 // Admin uchun CRUD.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -93,6 +93,7 @@ function blockers(o: MachineOverview | undefined): string[] {
 }
 
 function WorkCentersPage() {
+  const navigate = useNavigate()
   const machinesQ = useQuery(getMachinesQueryOptions())
   const postsQ = useQuery(getPostsQueryOptions())
   // Jonli ustunlar alohida so'rov: `MachineRead` ro'yxati har select'da
@@ -137,6 +138,11 @@ function WorkCentersPage() {
       a.name.localeCompare(b.name),
   )
   const colSpan = admin ? 9 : 8
+  const ochish = (id: number) =>
+    navigate({
+      to: "/work-centers/$machineId",
+      params: { machineId: String(id) },
+    })
 
   return (
     <div>
@@ -197,7 +203,18 @@ function WorkCentersPage() {
                 const locks = blockers(o)
                 const quiet = !o?.today_scans && !o?.on_shift
                 return (
-                  <TableRow key={m.id}>
+                  // Butun QATOR bosiladi (mijozlar reyestridagi kabi): tsexda
+                  // nomning o'ziga tekkizish shart emas. Nom baribir havola
+                  // bo'lib qoladi — o'rta tugma bilan yangi tabda ochiladi.
+                  <TableRow
+                    key={m.id}
+                    tabIndex={0}
+                    className="cursor-pointer"
+                    onClick={() => ochish(m.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") ochish(m.id)
+                    }}
+                  >
                     <TableCell>
                       {/* Nom — markazning O'Z sahifasiga havola: tsexda odam
                           «stanok hozir nima qilyapti» ni stanokdan izlaydi, va
@@ -337,7 +354,8 @@ function WorkCentersPage() {
                       )}
                     </TableCell>
                     {admin && (
-                      <TableCell>
+                      // Tahrirlash/o'chirish qator havolasini OCHMAYDI
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex justify-end gap-1">
                           <RowAction
                             icon={Pencil}
