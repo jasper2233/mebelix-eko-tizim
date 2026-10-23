@@ -1,10 +1,12 @@
-// Kromka stansiyasi — JONLI o'lchov oqimi (admin panel).
+// Kromka stansiyasi — BITTA stanokning jonli o'lchov oqimi (ish markazi sahifasi).
 //
 // «Qanday o'lchamli detal o'tdi» degan savolga javob o'sha lahzada kerak, shuning uchun
 // yangi o'lchov WS (`kromka.measure`) bilan darhol qo'shiladi — 60 soniyalik poll kutilmaydi.
 // Boshlang'ich ro'yxat sahifa ochilganda bir marta so'raladi.
 //
-// Stansiya ulanmagan tsexda butun blok chizilmaydi: ro'yxat bo'sh bo'lsa hech narsa yo'q.
+// Stansiya ulanmagan stanokda butun blok chizilmaydi: ro'yxat bo'sh bo'lsa hech narsa yo'q.
+// Ilgari ish markazlari RO'YXATI ostida ham turardi (hamma stanok birga) — egasining
+// aytgani 2026-10-24: u yerda keraksiz, kromkaning o'z sahifasida tursa yetadi.
 
 import { useQuery } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
@@ -31,14 +33,7 @@ const clock = (iso: string) =>
     second: "2-digit",
   })
 
-export function KromkaLive({
-  machineId,
-  title = "Kromka stansiyasi — jonli o'lchov",
-}: {
-  /** Berilsa — faqat SHU stanokning o'lchovlari (ish markazi sahifasi); berilmasa hammasi */
-  machineId?: number
-  title?: string
-} = {}) {
+export function KromkaLive({ machineId }: { machineId: number }) {
   const { data } = useQuery({
     queryKey: ["machines", "kromka-measurements"],
     queryFn: async () =>
@@ -57,16 +52,16 @@ export function KromkaLive({
     }, []),
   )
 
-  const hammasi = [...live, ...(data ?? [])]
-  const rows = (
-    machineId ? hammasi.filter((r) => r.machine_id === machineId) : hammasi
-  ).slice(0, LIMIT)
+  // Oqim hamma stansiyadan keladi (bitta endpoint, bitta WS) — sahifa o'zinikini ajratadi
+  const rows = [...live, ...(data ?? [])]
+    .filter((r) => r.machine_id === machineId)
+    .slice(0, LIMIT)
   if (!rows.length) return null
 
   return (
     <section className="mt-8">
       <h2 className="mb-2 text-sm font-semibold">
-        {title}
+        Jonli o'lchov
         <span className="ml-2 font-normal text-muted-foreground">
           detal datchiklardan o'tishi bilan chiqadi
         </span>
@@ -126,11 +121,6 @@ export function KromkaLive({
               {r.part_name ?? "—"}
               {r.qr_text ? ` · ${r.qr_text}` : ""}
             </span>
-            {!machineId && (
-              <span className="ml-auto truncate text-xs text-muted-foreground">
-                {r.machine_name}
-              </span>
-            )}
           </li>
         ))}
       </ul>

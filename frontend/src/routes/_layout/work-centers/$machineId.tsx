@@ -285,7 +285,7 @@ function WorkCenterPage() {
           {/* KROMKA: o'lchov oqimi — har detalning mos/nomosligi ketma-ket */}
           {post?.code === "KROMKA" && (
             <div className="mb-6">
-              <KromkaLive machineId={id} title="Jonli o'lchov" />
+              <KromkaLive machineId={id} />
             </div>
           )}
 
