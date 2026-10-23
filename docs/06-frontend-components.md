@@ -246,7 +246,7 @@ react-hook-form ishlatmaydigan dialoglarda yorliq va maydon `Field` orqali beril
 - Props: `open`, `onOpenChange`, `title`, `description?`, `confirmText?` (default "Tasdiqlash"), `cancelText?` (default "Bekor qilish"), `destructive?`, `loading?`, `onConfirm`.
 - Tasdiqlash tugmasi `LoadingButton` (`variant={destructive ? "destructive" : "default"}`); ikkala tugma ham `h-11 px-5` — 44px minimal barmoq o'lchami terminal (touch) va admin uchun bir xil.
 
-**Foydalanuvchilari:** `Agents/TerminalDevices.tsx` (chek qurilmasiga yangi ulanish kodi va qurilmani o'chirish — ikkita dialog), `Anketa/RoomPhotos.tsx` (rasm o'chirish), `Clients/DeleteClient.tsx` (mijozni o'chirish), `People/PersonDialog.tsx` (lavozim turi o'zgarganda qarama-qarshi yozuv o'chirilishi), `Orders/BazisPanel.tsx` (havolani yangilash/yopish, modelni o'chirish), `routes/_layout/orders/index.tsx` (buyurtma/qoralamani o'chirish), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers.tsx` (ish markazini o'chirish), `routes/_layout/agents.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/_layout/system-health.tsx` (baza statistikasini nollash), `routes/terminal.tsx` — jami 12 fayl.
+**Foydalanuvchilari:** `Agents/TerminalDevices.tsx` (chek qurilmasiga yangi ulanish kodi va qurilmani o'chirish — ikkita dialog), `Anketa/RoomPhotos.tsx` (rasm o'chirish), `Clients/DeleteClient.tsx` (mijozni o'chirish), `People/PersonDialog.tsx` (lavozim turi o'zgarganda qarama-qarshi yozuv o'chirilishi), `Orders/BazisPanel.tsx` (havolani yangilash/yopish, modelni o'chirish), `routes/_layout/orders/index.tsx` (buyurtma/qoralamani o'chirish), `routes/_layout/orders/$orderId.tsx`, `routes/_layout/anketa.$orderId.tsx` (xona o'chirish), `routes/_layout/employees.tsx`, `routes/_layout/work-centers/index.tsx` (ish markazini o'chirish), `routes/_layout/agents.tsx` (ish markazi bog'lash/uzish, chek chiqarish `can_print` switch'i, agentga yangi kod berish va agentni bekor qilish — to'rtta dialog), `routes/_layout/system-health.tsx` (baza statistikasini nollash), `routes/terminal.tsx` — jami 12 fayl.
 
 ### `frontend/src/components/Common/EmptyRow.tsx`
 
@@ -310,7 +310,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 ### `frontend/src/components/Common/PostBadge.tsx`
 
-**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va `work-centers.tsx` da qo'lda takrorlangan edi.
+**Maqsadi:** bosqich (post) kodi chipi (ARRA, KROMKA, ...) — `POST_COLORS` + `chipColors(color, 12)` (`@/lib/mes`) asosida: matn post rangining to'qroq variantida (`78%, black` — WCAG AA kontrasti, sof rang tint fonda o'tmasdi), fon 12% oq tint. Avval `employees.tsx` va ish markazlari sahifasida qo'lda takrorlangan edi; markazning o'z sahifasida ham (`work-centers/$machineId.tsx`) sarlavha yonida turadi.
 
 ### `frontend/src/components/Common/QueryError.tsx`
 
@@ -326,7 +326,7 @@ Reyestr sahifalagichi: `page` (0 dan), `pageSize`, `total`, `onPage`. Tartib bit
 
 - Props: `value`/`onChange`, `options: SelectOption[]` (`{ value, label, hint? }` — `hint` kod/telefon kabi ikkinchi darajali matn), `placeholder?`, `emptyLabel?`, `disabled?`, `className?`. `emptyLabel` — "tanlanmagan" varianti: Radix bo'sh `""` qiymatni qabul qilmaydi, shuning uchun ichki `EMPTY = "__empty__"` sentineli bilan ifodalanadi va tashqariga `""` qaytadi.
 - **Qoida biome bilan mahkamlangan**: `correctness/noRestrictedElements` `<select>` va `<textarea>` ni taqiqlaydi va nima ishlatish kerakligini xato matnida aytadi. `src/components/ui/**` biome tekshiruvidan chiqarilgan, ya'ni shadcn primitivlarining o'zi bu qoidaga tushmaydi.
-- Chaqiruvchilari: `Orders/CustomRoutes.tsx`, `Orders/MachineAssign.tsx`, `People/PersonDialog.tsx`, `routes/_layout/agents.tsx`, `routes/_layout/sotuv.tsx`, `routes/_layout/warehouse.tsx`, `routes/_layout/work-centers.tsx`.
+- Chaqiruvchilari: `Orders/CustomRoutes.tsx`, `Orders/MachineAssign.tsx`, `People/PersonDialog.tsx`, `routes/_layout/agents.tsx`, `routes/_layout/sotuv.tsx`, `routes/_layout/warehouse.tsx`, `routes/_layout/work-centers/index.tsx`.
 
 ### `frontend/src/components/Common/SectionTitle.tsx`
 

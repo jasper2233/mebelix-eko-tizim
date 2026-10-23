@@ -31,7 +31,14 @@ const clock = (iso: string) =>
     second: "2-digit",
   })
 
-export function KromkaLive() {
+export function KromkaLive({
+  machineId,
+  title = "Kromka stansiyasi — jonli o'lchov",
+}: {
+  /** Berilsa — faqat SHU stanokning o'lchovlari (ish markazi sahifasi); berilmasa hammasi */
+  machineId?: number
+  title?: string
+} = {}) {
   const { data } = useQuery({
     queryKey: ["machines", "kromka-measurements"],
     queryFn: async () =>
@@ -50,13 +57,16 @@ export function KromkaLive() {
     }, []),
   )
 
-  const rows = [...live, ...(data ?? [])].slice(0, LIMIT)
+  const hammasi = [...live, ...(data ?? [])]
+  const rows = (
+    machineId ? hammasi.filter((r) => r.machine_id === machineId) : hammasi
+  ).slice(0, LIMIT)
   if (!rows.length) return null
 
   return (
     <section className="mt-8">
       <h2 className="mb-2 text-sm font-semibold">
-        Kromka stansiyasi — jonli o'lchov
+        {title}
         <span className="ml-2 font-normal text-muted-foreground">
           detal datchiklardan o'tishi bilan chiqadi
         </span>
@@ -116,9 +126,11 @@ export function KromkaLive() {
               {r.part_name ?? "—"}
               {r.qr_text ? ` · ${r.qr_text}` : ""}
             </span>
-            <span className="ml-auto truncate text-xs text-muted-foreground">
-              {r.machine_name}
-            </span>
+            {!machineId && (
+              <span className="ml-auto truncate text-xs text-muted-foreground">
+                {r.machine_name}
+              </span>
+            )}
           </li>
         ))}
       </ul>

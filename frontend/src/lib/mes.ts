@@ -322,6 +322,29 @@ export const ANDON_STATE_LABELS: Record<string, string> = {
   BOOT: "Yoqilmoqda",
 }
 
+/** Stanok signal ustuni rangi: yashil — ishlayapti (miltillovchi nuqta — detal
+ *  kutilmoqda), sariq/to'q sariq — kutish, qizil — avariya, kulrang — o'chiq.
+ *  Rang yolg'iz emas, yonida doim matn turadi (`ANDON_STATE_LABELS`). */
+export const ANDON_STYLE: Record<string, string> = {
+  PROCESSING: "border-emerald-300 bg-emerald-100 text-emerald-900",
+  AWAIT_PART: "border-emerald-300 bg-background text-emerald-800",
+  IDLE: "border-amber-300 bg-amber-50 text-amber-900",
+  STOPPED: "border-orange-300 bg-orange-100 text-orange-900",
+  FAULT: "border-red-300 bg-red-100 text-red-900",
+  OFF: "border-transparent bg-muted text-muted-foreground",
+  BOOT: "border-transparent bg-muted text-muted-foreground",
+}
+
+/** Holat qancha davom etayotgani: "hozirgina", "12 daq", "2 soat 5 daq".
+ *  `formatAgo` dan farqi — «oldin» yo'q: bu O'TGAN vaqt emas, DAVOM etayotgan holat. */
+export function formatSince(iso: string): string {
+  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (min < 1) return "hozirgina"
+  if (min < 60) return `${min} daq`
+  const h = Math.floor(min / 60)
+  return min % 60 ? `${h} soat ${min % 60} daq` : `${h} soat`
+}
+
 /** Brak holati — backend `models/enums.py: DefectStatus` bilan QO'LDA oynalangan.
  *  Operator faqat qayd qiladi, qarorni menejer «Brak» sahifasida beradi. */
 export const DEFECT_STATUS_LABELS: Record<string, string> = {

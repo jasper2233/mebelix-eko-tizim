@@ -27,7 +27,6 @@ import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
 import { Route as LayoutSotuvRouteImport } from './routes/_layout/sotuv'
 import { Route as LayoutSystemHealthRouteImport } from './routes/_layout/system-health'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
-import { Route as LayoutWorkCentersRouteImport } from './routes/_layout/work-centers'
 import { Route as TabloStanoklarRouteImport } from './routes/tablo_.stanoklar'
 import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
@@ -40,6 +39,8 @@ import { Route as LayoutWarehouseHisobotRouteImport } from './routes/_layout/war
 import { Route as LayoutWarehouseInvRouteImport } from './routes/_layout/warehouse/inv'
 import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
 import { Route as LayoutWarehouseSexSarfiRouteImport } from './routes/_layout/warehouse/sex-sarfi'
+import { Route as LayoutWorkCentersIndexRouteImport } from './routes/_layout/work-centers/index'
+import { Route as LayoutWorkCentersMachineIdRouteImport } from './routes/_layout/work-centers/$machineId'
 import { Route as LayoutWarehouseItemCodeRouteImport } from './routes/_layout/warehouse/item.$code'
 
 const LayoutRoute = LayoutRouteImport.update({
@@ -131,11 +132,6 @@ const LayoutSystemSettingsRoute = LayoutSystemSettingsRouteImport.update({
   path: '/system-settings',
   getParentRoute: () => LayoutRoute,
 } as any)
-const LayoutWorkCentersRoute = LayoutWorkCentersRouteImport.update({
-  id: '/work-centers',
-  path: '/work-centers',
-  getParentRoute: () => LayoutRoute,
-} as any)
 const TabloStanoklarRoute = TabloStanoklarRouteImport.update({
   id: '/tablo_/stanoklar',
   path: '/tablo/stanoklar',
@@ -196,6 +192,17 @@ const LayoutWarehouseSexSarfiRoute = LayoutWarehouseSexSarfiRouteImport.update({
   path: '/warehouse/sex-sarfi',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWorkCentersIndexRoute = LayoutWorkCentersIndexRouteImport.update({
+  id: '/work-centers/',
+  path: '/work-centers/',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWorkCentersMachineIdRoute =
+  LayoutWorkCentersMachineIdRouteImport.update({
+    id: '/work-centers/$machineId',
+    path: '/work-centers/$machineId',
+    getParentRoute: () => LayoutRoute,
+  } as any)
 const LayoutWarehouseItemCodeRoute = LayoutWarehouseItemCodeRouteImport.update({
   id: '/warehouse/item/$code',
   path: '/warehouse/item/$code',
@@ -220,7 +227,6 @@ export interface FileRoutesByFullPath {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
-  '/work-centers': typeof LayoutWorkCentersRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -231,8 +237,10 @@ export interface FileRoutesByFullPath {
   '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
+  '/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/orders/': typeof LayoutOrdersIndexRoute
   '/warehouse/': typeof LayoutWarehouseIndexRoute
+  '/work-centers/': typeof LayoutWorkCentersIndexRoute
   '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRoutesByTo {
@@ -252,7 +260,6 @@ export interface FileRoutesByTo {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
-  '/work-centers': typeof LayoutWorkCentersRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -264,8 +271,10 @@ export interface FileRoutesByTo {
   '/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
+  '/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/orders': typeof LayoutOrdersIndexRoute
   '/warehouse': typeof LayoutWarehouseIndexRoute
+  '/work-centers': typeof LayoutWorkCentersIndexRoute
   '/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRoutesById {
@@ -287,7 +296,6 @@ export interface FileRoutesById {
   '/_layout/sotuv': typeof LayoutSotuvRoute
   '/_layout/system-health': typeof LayoutSystemHealthRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
-  '/_layout/work-centers': typeof LayoutWorkCentersRoute
   '/tablo_/stanoklar': typeof TabloStanoklarRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -299,8 +307,10 @@ export interface FileRoutesById {
   '/_layout/warehouse/inv': typeof LayoutWarehouseInvRoute
   '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/_layout/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
+  '/_layout/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
   '/_layout/warehouse/': typeof LayoutWarehouseIndexRoute
+  '/_layout/work-centers/': typeof LayoutWorkCentersIndexRoute
   '/_layout/warehouse/item/$code': typeof LayoutWarehouseItemCodeRoute
 }
 export interface FileRouteTypes {
@@ -323,7 +333,6 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
-    | '/work-centers'
     | '/tablo/stanoklar'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -334,8 +343,10 @@ export interface FileRouteTypes {
     | '/warehouse/inv'
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
+    | '/work-centers/$machineId'
     | '/orders/'
     | '/warehouse/'
+    | '/work-centers/'
     | '/warehouse/item/$code'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -355,7 +366,6 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
-    | '/work-centers'
     | '/tablo/stanoklar'
     | '/'
     | '/anketa/$orderId'
@@ -367,8 +377,10 @@ export interface FileRouteTypes {
     | '/warehouse/inv'
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
+    | '/work-centers/$machineId'
     | '/orders'
     | '/warehouse'
+    | '/work-centers'
     | '/warehouse/item/$code'
   id:
     | '__root__'
@@ -389,7 +401,6 @@ export interface FileRouteTypes {
     | '/_layout/sotuv'
     | '/_layout/system-health'
     | '/_layout/system-settings'
-    | '/_layout/work-centers'
     | '/tablo_/stanoklar'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
@@ -401,8 +412,10 @@ export interface FileRouteTypes {
     | '/_layout/warehouse/inv'
     | '/_layout/warehouse/panel'
     | '/_layout/warehouse/sex-sarfi'
+    | '/_layout/work-centers/$machineId'
     | '/_layout/orders/'
     | '/_layout/warehouse/'
+    | '/_layout/work-centers/'
     | '/_layout/warehouse/item/$code'
   fileRoutesById: FileRoutesById
 }
@@ -543,13 +556,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSystemSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/_layout/work-centers': {
-      id: '/_layout/work-centers'
-      path: '/work-centers'
-      fullPath: '/work-centers'
-      preLoaderRoute: typeof LayoutWorkCentersRouteImport
-      parentRoute: typeof LayoutRoute
-    }
     '/tablo_/stanoklar': {
       id: '/tablo_/stanoklar'
       path: '/tablo/stanoklar'
@@ -634,6 +640,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseSexSarfiRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/work-centers/': {
+      id: '/_layout/work-centers/'
+      path: '/work-centers'
+      fullPath: '/work-centers/'
+      preLoaderRoute: typeof LayoutWorkCentersIndexRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/work-centers/$machineId': {
+      id: '/_layout/work-centers/$machineId'
+      path: '/work-centers/$machineId'
+      fullPath: '/work-centers/$machineId'
+      preLoaderRoute: typeof LayoutWorkCentersMachineIdRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/item/$code': {
       id: '/_layout/warehouse/item/$code'
       path: '/warehouse/item/$code'
@@ -657,7 +677,6 @@ interface LayoutRouteChildren {
   LayoutSotuvRoute: typeof LayoutSotuvRoute
   LayoutSystemHealthRoute: typeof LayoutSystemHealthRoute
   LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
-  LayoutWorkCentersRoute: typeof LayoutWorkCentersRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
@@ -668,8 +687,10 @@ interface LayoutRouteChildren {
   LayoutWarehouseInvRoute: typeof LayoutWarehouseInvRoute
   LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
   LayoutWarehouseSexSarfiRoute: typeof LayoutWarehouseSexSarfiRoute
+  LayoutWorkCentersMachineIdRoute: typeof LayoutWorkCentersMachineIdRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
   LayoutWarehouseIndexRoute: typeof LayoutWarehouseIndexRoute
+  LayoutWorkCentersIndexRoute: typeof LayoutWorkCentersIndexRoute
   LayoutWarehouseItemCodeRoute: typeof LayoutWarehouseItemCodeRoute
 }
 
@@ -686,7 +707,6 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSotuvRoute: LayoutSotuvRoute,
   LayoutSystemHealthRoute: LayoutSystemHealthRoute,
   LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,
-  LayoutWorkCentersRoute: LayoutWorkCentersRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
@@ -697,8 +717,10 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutWarehouseInvRoute: LayoutWarehouseInvRoute,
   LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
   LayoutWarehouseSexSarfiRoute: LayoutWarehouseSexSarfiRoute,
+  LayoutWorkCentersMachineIdRoute: LayoutWorkCentersMachineIdRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
   LayoutWarehouseIndexRoute: LayoutWarehouseIndexRoute,
+  LayoutWorkCentersIndexRoute: LayoutWorkCentersIndexRoute,
   LayoutWarehouseItemCodeRoute: LayoutWarehouseItemCodeRoute,
 }
 

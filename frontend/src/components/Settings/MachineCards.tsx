@@ -1,10 +1,10 @@
 // Stanok sozlamalari — OEE va o'lchov hukmini belgilaydigan kartalar. Ikki joyda
-// ko'rsatiladi: Tizim sozlamalari sahifasida (mavzu bo'yicha tablar) va Ish markazlari
-// jadvalida stanok nomi bosilganda chiqadigan oynada (`MachineSettingsDialog`) — tsexda
-// odam stanokdan izlaydi, sozlamalar sahifasidan emas.
+// ko'rsatiladi: Tizim sozlamalari sahifasida (mavzu bo'yicha tablar) va ish markazining
+// o'z sahifasida «Sozlamalar» tabida — tsexda odam stanokdan izlaydi, sozlamalar
+// sahifasidan emas.
 //
 // DIQQAT: qiymatlar GLOBAL (`system_setting`), ya'ni bitta stanokniki emas — o'zgartirish
-// o'sha TURDAGI hamma stanokka tegadi. Oynada shu haqda qator turadi.
+// o'sha TURDAGI hamma stanokka tegadi. Sahifada shu haqda qator turadi.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -12,6 +12,7 @@ import { useEffect, useState } from "react"
 import {
   type IdealCycle,
   MachinesService,
+  type PostCode,
   SettingsService,
   type SystemSettingRead,
 } from "@/client"
@@ -32,6 +33,13 @@ import {
 import { formatDateTime } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { crudCallbacks } from "@/queries/mes"
+
+/** Qaysi postda stanokka bog'liq sozlanadigan narsa bor. Boshqa postlarda yo'q —
+ *  ish jadvali, to'xtash sabablari va brak sabablari hammaga umumiy. */
+const SOZLAMALI: PostCode[] = ["KROMKA", "PRISADKA", "ROVER"]
+
+export const hasMachineSettings = (code?: PostCode) =>
+  !!code && SOZLAMALI.includes(code)
 
 //: Kromka bo'sh yurishi va to'xtash chegarasining pastki qiymati (`INT_RANGES`)
 const KROMKA_IDLE_MIN = 1

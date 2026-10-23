@@ -11,6 +11,7 @@ from app.crud import crud_machines, crud_posts, log_action
 from app.models import (
     AndonEvent,
     BridgeAgent,
+    Employee,
     Machine,
     Order,
     Part,
@@ -29,13 +30,15 @@ from app.schemas.common import Message
 from app.schemas.machines import (
     KromkaKalRow,
     KromkaMeasurementRow,
+    MachineActivity,
+    MachineActivityRow,
     MachineCreate,
     MachineOverview,
     MachineRead,
     MachineUpdate,
 )
 from app.services.andon import read_live
-from app.services.scanning import crew_sessions
+from app.services.scanning import crew_sessions, qr_part_code
 
 router = APIRouter(prefix="/machines", tags=["machines"])
 
@@ -343,6 +346,93 @@ async def read_kromka_measurement_feed(db: SessionDep, _: StaffReadUser) -> list
         )
         for row, machine_name, part_name, qr_text in rows
     ]
+
+
+#: Ish markazi sahifasidagi «oxirgi amallar» ro'yxati. Yangi skan WS (`scan.recorded`)
+#: bilan darhol qo'shiladi — bu sahifa ochilgandagi boshlang'ich ro'yxat.
+_ACTIVITY_N = 30
+
+
+@router.get("/{machine_id}/activity", response_model=MachineActivity, operation_id="read_machine_activity")
+async def read_machine_activity(db: SessionDep, _: StaffReadUser, machine_id: int) -> MachineActivity:
+    """Ish markazi hozir nima qilyapti: smenada kim turgan, qaysi buyurtma ustida va
+    oxirgi skanlar ketma-ketligi.
+
+    Tsexda «ishni boshlash» tugmasi yo'q — ish SKAN bilan boshlanadi, shuning uchun joriy
+    ish oxirgi skandan olinadi. Bekor qilingan skan ham ro'yxatda qoladi (nima bo'lganini
+    ko'rsatish kerak), lekin joriy ishga olinmaydi."""
+    machine = await crud_machines.get(db, id=machine_id)
+    if machine is None:
+        raise NotFoundException("Ish markazi topilmadi")
+    rows = (
+        (
+            await db.execute(
+                select(Scan, Part.name, Part.count, PartInstance.qr_text, Order.number, Employee.full_name)
+                .join(Part, Part.id == Scan.part_id)
+                .join(PartInstance, PartInstance.id == Scan.instance_id)
+                .join(Order, Order.id == Scan.order_id)
+                .outerjoin(Employee, Employee.id == Scan.employee_id)
+                .where(Scan.machine_id == machine_id, Scan.is_deleted == False)  # noqa: E712
+                .order_by(Scan.created_at.desc(), Scan.id.desc())
+                .limit(_ACTIVITY_N)
+            )
+        )
+        .tuples()
+        .all()
+    )
+    employees = (
+        (
+            await db.execute(
+                select(Employee.full_name)
+                .join(WorkSession, WorkSession.employee_id == Employee.id)
+                .where(
+                    WorkSession.machine_id == machine_id,
+                    WorkSession.status == SessionStatus.ACTIVE,
+                    WorkSession.is_deleted == False,  # noqa: E712
+                )
+                .distinct()
+                .order_by(Employee.full_name)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    # Joriy ish — bekor qilinmagan oxirgi skanning buyurtmasi
+    joriy = next((r for r in rows if not r[0].is_cancelled), None)
+    remaining: int | None = None
+    if joriy is not None:
+        remaining = int(
+            await db.scalar(
+                select(func.coalesce(func.sum(PartRoute.total_required - PartRoute.total_done), 0)).where(
+                    PartRoute.order_id == joriy[0].order_id,
+                    PartRoute.post_id == machine.post_id,
+                    PartRoute.total_done < PartRoute.total_required,
+                    PartRoute.is_enabled == True,  # noqa: E712
+                    PartRoute.is_deleted == False,  # noqa: E712
+                )
+            )
+            or 0
+        )
+    return MachineActivity(
+        employees=list(employees),
+        order_id=joriy[0].order_id if joriy else None,
+        order_number=joriy[4] if joriy else None,
+        order_remaining=remaining,
+        rows=[
+            MachineActivityRow(
+                scan_id=scan.id,
+                at=scan.created_at,
+                qr_text=qr_text,
+                part_code=qr_part_code(qr_text, part_count),
+                part_name=part_name,
+                order_id=scan.order_id,
+                order_number=order_number,
+                employee=employee,
+                cancelled=scan.is_cancelled,
+            )
+            for scan, part_name, part_count, qr_text, order_number, employee in rows
+        ],
+    )
 
 
 @router.post("/", response_model=MachineRead, status_code=201, operation_id="create_machine")

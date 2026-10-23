@@ -96,3 +96,42 @@ class KromkaMeasurementRow(BaseModel):
     #: Paket bo'lsa — unda nechta bo'lak o'tgani (kichik detallar birga tiqiladi, docs/12
     #: §4.26). Bo'sh bo'lmasa `length_mm` PAKETNING uzunligi, bu detalning emas.
     pack_n: int | None = None
+
+
+class MachineActivityRow(BaseModel):
+    """Ish markazida bo'lgan bitta amal — JONLI oqim uchun bitta qator.
+
+    Hozircha faqat skan: «nima o'tdi va qaysi buyurtmadan». KROMKA'da ustiga o'lchov
+    oqimi ham turadi (`KromkaMeasurementRow`) — u detalning mos/nomosligini aytadi,
+    bu esa har postda bir xil: detal shu markazdan O'TDI."""
+
+    scan_id: int
+    at: datetime
+    qr_text: str
+    #: Nusxa raqamisiz detal kodi (`services/scanning.py: qr_part_code`)
+    part_code: str
+    part_name: str | None
+    order_id: int
+    order_number: str
+    #: Skanni kim qildi (beyjik egasi); ARRA'da chek chiqarish skanida ham shu
+    employee: str | None
+    #: Bekor qilingan skan ro'yxatdan chiqmaydi — nima bo'lgani ko'rinib tursin
+    cancelled: bool = False
+
+
+class MachineActivity(BaseModel):
+    """«Hozir nima qilyapti» — ish markazining o'z sahifasi uchun.
+
+    Joriy ish OXIRGI SKANdan olinadi: tsexda odam detalni skanerlagan zahoti ish
+    boshlanadi, alohida «ishni boshlash» tugmasi yo'q (docs/08). Smenada turganlar
+    esa ochiq `work_session` dan."""
+
+    #: Hozir smenada turgan hodimlar (ochiq smena)
+    employees: list[str]
+    #: Oxirgi skanning buyurtmasi — shu markaz hozir shu buyurtma ustida
+    order_id: int | None = None
+    order_number: str | None = None
+    #: Shu buyurtmaning SHU POSTdagi qolgan skani (butun buyurtma bo'yicha)
+    order_remaining: int | None = None
+    #: Oxirgi amallar, yangisi birinchi
+    rows: list[MachineActivityRow]

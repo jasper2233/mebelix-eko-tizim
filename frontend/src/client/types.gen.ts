@@ -3515,6 +3515,86 @@ export type LotRead = {
 };
 
 /**
+ * MachineActivity
+ *
+ * «Hozir nima qilyapti» — ish markazining o'z sahifasi uchun.
+ *
+ * Joriy ish OXIRGI SKANdan olinadi: tsexda odam detalni skanerlagan zahoti ish
+ * boshlanadi, alohida «ishni boshlash» tugmasi yo'q (docs/08). Smenada turganlar
+ * esa ochiq `work_session` dan.
+ */
+export type MachineActivity = {
+    /**
+     * Employees
+     */
+    employees: Array<string>;
+    /**
+     * Order Id
+     */
+    order_id?: number | null;
+    /**
+     * Order Number
+     */
+    order_number?: string | null;
+    /**
+     * Order Remaining
+     */
+    order_remaining?: number | null;
+    /**
+     * Rows
+     */
+    rows: Array<MachineActivityRow>;
+};
+
+/**
+ * MachineActivityRow
+ *
+ * Ish markazida bo'lgan bitta amal — JONLI oqim uchun bitta qator.
+ *
+ * Hozircha faqat skan: «nima o'tdi va qaysi buyurtmadan». KROMKA'da ustiga o'lchov
+ * oqimi ham turadi (`KromkaMeasurementRow`) — u detalning mos/nomosligini aytadi,
+ * bu esa har postda bir xil: detal shu markazdan O'TDI.
+ */
+export type MachineActivityRow = {
+    /**
+     * Scan Id
+     */
+    scan_id: number;
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Qr Text
+     */
+    qr_text: string;
+    /**
+     * Part Code
+     */
+    part_code: string;
+    /**
+     * Part Name
+     */
+    part_name: string | null;
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Employee
+     */
+    employee: string | null;
+    /**
+     * Cancelled
+     */
+    cancelled?: boolean;
+};
+
+/**
  * MachineAssignments
  *
  * Manager's machine choice per post before production start.
@@ -8067,6 +8147,36 @@ export type ReadKromkaMeasurementFeedResponses = {
 };
 
 export type ReadKromkaMeasurementFeedResponse = ReadKromkaMeasurementFeedResponses[keyof ReadKromkaMeasurementFeedResponses];
+
+export type ReadMachineActivityData = {
+    body?: never;
+    path: {
+        /**
+         * Machine Id
+         */
+        machine_id: number;
+    };
+    query?: never;
+    url: '/api/v1/machines/{machine_id}/activity';
+};
+
+export type ReadMachineActivityErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadMachineActivityError = ReadMachineActivityErrors[keyof ReadMachineActivityErrors];
+
+export type ReadMachineActivityResponses = {
+    /**
+     * Successful Response
+     */
+    200: MachineActivity;
+};
+
+export type ReadMachineActivityResponse = ReadMachineActivityResponses[keyof ReadMachineActivityResponses];
 
 export type DeleteMachineData = {
     body?: never;

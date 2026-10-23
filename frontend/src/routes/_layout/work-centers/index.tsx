@@ -4,7 +4,7 @@
 // Admin uchun CRUD.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, Link } from "@tanstack/react-router"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -43,17 +43,15 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { KromkaLive } from "@/components/WorkCenters/KromkaLive"
-import {
-  hasMachineSettings,
-  MachineSettingsDialog,
-} from "@/components/WorkCenters/MachineSettingsDialog"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAccess } from "@/lib/guards"
 import {
   ANDON_STATE_LABELS,
+  ANDON_STYLE,
   formatAgo,
   formatDateTime,
+  formatSince,
   isAdmin,
   isProductionStaff,
   MACHINE_STATUS_LABELS,
@@ -65,7 +63,7 @@ import {
   getPostsQueryOptions,
 } from "@/queries/mes"
 
-export const Route = createFileRoute("/_layout/work-centers")({
+export const Route = createFileRoute("/_layout/work-centers/")({
   component: WorkCentersPage,
   // Sidebar ko'rinishi bilan bir xil rollar to'plami (lib/mes)
   beforeLoad: requireAccess(isProductionStaff),
@@ -77,28 +75,6 @@ export const Route = createFileRoute("/_layout/work-centers")({
 const STATUS_STYLE: Record<string, string> = {
   repair: "border-amber-300 bg-amber-100 text-amber-900",
   inactive: "border-transparent bg-muted text-muted-foreground",
-}
-
-/** Stanok signal ustuni rangi: yashil — ishlayapti (miltillovchi nuqta — detal
- * kutilmoqda), sariq/to'q sariq — kutish, qizil — avariya, kulrang — o'chiq.
- * Rang yolg'iz emas, yonida doim matn turadi. */
-const ANDON_STYLE: Record<string, string> = {
-  PROCESSING: "border-emerald-300 bg-emerald-100 text-emerald-900",
-  AWAIT_PART: "border-emerald-300 bg-background text-emerald-800",
-  IDLE: "border-amber-300 bg-amber-50 text-amber-900",
-  STOPPED: "border-orange-300 bg-orange-100 text-orange-900",
-  FAULT: "border-red-300 bg-red-100 text-red-900",
-  OFF: "border-transparent bg-muted text-muted-foreground",
-  BOOT: "border-transparent bg-muted text-muted-foreground",
-}
-
-/** Holat qancha davom etayotgani: "hozirgina", "12 daq", "2 soat 5 daq". */
-function formatSince(iso: string): string {
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (min < 1) return "hozirgina"
-  if (min < 60) return `${min} daq`
-  const h = Math.floor(min / 60)
-  return min % 60 ? `${h} soat ${min % 60} daq` : `${h} soat`
 }
 
 /** O'chirishga to'siqlar tugma bosilmasdan OLDIN (title) — server `_blockers` ning
@@ -150,7 +126,6 @@ function WorkCentersPage() {
   const [adding, setAdding] = useState(false)
   const [editFor, setEditFor] = useState<MachineRead | null>(null)
   const [deleteFor, setDeleteFor] = useState<MachineRead | null>(null)
-  const [settingsFor, setSettingsFor] = useState<MachineRead | null>(null)
   const postById = new Map((posts ?? []).map((p) => [p.id, p]))
   const ovById = new Map((overview ?? []).map((o) => [o.machine_id, o]))
   // Marshrut tartibida: ARRA, KROMKA, OVAL... Ilgari id tartibida chiqardi,
@@ -224,21 +199,17 @@ function WorkCentersPage() {
                 return (
                   <TableRow key={m.id}>
                     <TableCell>
-                      {/* Sozlamasi bor postda nom — tugma: tsexda odam sozlamani
-                          STANOKDAN izlaydi, sozlamalar sahifasining tabidan emas.
-                          Yozish adminniki, shuning uchun boshqalarda oddiy matn. */}
-                      {admin && hasMachineSettings(post?.code) ? (
-                        <button
-                          type="button"
-                          className="font-medium underline-offset-4 hover:underline"
-                          title="Stanok sozlamalari"
-                          onClick={() => setSettingsFor(m)}
-                        >
-                          {m.name}
-                        </button>
-                      ) : (
-                        <div className="font-medium">{m.name}</div>
-                      )}
+                      {/* Nom — markazning O'Z sahifasiga havola: tsexda odam
+                          «stanok hozir nima qilyapti» ni stanokdan izlaydi, va
+                          sozlamalari ham o'sha sahifaning tabida (oyna emas). */}
+                      <Link
+                        to="/work-centers/$machineId"
+                        params={{ machineId: String(m.id) }}
+                        className="font-medium underline-offset-4 hover:underline"
+                        title="Ish markazi sahifasi: joriy ish, oxirgi amallar, sozlamalar"
+                      >
+                        {m.name}
+                      </Link>
                       {/* Bog'lamlar nom ostida: agent (onlayn nuqtasi bilan) va
                           qurilma hisobi — ular o'chirishga ham to'siq */}
                       {o && (o.agents.length > 0 || o.accounts.length > 0) && (
@@ -413,15 +384,6 @@ function WorkCentersPage() {
           butun blok chizilmaydi (komponentning o'zi qaror qiladi). */}
       <KromkaLive />
       <DeleteMachine machine={deleteFor} onClose={() => setDeleteFor(null)} />
-      {settingsFor && (
-        <MachineSettingsDialog
-          machineId={settingsFor.id}
-          machineName={settingsFor.name}
-          postCode={postById.get(settingsFor.post_id)?.code}
-          open
-          onOpenChange={(v) => !v && setSettingsFor(null)}
-        />
-      )}
     </div>
   )
 }
