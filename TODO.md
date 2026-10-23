@@ -456,15 +456,6 @@ Quyidagilar keyingi ish. Lokal muhit, orakllar va deploy tartibi — `CLAUDE.md`
   `tier_prices` da `M-LM` yo'q — shuning uchun hammasi narxsiz (`sale_price IS NULL`).
   `/warehouse/panel` dan kiritiladi (docs/14 §8.1).
 
-### O10. Prodda tozalanmagan kromka qatorlari (2026-10-23 da o'lchandi)
-
-- **2026-09-24**: bitta kunda 236 881 `ortiqcha` o'lchov (o'sha kuni 231 895 `olchov` hodisasi,
-  `seq` lari farq qiladi — agent 1.8.0 qayta o'ynatgan). Boshqa kunlarda kuniga 0–10 ta, ya'ni
-  muammo o'tib ketgan, tarix esa qolgan. `scripts/kromka_dedup.sql` (yumshoq o'chirish, qaytarish
-  bo'limi bor) faqat-hisobot rejimida yurgizilgan — qo'llash uchun egasining ruxsati kerak.
-- ~~4 qator noto'g'ri paket~~ — 2026-10-23 da to'g'rilandi: `261291` yumshoq o'chirildi,
-  `262125` nusxa 17392 / skan 57248 ga ko'chirildi (docs/12 §4.26). Takror qolmadi.
-
 ### O9. Prodda 7 furnitura narxsiz + bo'sh maydonlar (2026-10-17)
 
 - `F-AK-029-01`, `F-RC-015-05`, `F-RC-025-11`, `F-RC-026-12`, `F-RL-015-01/02/03` — dizayn katalogida

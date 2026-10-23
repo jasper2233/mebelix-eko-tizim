@@ -74,6 +74,12 @@ HAVING count(*) > 1
 ORDER BY count(*) DESC, 2 DESC
 LIMIT 10;
 
+-- PAKET qatorlariga TEGILMAYDI (`pack_n IS NOT NULL`, `docs/12` §4.26): bitta paket
+-- o'lchovi 2-4 ta qator yozadi (har yopilgan qirraga bittadan) va ularning hammasida
+-- `measured_at` ham, `measured_mm` ham bir xil — ko'prik ularni bitta hodisaga bog'laydi
+-- va takror deb o'chirib yuborardi (2026-10-23 da o'lchandi: 14 ta haqiqiy qator). Paket
+-- 2026-10-18 dan boshlandi, takror esa 2026-09-24/26 da yig'ilgan — kesishmaydi.
+--
 -- O'lchov tarixida `xb`/`xq` ustuni yo'q — ko'prik (VAQT, O'LCHAM). Bu ko'rinish
 -- har juftlikni O'Z hodisasiga bog'laydi va FAQAT bir ma'noli bog'langanini qoldiradi:
 -- bitta soniyada bir xil o'lchamli ikki hodisa bo'lsa, qaysi yozuv qaysinisi ekanini
@@ -110,7 +116,7 @@ JOIN olchov_hodisa v
   ON v.machine_id = k.machine_id
  AND v.happened_at = k.measured_at
  AND v.mm IS NOT DISTINCT FROM k.measured_mm
-WHERE NOT k.is_deleted
+WHERE NOT k.is_deleted AND k.pack_n IS NULL
 GROUP BY 1, 2
 HAVING count(*) > count(DISTINCT (v.xb, v.xq))
 ORDER BY 2, 1;
@@ -154,7 +160,7 @@ WITH ortiqcha AS (
           ON v.machine_id = k.machine_id
          AND v.happened_at = k.measured_at
          AND v.mm IS NOT DISTINCT FROM k.measured_mm
-        WHERE NOT k.is_deleted
+        WHERE NOT k.is_deleted AND k.pack_n IS NULL
     ) t
     WHERE t.n > 1
 )

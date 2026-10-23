@@ -152,6 +152,19 @@ async def main() -> None:
                 db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=T(8, 30, 30), code="OK",
                                          verdict=KromkaVerdict.MOS, measured_mm=mm,
                                          expected_mm=mm, delta_mm=0.0, side_group="length"))
+        # PAKET: bitta hodisa, lekin UCHTA o'lchov qatori (har yopilgan qirraga bittadan,
+        # `docs/12` §4.26). Hammasida `measured_at` va `measured_mm` bir xil — ko'prik
+        # uchalasini o'sha hodisaga bog'laydi, shuning uchun tozalash ularni takror deb
+        # o'chirib yubormasligi kerak (prodda 2026-10-24 da 14 ta shunday qator bor edi).
+        # Hisobot kuni (KECHA) emas, bir kun OLDIN: tozalash sanaga qaramaydi, OEE kutilgan
+        # qiymatlari esa shu bitta o'tish tufayli siljimasin.
+        PAKET_AT = T(9) - timedelta(days=1)
+        hodisa("olchov", PAKET_AT, {"ev": "olchov", "L": 450.0, "kod": "OK", "v_nom": 18,
+                                    "xb": XB + "p", "xq": 92})
+        for qirra in (150.0, 150.0, 150.0):
+            db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=PAKET_AT, code="OK",
+                                     verdict=KromkaVerdict.MOS, measured_mm=450.0,
+                                     expected_mm=qirra, side_group="length", pack_n=3))
         # ESKI proshivkadan (xb/xq YO'Q) kelgan yozuv — unga TEGILMASLIGI kerak
         hodisa("olchov", T(16), {"ev": "olchov", "L": 640.0, "kod": "OK", "v_nom": 10})
         db.add(KromkaMeasurement(machine_id=stanok.id, measured_at=T(16), code="OK",
@@ -163,7 +176,7 @@ async def main() -> None:
                                  "xb": XB, "xq": 51})
         await db.commit()
 
-        kutilgan_hodisa = 2 + 30 * NUSXA + 10 + 3
+        kutilgan_hodisa = 2 + 30 * NUSXA + 10 + 1 + 3   # +1 — paket hodisasi
         jami = await db.scalar(select(func.count()).select_from(AndonEvent))
         natija.append(("fixture: takrorlar bilan hodisa", jami, kutilgan_hodisa))
 
@@ -192,7 +205,7 @@ async def main() -> None:
             .where(AndonEvent.is_deleted == False)  # noqa: E712
             .group_by(AndonEvent.kind).order_by(AndonEvent.kind))).tuples().all()
         natija.append(("takrorlar o'chdi, haqiqiylari qoldi",
-                       dict(qolgan), {"olchov": 35, "uskuna": 2}))
+                       dict(qolgan), {"olchov": 36, "uskuna": 2}))
         ochirilgan = await db.scalar(select(func.count()).select_from(AndonEvent)
                                      .where(AndonEvent.is_deleted == True))  # noqa: E712
         natija.append(("o'chirilgani = ortiqcha nusxalar", ochirilgan, 30 * (NUSXA - 1) + 8))
@@ -218,7 +231,12 @@ async def main() -> None:
                                        .where(KromkaMeasurement.is_deleted == False))  # noqa: E712
         # Har HODISAGA bitta: 30 + bir soniyadagi 2 ta hodisa + tegilmaydigan eski yozuv. Vaqt bo'yicha tozalash
         # bu yerda 30 × 4 = 120 satr qoldirardi — kalit `xb`/`xq` bo'lgani shu uchun muhim.
-        natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 33))
+        # Ustiga paketning 3 qatori: bitta hodisa, lekin uchalasi ham HAQIQIY.
+        natija.append(("o'lchov tarixi: har hodisaga BITTA yozuv", olchov_qoldi, 33 + 3))
+        paket_qoldi = await db.scalar(select(func.count()).select_from(KromkaMeasurement).where(
+            KromkaMeasurement.is_deleted == False,  # noqa: E712
+            KromkaMeasurement.pack_n.is_not(None)))
+        natija.append(("paket qatorlariga tegilmadi", paket_qoldi, 3))
 
         keyin = await report_machine_time(db, admin, date_from=KECHA.date(), date_to=KECHA.date())
         r1 = keyin.rows[0]

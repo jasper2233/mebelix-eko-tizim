@@ -446,6 +446,19 @@ bog'laydi va tozalash HAR HODISAGA bitta yozuv qoldiradi. Bir soniyada bir xil o
 ikki hodisa bo'lsa — o'sha juftlikka UMUMAN tegilmaydi va hisobotning 3b bo'limida
 alohida sanaladi.
 
+⚠️ **PAKET qatorlariga tegilmaydi** (`pack_n IS NOT NULL`, §4.26): bitta paket o'lchovi
+2–4 qator yozadi (har yopilgan qirraga bittadan) va ularning hammasida `measured_at` ham,
+`measured_mm` ham bir xil — ko'prik ularni bitta hodisaga bog'laydi, ya'ni filtrsiz skript
+har paketdan birinchisidan boshqasini takror deb o'chirardi (2026-10-24 da hisobotda
+ko'rindi: 10-21 da 13, 10-22 da 1 — jami **14 ta haqiqiy qator**). Paket 2026-10-18 dan
+boshlandi, takror esa 2026-09-24/26 da yig'ilgan, shuning uchun bu filtr haqiqiy takrorni
+yashirmaydi.
+
+**Prodda qo'llangan.** Birinchi qism 2026-09-25 03:53 da (231 709 o'lchov + hodisalar),
+qolgani 2026-10-24 da: `kromka_measurement` **17 302** qator, `andon_event` **20 018** qator
+yumshoq o'chirildi. 2026-09-24 da endi 186 tirik o'lchov (97 `mos`, 77 `ortiqcha`, 7 `nomos`,
+4 `skanersiz`, 1 `shubhali`), takror hodisa **0**, paketning 26 qatori butun.
+
 Tekshiruv (v1.19–v1.22, bir martalik skript): **15/15** — Pico takror yuborgan ikkita o'lchov
 navbatga bir marta tushdi, kalit `xb`/`xq` dan olindi, `boot` dagi `sabab: wdt` saqlandi,
 `sig` va `yigilgan` yozilmadi, server yozmaguncha `ACK` yo'q, server yozgach bitta qator
@@ -698,7 +711,7 @@ emas; yurgizish va ro'yxat — `scripts/oracles/README.md`).
 | `defect_oracle.py` (8/8) | §4.17 — brak skan vaqti/stanogida, tasdiq bekor qilgan ish sanaladi, Kromka kvotasi |
 | `agent_gap_oracle.py` (8/8) | §4.16 — agent uzilgan payt: Rover Pico yozuvlaridan tiklanadi, Kromka davomiyligi saqlanadi, tokdan qayta yonish kesiladi (eski kodda 2/8) |
 | `tablo_machines_oracle.py` (29/29) | `docs/05` — stanok taxtasi |
-| `kromka_dedup_oracle.py` (18/18) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
+| `kromka_dedup_oracle.py` (19/19) | `scripts/kromka_dedup.sql` — v1.22 takrorlarini tozalash |
 
 ### 4.15 ROVER: to'liq OEE (2026-10-16)
 
