@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `dev` — sinov muhiti (dev.mebelix.uz): o'sha image prodga ff-merge bilan o'tadi
+    branches: [main, dev]
   pull_request:
 
 jobs:
@@ -59,8 +60,11 @@ jobs:
         # bilan qo'llaydi. Reload buzuq konfigni RAD ETADI (sayt tirik qoladi),
         # lekin unda deploy yarim yo'lda yiqiladi — sintaksisni shu yerda,
         # deploydan OLDIN tutgan arzonroq.
+        # KATALOG mount: `caddy/conf.d/*.caddy` (dev.mebelix.uz) ham tekshirilsin —
+        # faqat Caddyfile mount qilinsa `import conf.d/*` bo'shga tushib, dev bloki
+        # umuman ko'rilmasdi va sintaksis xatosi prod reloadida chiqardi.
         run: |
-          docker run --rm -v "$PWD/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+          docker run --rm -v "$PWD/caddy:/etc/caddy:ro" \
             -e SITE_ADDRESS=:80 caddy:2-alpine \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
@@ -90,7 +94,7 @@ jobs:
     # Lint bilan PARALLEL yuradi (deploy baribir ikkalasini kutadi) — ketma-ket
     # kutish har deployga 1-2 daqiqa qo'shardi; lint yiqilsa deploy skip bo'ladi,
     # ortiqcha image esa delete-package-versions bilan baribir tozalanadi.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -128,9 +132,12 @@ jobs:
           # image'ga bog'laydi — busiz TAG'siz `make docker-prod` manifest
           # unknown bilan yiqilardi. Job faqat main-push'da yuradi (yuqoridagi
           # `if`), ya'ni `:latest` doim main'ning oxirgi build'i.
+          # `:latest` FAQAT main'da: compose'dagi `${TAG:-latest}` prod defaulti,
+          # dev build'i uni egallab olsa teg'siz ko'tarilgan prod sinov kodini
+          # ishga tushirardi. Dev deployi baribir aniq sha bilan boradi.
           tags: |
             ghcr.io/${{ github.repository_owner }}/mebelix-mes-${{ matrix.name }}:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/mebelix-mes-${{ matrix.name }}:latest
+            ${{ github.ref == 'refs/heads/main' && format('ghcr.io/{0}/mebelix-mes-{1}:latest', github.repository_owner, matrix.name) || '' }}
           # source labeli paketni repoga bog'laydi — busiz deploy jobning
           # GITHUB_TOKEN'i paketni tortishga huquq olmaydi
           labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
@@ -258,6 +265,46 @@ jobs:
           code=$(curl -s --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' https://mes.mebelix.uz/api/v1/ready) || :
           [ "$code" = "200" ] || { echo "public ready: $code" >&2; exit 1; }
           curl -s --connect-timeout 5 --max-time 15 https://mes.mebelix.uz/api/v1/ready
+
+  deploy-dev:
+    # dev.mebelix.uz — `dev` branchidan, SOAT TALABISIZ: tsexga tegmaydi.
+    # Prod deployi bilan bir xil image (sha bo'yicha), lekin boshqa katalog,
+    # boshqa stek va boshqa baza (`/opt/mebelix-mes-dev`).
+    # `agent` job kutilmaydi: dev stanok agentlariga exe tarqatmaydi.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: [backend, frontend, images]
+    runs-on: ubuntu-latest
+    concurrency: dev-deploy
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+      - name: Sync code
+        # Prod katalogiga TEGILMAYDI. `.env` va `.stable_tag` serverda yashaydi.
+        run: |
+          ssh "root@${{ secrets.DEPLOY_HOST }}" "mkdir -p /opt/mebelix-mes-dev"
+          rsync -az --delete \
+            --exclude .git --exclude node_modules --exclude .venv \
+            --exclude __pycache__ --exclude dist --exclude uploads \
+            --exclude .env --exclude backups \
+            --exclude .stable_tag --exclude .backup.env \
+            ./ "root@${{ secrets.DEPLOY_HOST }}:/opt/mebelix-mes-dev/"
+      - name: Registry login (serverda)
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | ssh "root@${{ secrets.DEPLOY_HOST }}" \
+            "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
+      - name: Deploy (rollback yo'q — dev)
+        run: |
+          ssh "root@${{ secrets.DEPLOY_HOST }}" \
+            "cd /opt/mebelix-mes-dev && TAG=${{ github.sha }} REGISTRY=ghcr.io/${{ github.repository_owner }} bash scripts/deploy-dev.sh"
+      - name: Public smoke
+        run: |
+          code=$(curl -s --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}' https://dev.mebelix.uz/api/v1/ready) || :
+          [ "$code" = "200" ] || { echo "dev ready: $code" >&2; exit 1; }
 
   notify:
     # Alohida job: CI (backend/frontend) yiqilsa deploy skip bo'ladi —
