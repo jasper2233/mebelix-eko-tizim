@@ -6,7 +6,7 @@ Bu hujjat MebeliX MES backend'ining HTTP API qatlamini tavsiflaydi: router ierar
 
 ```
 /api                        ← backend/app/api/__init__.py (root router)
-  └── /v1                   ← backend/app/api/routes/__init__.py (versiya router)
+  └── /v1                   ← backend/app/api/router.py (versiya router)
         ├── /health, /ready ← health.py    (ochiq — auth yo'q)
         ├── /login/*        ← login.py     (ochiq — auth yo'q)
         ├── /public/*       ← public.py    (ochiq — yig'uvchiga 3D havola, himoyasi o'zida)
@@ -51,7 +51,7 @@ Autentifikatsiya modeli: JWT access + refresh token juftligi, ikkalasi ham `http
 - Ichiga `app.api.routes` dagi `v1_router`ni ulaydi (`router.include_router(v1_router)`).
 - Bu router asosiy FastAPI ilovasiga (`app.main` yoki setup modulida) mount qilinadi.
 
-**Bog'lanishlar:** `backend/app/api/routes/__init__.py` (v1 router).
+**Bog'lanishlar:** `backend/app/api/router.py` (v1 router).
 
 ---
 
@@ -94,7 +94,7 @@ Terminal oqimida esa route fayllar o'zi lokal alias tuzadi: `TerminalUser = requ
 
 ---
 
-## `backend/app/api/routes/__init__.py` — v1 router agregatori
+## `backend/app/api/router.py` — v1 router agregatori
 
 **Maqsadi:** Barcha route modullarini bitta `/v1` prefiksli router'ga birlashtiradi va qaysi router'lar auth talab qilishini belgilaydi.
 
@@ -505,7 +505,7 @@ Yuklash cheklovlari (`orders/survey.py` dagi konstantalar):
 
 ## `backend/app/api/routes/public.py` — OCHIQ 3D havola (autentifikatsiyasiz)
 
-**Maqsadi:** Yig'uvchiga beriladigan havola. MESdagi YAGONA autentifikatsiyasiz modul, shuning uchun `_protected` dan TASHQARIDA ro'yxatga olinadi (`routes/__init__.py`). Himoya «imkoniyat-havola» (capability URL) naqshida: manzilda buyurtma raqami emas, `uuid4` token; har so'rov TOKEN bo'yicha buyurtmani topadi, ya'ni `order_id` bu modulga tashqaridan hech qachon kirmaydi; yopilgan token 404 (403 emas). Javoblarda mijoz ma'lumoti, narx va ishlab chiqarish holati YO'Q. Batafsil: [13-bazis-3d.md](13-bazis-3d.md) §5.
+**Maqsadi:** Yig'uvchiga beriladigan havola. MESdagi YAGONA autentifikatsiyasiz modul, shuning uchun `_protected` dan TASHQARIDA ro'yxatga olinadi (`api/router.py`). Himoya «imkoniyat-havola» (capability URL) naqshida: manzilda buyurtma raqami emas, `uuid4` token; har so'rov TOKEN bo'yicha buyurtmani topadi, ya'ni `order_id` bu modulga tashqaridan hech qachon kirmaydi; yopilgan token 404 (403 emas). Javoblarda mijoz ma'lumoti, narx va ishlab chiqarish holati YO'Q. Batafsil: [13-bazis-3d.md](13-bazis-3d.md) §5.
 
 | Metod | Path | Rol | Izoh |
 |---|---|---|---|

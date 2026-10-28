@@ -13,6 +13,11 @@ from pathlib import Path
 APP = Path(__file__).resolve().parents[1] / "backend" / "app"
 PREFIX = "app.modules."
 
+#: Kompozitsiya ildizlari — ilovani YIG'ADIGAN fayllar: jadvallar ro'yxati (alembic metadata va
+#: `from app.models import ...` qayta eksporti) va router ro'yxati. Ular modul ichini ko'rishi shart;
+#: biznes kodi esa baribir faqat `.service` orqali.
+COMPOSITION_ROOTS = frozenset({"models/__init__.py", "api/router.py"})
+
 
 def owner_of(path: Path) -> str | None:
     parts = path.relative_to(APP).parts
@@ -63,6 +68,8 @@ def violation(owner: str | None, name: str) -> bool:
 def main() -> int:
     problems: list[str] = []
     for path in sorted(APP.rglob("*.py")):
+        if path.relative_to(APP).as_posix() in COMPOSITION_ROOTS:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         owner = owner_of(path)
         for line, name in targets(tree, module_name(path), path.name == "__init__.py"):

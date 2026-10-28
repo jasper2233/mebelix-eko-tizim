@@ -23,8 +23,8 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy import select, text
 
-from app.api.routes.catalog import update_catalog_item, update_warehouse_pricing
-from app.api.routes.stock import (
+from app.modules.ombor.routes.catalog import update_catalog_item, update_warehouse_pricing
+from app.modules.ombor.routes.stock import (
     confirm_stock_doc,
     delete_stock_doc,
     read_stock_docs,
@@ -33,14 +33,16 @@ from app.api.routes.stock import (
 )
 from app.core.db import local_session
 from app.models import CatalogItem, StockLot, StockMovement
-from app.schemas.catalog import CatalogItemUpdate, WarehousePricing
-from app.schemas.stock import DocIn, DocLineIn
+from app.modules.ombor.schemas.catalog import CatalogItemUpdate, WarehousePricing
+from app.modules.ombor.schemas.stock import DocIn, DocLineIn
 
 D = Decimal
 natija: list[tuple[str, object, object]] = []
 user = types.SimpleNamespace(id=None)
 req = types.SimpleNamespace(headers={}, client=types.SimpleNamespace(host="127.0.0.1"))
-BUGUN = date(2026, 10, 16)
+# Bugungi sana: «Boshlang'ich» partiya `created_at.date()` = bugun oladi. Qattiq sana (avval
+# 2026-10-16) o'tib ketgach kirim undan «eski» bo'lib qolar va FIFO tekshiruvi soxta yiqilardi.
+BUGUN = date.today()
 
 
 async def main() -> None:

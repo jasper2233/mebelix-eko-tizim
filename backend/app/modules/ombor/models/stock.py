@@ -15,7 +15,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import BaseModel
+from app.models.base import BaseModel
 
 
 class StockDoc(BaseModel):

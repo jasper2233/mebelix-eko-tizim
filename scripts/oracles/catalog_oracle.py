@@ -18,12 +18,12 @@ from decimal import Decimal
 from sqlalchemy import func, select, text
 
 from app.api.deps import require_roles
-from app.api.routes.catalog import read_catalog_groups, read_catalog_items, update_catalog_item
+from app.modules.ombor.routes.catalog import read_catalog_groups, read_catalog_items, update_catalog_item
 from app.core.db import local_session
 from app.core.exceptions import ForbiddenException
 from app.models import CatalogItem, User
 from app.models.enums import UserRole
-from app.schemas.catalog import CatalogItemUpdate
+from app.modules.ombor.schemas.catalog import CatalogItemUpdate
 
 SCRIPTS = os.path.join(os.path.dirname(__file__), "..")
 CSV_FILE = os.path.join(SCRIPTS, "catalog.csv")

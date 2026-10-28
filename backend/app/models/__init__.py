@@ -1,7 +1,8 @@
+from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
+
 from .andon import AndonEvent
 from .audit import AuditLog
 from .bridge_agent import BridgeAgent
-from .catalog import CatalogItem
 from .client import Client
 from .defect import PartDefect
 from .downtime import Downtime, DowntimeReason
@@ -25,7 +26,6 @@ from .pachka import Pachka, PachkaItem
 from .post import Post
 from .scan import Scan, WorkSession
 from .setting import SystemSetting
-from .stock import StockDoc, StockDocLine, StockLot, StockMovement
 from .terminal_device import TerminalDevice
 from .user import User
 

@@ -24,7 +24,7 @@ from pathlib import Path
 from fastapi import HTTPException
 from sqlalchemy import select
 
-from app.api.routes.catalog import (
+from app.modules.ombor.routes.catalog import (
     bulk_update_catalog_items,
     create_catalog_item,
     delete_catalog_items,
@@ -35,8 +35,8 @@ from app.api.routes.catalog import (
 )
 from app.core.db import local_session
 from app.models import CatalogItem
-from app.services.warehouse import kromka_size
-from app.schemas.catalog import (
+from app.modules.ombor.services.warehouse import kromka_size
+from app.modules.ombor.schemas.catalog import (
     CatalogBulk,
     CatalogIds,
     CatalogImport,

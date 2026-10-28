@@ -5,7 +5,7 @@ from sqlalchemy import Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import BaseModel
+from app.models.base import BaseModel
 
 
 class CatalogItem(BaseModel):

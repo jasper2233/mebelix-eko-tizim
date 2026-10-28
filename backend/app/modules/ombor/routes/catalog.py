@@ -8,8 +8,8 @@ from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.crud import log_action
-from app.models import CatalogItem
-from app.schemas.catalog import (
+from app.modules.ombor.models import CatalogItem
+from app.modules.ombor.schemas.catalog import (
     CatalogBulk,
     CatalogCreated,
     CatalogGroup,
@@ -23,11 +23,8 @@ from app.schemas.catalog import (
     CbRateRead,
     WarehousePricing,
 )
-from app.schemas.common import Paginated
-from app.services.cb_rate import cb_usd
-from app.services.settings_service import set_setting
-from app.services.stock import adjust_quantity
-from app.services.warehouse import (
+from app.modules.ombor.services.stock import adjust_quantity
+from app.modules.ombor.services.warehouse import (
     SEX_GROUPS,
     TIER_GROUPS,
     WAREHOUSE_PRICING,
@@ -36,6 +33,9 @@ from app.services.warehouse import (
     group_key,
     reprice,
 )
+from app.schemas.common import Paginated
+from app.services.cb_rate import cb_usd
+from app.services.settings_service import set_setting
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 

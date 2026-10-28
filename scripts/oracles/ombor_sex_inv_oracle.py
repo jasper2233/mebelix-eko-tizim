@@ -22,8 +22,8 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy import select, text
 
-from app.api.routes.catalog import create_catalog_item, update_catalog_item
-from app.api.routes.stock import (
+from app.modules.ombor.routes.catalog import create_catalog_item, update_catalog_item
+from app.modules.ombor.routes.stock import (
     confirm_stock_doc,
     confirm_stock_inventory,
     read_stock_item_history,
@@ -31,8 +31,8 @@ from app.api.routes.stock import (
 )
 from app.core.db import local_session
 from app.models import CatalogItem
-from app.schemas.catalog import CatalogItemCreate, CatalogItemUpdate
-from app.schemas.stock import DocIn, DocLineIn, InventoryCount, InventoryIn
+from app.modules.ombor.schemas.catalog import CatalogItemCreate, CatalogItemUpdate
+from app.modules.ombor.schemas.stock import DocIn, DocLineIn, InventoryCount, InventoryIn
 
 D = Decimal
 natija: list[tuple[str, object, object]] = []

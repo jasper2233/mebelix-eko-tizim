@@ -12,8 +12,8 @@ from sqlalchemy import func, select
 from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.config import TASHKENT_TZ
 from app.crud import log_action
-from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
-from app.schemas.stock import (
+from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
+from app.modules.ombor.schemas.stock import (
     DocIn,
     DocLineRead,
     DocRead,
@@ -25,7 +25,7 @@ from app.schemas.stock import (
     SexLogRow,
     StockReport,
 )
-from app.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, report, save_draft
+from app.modules.ombor.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, report, save_draft
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 

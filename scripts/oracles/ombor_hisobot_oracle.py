@@ -23,7 +23,7 @@ from decimal import Decimal
 
 from sqlalchemy import select, text
 
-from app.api.routes.stock import read_stock_report
+from app.modules.ombor.routes.stock import read_stock_report
 from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
 from app.models import CatalogItem, StockLot, StockMovement, User

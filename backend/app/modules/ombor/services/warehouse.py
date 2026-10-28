@@ -19,8 +19,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CatalogItem
-from app.schemas.catalog import WarehousePricing
+from app.modules.ombor.models import CatalogItem
+from app.modules.ombor.schemas.catalog import WarehousePricing
 from app.services.settings_service import get_setting
 
 WAREHOUSE_PRICING = "warehouse_pricing"

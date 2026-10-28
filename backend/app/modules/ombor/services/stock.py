@@ -17,9 +17,9 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
-from app.schemas.stock import DocIn
-from app.services.warehouse import abc_classes, get_pricing, reprice
+from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
+from app.modules.ombor.schemas.stock import DocIn
+from app.modules.ombor.services.warehouse import abc_classes, get_pricing, reprice
 
 PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
 KIND_NAME = {"kirim": "Kirim", "chiqim": "Chiqim (sotuv)", "sex": "Sexga kirim", "inv": "Inventarizatsiya"}
