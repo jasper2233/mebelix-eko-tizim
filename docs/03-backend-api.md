@@ -314,7 +314,7 @@ kalibrlashni hisoblash (docs/12 §4.19) va uni Pico'ga qo'llash/qaytarish (§4.2
 | POST | `/api/v1/kromka-kalib/{session_id}/apply` | `AdminUser` | **Pico'ga qo'llash** (§4.20): faqat TUGAGAN sessiya (409), `qollasa_boladi` (2+ uzunlik, 409), Pico'dagi joriy qiymat ma'lum (409). Qiymatlar mijozdan olinmaydi — server sessiyadan qayta hisoblaydi; `services/kromka_kalib.CHEGARA` dan chiqsa 422; stanokda javob kutayotgan buyruq bo'lsa 409. `kromka_kal_apply` ga yoziladi, audit `kromka_kalib/kal_apply` |
 | POST | `/api/v1/kromka-kalib/applies/{apply_id}/rollback` | `AdminUser` | Qo'llashdan oldingi qiymatlarni (`previous`) yangi buyruq qilib yuborish; chegara tekshiruvisiz (ular Pico'ning o'zida turgan). Audit `kal_rollback` |
 
-## `backend/app/api/routes/stock.py` — Ombor hujjatlari, partiyalar, harakatlar
+## `backend/app/modules/ombor/routes/stock.py` — Ombor hujjatlari, partiyalar, harakatlar
 
 **Maqsadi:** Mahsulotlar omborining kirim / sotuv hujjatlari (qoralama → tasdiq), FIFO partiyalar va qoldiq
 harakatlari (docs/14 §9). O'qish — `WarehouseReadUser`, yozish — `WarehouseUser`.

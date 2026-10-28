@@ -222,7 +222,7 @@ ustunlar va tugmalar). Uch bosqich, har biri alohida deploy:
 **Egasining qarorlari (2026-10-16):** bosqichma-bosqich; boshlang'ich qoldiq va narx — dizayn
 fayli ichidagi katalogdan; `/sotuv` yangisiga almashadi; ko'rinish — MES ichida, dizayn tartibida.
 
-### 8.1 Narx qoidalari (`backend/app/services/warehouse.py`)
+### 8.1 Narx qoidalari (`backend/app/modules/ombor/services/warehouse.py`)
 
 Narx endi OMBORNIKI — katalog varag'i uni qayta yozmaydi (quyida 8.4). Qoidalar dizayndagi
 `markupPrice` / `setTierPrice` / `setUsd` bilan bir xil:
@@ -355,7 +355,7 @@ narxni qayta yozmaydi. `catalog_oracle` 36/36 (holat endi omborniki — tekshiru
 
 Nomlar ATAYLAB `stock_move`/`stock_item` emas — o'sha nomdagi eski bo'sh jadvallar prodda yotibdi (`LEGACY_TABLES`).
 
-### 9.2 Qoidalar (`backend/app/services/stock.py`) — dizayndagi `confirmDoc` / `consume` / `lotsOf`
+### 9.2 Qoidalar (`backend/app/modules/ombor/services/stock.py`) — dizayndagi `confirmDoc` / `consume` / `lotsOf`
 
 - **Qoralama** qoldiqqa ta'sir qilmaydi, tahrirlanadi va o'chiriladi. **Tasdiqlangan** hujjat
   QULFLANGAN: o'zgarmaydi, o'chmaydi.
@@ -425,7 +425,7 @@ tasdiqlandi (16 200, foyda 4 680), kartochka tarixi, shartnoma, F4.
 
 - To'rtinchi katalog harfi `S` (zapchast, asbob, kanselyariya, xo'jalik, upakovka) — sotilmaydi, sexga
   beriladi. Guruhlar varaqda yo'q, birinchi pozitsiya ochilganda nomi `SEX_GROUPS` dan olinadi
-  (`services/warehouse.py` va `lib/warehouse.ts` — qo'lda oynalangan): `S-ZP`, `S-AS`, `S-KG`, `S-XJ`, `S-UP`.
+  (`backend/app/modules/ombor/services/warehouse.py` va `lib/warehouse.ts` — qo'lda oynalangan): `S-ZP`, `S-AS`, `S-KG`, `S-XJ`, `S-UP`.
 - **Sexga kirim** hujjati (`kind=sex`, raqam `SEX-2026-0001`): bosh qismda `taker` (kim oldi — MAJBURIY,
   «Kim olgani kiritilmagan»), `equip` (uskuna/uchastka), `note`, `order`, `giver`. Qatorga `S` pozitsiyalar
   va furnituraning `F-AS`/`F-KL` guruhlari (asbob, kley) taklif qilinadi. Xizmat sexga berilmaydi.
@@ -490,7 +490,7 @@ turibdi (`/reports`). Belgisi esa o'shaniki (`BarChart3`) — ilovada u «hisobo
 tushunchani bildiradi (`docs/06` «Belgilar lug'ati»).
 
 API — `GET /api/v1/stock/report?date_from=&date_to=` (`WarehouseReadUser`), hisob
-`services/stock.py: report`. «Excel'ga chiqarish» guruhlar jadvalini CSV qiladi.
+`backend/app/modules/ombor/services/stock.py: report`. «Excel'ga chiqarish» guruhlar jadvalini CSV qiladi.
 
 ### 11.2 Menyu rolga qarab ikki xil (2026-10-17)
 
