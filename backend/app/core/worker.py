@@ -54,9 +54,18 @@ class WorkerSettings:
     health_check_interval = 30
 
 
-class WorkerSekinSettings(WorkerSettings):
+class WorkerSekinSettings:
     """Sekin navbat ishchisi (`QUEUE_SEKIN`). Funksiyalar bir xil — qaysi navbatga tushishini
-    chaqiruvchi hal qiladi. Cron'lar faqat tez ishchida: ikki marta ishlamasin."""
+    chaqiruvchi hal qiladi. Cron'lar faqat tez ishchida: ikki marta ishlamasin.
 
+    `WorkerSettings` dan MEROS OLINMAYDI: arq sozlamalarni `cls.__dict__` dan o'qiydi va meros
+    maydonlarni ko'rmaydi — o'lchandi: funksiyasiz «at least one function» bilan yiqildi va
+    `--check` sukutdagi 6379 portga ulanmoqchi bo'ldi.
+    """
+
+    functions = all_tasks
     queue_name = QUEUE_SEKIN
-    cron_jobs = []
+    redis_settings = WorkerSettings.redis_settings
+    on_startup = startup
+    on_shutdown = shutdown
+    health_check_interval = WorkerSettings.health_check_interval
