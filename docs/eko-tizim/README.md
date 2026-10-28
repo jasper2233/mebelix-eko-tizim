@@ -21,6 +21,10 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 0. Nusxa | tayyor | `9a9264c` |
 | 1a. Poydevor | tayyor, lokal Postgres/Redis/Caddy bilan sinalgan | pastda |
 | 1b. Ko'p ijarachi | tayyor, lokal sinalgan | pastda |
+| 2.1 Ombor moduli | tayyor (kod ko'chirildi, xulq o'zgarmadi) | pastda |
+| 2.2 Rezerv (backend) | tayyor, lokal sinalgan | pastda |
+| 2.2b Rezerv (interfeys) | navbatda | |
+| 2.3 Qoldiq bo'laklari, TMO | navbatda | |
 
 ### 1a — nima qo'shildi
 
@@ -77,3 +81,34 @@ Tekshirildi (bir martalik skriptlar va curl, ikki obunachi `alfa`, `beta`):
 **Prodga chiqishdan oldin (multi):** wildcard DNS (`*.BASE_DOMAIN`) va wildcard TLS — Caddy'da DNS-provayder
 moduli yoki on-demand TLS kerak; PgBouncer; obunachilar soni oshganda engine keshiga chegara.
 `core/perf.py` metrikalari va valyuta kursi keshi ataylab umumiy (platforma darajasi).
+
+> **2026-10-28 qarori (TZ Q21):** obuna hozir qurilmaydi. 1b kodi «fortochka» bo'lib `single` rejimda uxlaydi.
+> Yangi kod faqat: baza — `local_session`, Redis kaliti — `tkey`, fon vazifasi — `queue.enqueue`.
+
+### 2.1 — ombor moduli
+
+`catalog`/`stock` modellari, servislari, sxemalari va yo'llari `app/modules/ombor/` ga ko'chdi (`git mv`, jadval va
+endpointlar o'zgarmagan, `from app.models import CatalogItem` ishlayveradi). Router ro'yxati
+`app/api/router.py` ga ko'chdi: `app.api.deps` ni import qilgan modul butun router daraxtini tortib aylana importga
+tushmasin. Beshala ombor orakli toza bazada o'tadi (36, 37, 21, 16, 22). `ombor_hujjat_oracle` dagi qattiq
+sana (2026-10-16) bugungi kunga almashtirildi — sana o'tgach FIFO tekshiruvi soxta yiqilardi (asl MES da ham 19/21 edi).
+
+### 2.2 — rezerv va to'lov muddati (backend)
+
+| Qism | Joy |
+| --- | --- |
+| Jadvallar | `material_map` (fayl materiali → katalog, `koef`), `rezerv` (buyurtma sarlavhasi: holat, muddat, direktor ruxsati), `rezerv_line`; `client.doimiy`, `client.kredit_limit` — migratsiya `d5b092eb17e0` |
+| Qoidalar | `modules/ombor/services/rezerv.py` |
+| Ochiq interfeys | `modules/ombor/service.py`: `on_project_loaded`, `on_payment_changed`, `production_block_reason`, `on_order_cancelled`, `expire_reservations` |
+| Ishlab chiqarishdagi ulanishlar | `orders/files.py` (yuklash → rezerv), `orders/lifecycle.py` (summa/avans → yechish; `/start` darvozasi; bekor) |
+| Ombor hujjatlari | sotuv va sexga berish faqat **bo'sh** qoldiqdan; kirim yetmagan rezervlarni qoplaydi (avval yechilganlar) |
+| Cron | har 5 daqiqada muddati o'tganlar bo'shatiladi |
+| API | `GET /ombor/rezerv/{id}`, `POST .../qayta`, `POST .../tasdiq` (direktor), `GET /ombor/taminot`, `POST /ombor/moslash` |
+| Sozlamalar | `rezerv_muddat_kun`=3, `eng_kam_avans_foiz`=50, `rezerv_darvoza`=1 |
+
+Kroy tayyor = texnolog `.project` yuklagan payt (MX Kroy ulanguncha). To'langan summa — `order.advance_payment`,
+buyurtma summasi — `order.amount` (kassagacha, Q24; faqat `paid_and_required` o'qiydi).
+
+Tekshirildi: `rezerv_oracle.py` 23/23 (qoplash, band qoldiq sotilmasligi, moslash, kirim qoplashi, 50 % chegara,
+muddat o'tishi, kredit limiti, direktor ruxsati, bekor, ta'minot ro'yxati); HTTP: rezerv yo'llari, avans
+999 999 → `faol`, 1 000 000 → `yechildi`, bekor → `bekor`; migratsiya upgrade/downgrade/upgrade, `alembic check` toza.

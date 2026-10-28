@@ -23,6 +23,7 @@ from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import AndonEvent, BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
 from app.models.enums import SessionStatus
+from app.modules.ombor import service as ombor
 from app.modules.platforma import service as platforma
 from app.services.activity import last_activity
 from app.services.downtimes import SYNC_WINDOW, sync_machine
@@ -433,6 +434,19 @@ def per_tenant_cron(fn: TaskFn) -> TaskFn:
     return run
 
 
+#: Rezerv muddatini tekshirish oralig'i (EKO TZ §5 B3)
+REZERV_SWEEP_MINUTES = 5
+
+
+async def expire_reservations(ctx: dict[str, Any]) -> str:
+    """To'lov muddati o'tgan rezervlarni bo'shatadi — material yana sotuvga ochiladi."""
+    async with local_session() as db:
+        n = await ombor.expire_reservations(db)
+        await db.commit()
+    return f"expired:{n}"
+
+
 all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
 sync_downtimes_all = per_tenant_cron(sync_downtimes)
 close_idle_sessions_all = per_tenant_cron(close_idle_sessions)
+expire_reservations_all = per_tenant_cron(expire_reservations)

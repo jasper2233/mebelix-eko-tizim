@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 from app.modules.ombor.schemas.stock import DocIn
+from app.modules.ombor.services import rezerv
 from app.modules.ombor.services.warehouse import abc_classes, get_pricing, reprice
 
 PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
@@ -184,6 +185,24 @@ def add_lot(
     )
 
 
+async def _check_free(db: AsyncSession, need: dict[int, Decimal], items: dict[int, CatalogItem]) -> list[str]:
+    """Chiqim/sexga berishda yetarlimi. Buyurtmalarga band (rezerv) qism sotilmaydi va sexga
+    berilmaydi — faqat bo'sh qoldiq (EKO TZ §4.3)."""
+    errors: list[str] = []
+    band = await rezerv.reserved_qty(db, need)
+    for iid, q in need.items():
+        it = items[iid]
+        free = it.quantity - band.get(iid, Decimal(0))
+        if q > it.quantity:
+            errors.append(f"{it.name}: {fmt(q)} {it.unit or ''} kerak, omborda {fmt(it.quantity)} bor")
+        elif q > free:
+            errors.append(
+                f"{it.name}: {fmt(q)} {it.unit or ''} kerak, bo'sh {fmt(max(free, Decimal(0)))} — "
+                f"{fmt(band[iid])} buyurtmalarga band"
+            )
+    return errors
+
+
 async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     """Qoralamani tasdiqlaydi: tekshiradi, qoldiq/partiya/harakat yozadi, qulflaydi. Xato — `DocError`."""
     if doc.status != "draft":
@@ -231,10 +250,7 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
         elif it.catalog != "X":
             need[it.id] = need.get(it.id, Decimal(0)) + ln.qty
     if not is_k:
-        for iid, q in need.items():
-            it = items[iid]
-            if q > it.quantity:
-                errors.append(f"{it.name}: {fmt(q)} {it.unit or ''} kerak, omborda {fmt(it.quantity)} bor")
+        errors += await _check_free(db, need, items)
     if errors:
         raise DocError(errors)
 
@@ -290,6 +306,9 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     doc.confirmed_at = datetime.now(UTC)
     doc.confirmed_by_id = user_id
     await db.flush()
+    if is_k:
+        # Yangi kelgan material yetmay turgan rezervlarga navbat bilan beriladi (TZ §4.3 7-band)
+        await rezerv.recover_shortages(db, items)
 
 
 async def inventory(

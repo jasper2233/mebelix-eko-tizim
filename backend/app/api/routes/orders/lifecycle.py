@@ -42,6 +42,7 @@ from app.models.enums import (
     OrderStatus,
 )
 from app.models.user import User
+from app.modules.ombor import service as ombor
 from app.schemas.common import Message, Paginated
 from app.schemas.orders import (
     MachineAssignments,
@@ -259,6 +260,9 @@ async def update_order(
             raise NotFoundException("Mijoz topilmadi.")
     for field, value in update_data.items():
         setattr(order, field, value)
+    if {"amount", "advance_payment"} & update_data.keys():
+        # To'lov chegarasi bajarilsa material buyurtmaga yechiladi (EKO TZ §5 B2)
+        await ombor.on_payment_changed(db, order)
     log_action(
         db,
         module="orders",
@@ -290,6 +294,7 @@ async def cancel_order(
     order.cancelled_at = datetime.now(UTC)
     order.cancel_reason = body.reason
     order.cancelled_by_id = current_user.id
+    await ombor.on_order_cancelled(db, order.id)  # material rezervi bo'shaydi (EKO TZ §5 B12)
     log_action(
         db,
         module="orders",
@@ -649,6 +654,9 @@ async def start_order_production(
     ]
     if missing:
         raise ForbiddenException(f"Ish markazi tanlanmagan postlar: {', '.join(missing)}")
+    # To'lov/rezerv darvozasi: yechilgan rezerv, kredit limiti yoki direktor ruxsati (EKO TZ §5 B4)
+    if (reason := await ombor.production_block_reason(db, order)) is not None:
+        raise ForbiddenException(reason)
 
     # Tanlangan stanokni marshrut qatorlariga muhrlash — terminal shu bo'yicha filtrlaydi.
     await stamp_route_machines(db, order)

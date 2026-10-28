@@ -10,8 +10,10 @@ from app.core.logger import setup_logging
 from app.tasks import (
     DOWNTIME_SWEEP_MINUTES,
     IDLE_SWEEP_MINUTES,
+    REZERV_SWEEP_MINUTES,
     all_tasks,
     close_idle_sessions_all,
+    expire_reservations_all,
     sync_downtimes_all,
 )
 
@@ -46,6 +48,8 @@ class WorkerSettings:
         cron(close_idle_sessions_all, minute=set(range(0, 60, IDLE_SWEEP_MINUTES))),
         # Pico to'xtashlarini yozish (`services/downtimes.py`) — terminal o'chiq bo'lsa ham
         cron(sync_downtimes_all, minute=set(range(0, 60, DOWNTIME_SWEEP_MINUTES))),
+        # To'lov muddati o'tgan rezervlarni bo'shatish (EKO TZ §4.3)
+        cron(expire_reservations_all, minute=set(range(0, 60, REZERV_SWEEP_MINUTES))),
     ]
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup

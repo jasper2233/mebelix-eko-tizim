@@ -14,6 +14,7 @@ from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
 from app.models import OrderFile, Post
 from app.models.enums import FileKind, OrderStatus, PostCode
+from app.modules.ombor import service as ombor
 from app.schemas.common import Message
 from app.schemas.orders import ProjectUploadResult
 from app.schemas.terminal import CutmapState
@@ -98,6 +99,8 @@ async def upload_order_project(
             # Qayta yuklash marshrutlarni `machine_id=None` bilan yaratadi — ish markazi tanlovi
             # turgan bo'lsa ham muhr qaytmasdi (u faqat "ishga uzatish"da bosilardi).
             await stamp_route_machines(db, order)
+        # Kroy tayyor — material rezervi (qayta) quriladi, shu tranzaksiyada (EKO TZ §5 B1)
+        await ombor.on_project_loaded(db, order)
     except Exception as exc:
         await db.rollback()
         restore_stale_files(stale_files, root)

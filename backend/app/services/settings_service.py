@@ -53,6 +53,12 @@ KROMKA_SHORT_MM = "kromka_short_mm"
 #: tiqiladi (egasining qarori 2026-10-18: aynan 100 mm, markerlangan, kromka yonida turadi).
 #: `0` — to'ldiruvchi qoidasi o'chiriladi. Buyurtma detali emas, shuning uchun skanerlanmaydi.
 KROMKA_FILLER_MM = "kromka_filler_mm"
+#: Rezerv (EKO TIZIM TZ §4.3, Q13): to'lov shuncha kun ichida chegaraga yetmasa rezerv bo'shaydi
+REZERV_MUDDAT_KUN = "rezerv_muddat_kun"
+#: Chegara: buyurtma summasining shuncha foizi to'lansa material buyurtmaga yechiladi
+ENG_KAM_AVANS_FOIZ = "eng_kam_avans_foiz"
+#: 1 — rezervi yechilmagan (va limit/direktor ruxsatisiz) buyurtma ishlab chiqarishga o'tmaydi; 0 — o'chiq
+REZERV_DARVOZA = "rezerv_darvoza"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -65,6 +71,9 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     KROMKA_BIND_BEFORE_S: (5, 600),
     KROMKA_SHORT_MM: (0, 500),
     KROMKA_FILLER_MM: (0, 500),
+    REZERV_MUDDAT_KUN: (1, 60),
+    ENG_KAM_AVANS_FOIZ: (0, 100),
+    REZERV_DARVOZA: (0, 1),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -79,6 +88,9 @@ DEFAULTS: dict[str, str] = {
     KROMKA_BIND_BEFORE_S: "60",
     KROMKA_SHORT_MM: "150",
     KROMKA_FILLER_MM: "100",
+    REZERV_MUDDAT_KUN: "3",
+    ENG_KAM_AVANS_FOIZ: "50",
+    REZERV_DARVOZA: "1",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

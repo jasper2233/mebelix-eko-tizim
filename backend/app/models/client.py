@@ -1,4 +1,6 @@
-from sqlalchemy import ForeignKey, String, Text
+from decimal import Decimal
+
+from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import BaseModel
@@ -15,3 +17,8 @@ class Client(BaseModel):
     phone_alt: Mapped[str | None] = mapped_column(String(13), default=None, kw_only=True)
     address: Mapped[str | None] = mapped_column(String(255), default=None, kw_only=True)
     notes: Mapped[str | None] = mapped_column(Text, default=None, kw_only=True)
+    #: Doimiy mijoz — to'lovsiz ishlab chiqarishga kira oladi, lekin faqat kredit limiti doirasida
+    #: (EKO TIZIM TZ Q14). Limitdan oshsa — direktor tasdig'i (Q22)
+    doimiy: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", kw_only=True)
+    #: So'm. Bo'sh = limit yo'q (doimiy bo'lsa ham to'lovsiz ishga tushmaydi)
+    kredit_limit: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
