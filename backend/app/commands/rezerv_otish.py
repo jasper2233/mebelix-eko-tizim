@@ -19,8 +19,7 @@ from app.core.db import local_session
 from app.crud import log_action
 from app.models import Order
 from app.models.enums import OrderStatus
-from app.modules.ombor.models import Rezerv
-from app.modules.ombor.services import rezerv
+from app.modules.ombor import service as ombor
 
 
 async def run(apply: bool) -> None:
@@ -34,37 +33,28 @@ async def run(apply: bool) -> None:
                 )
             ).scalars()
         )
-        tirik = set(
-            (
-                await db.execute(
-                    select(Rezerv.order_id).where(Rezerv.holat.in_(rezerv.TIRIK), Rezerv.is_deleted == False)  # noqa: E712
-                )
-            ).scalars()
-        )
-        todo = [o for o in orders if o.id not in tirik]
-        for o in todo:
+        done = 0
+        for o in orders:
             if not o.material_usage:
                 print(f"  {o.number}: fayl yuklanmagan — o'tkazib yuborildi (yuklanganda rezerv o'zi quriladi)")
-                continue
-            print(f"  {o.number}: rezerv + ruxsat")
-            if not apply:
-                continue
-            await rezerv.reserve_for_order(db, o)
-            await rezerv.approve(db, o.id, None)
-            log_action(
-                db,
-                module="rezerv",
-                action="otish",
-                entity_type="order",
-                entity_id=o.id,
-                message="Rezerv qoidasiga o'tish: rezerv qurildi va tizim nomidan ruxsat berildi",
-            )
-        print(f"Texnologda: {len(orders)}, rezervi bor: {len(orders) - len(todo)}, ishlov: {len(todo)}")
+            elif await ombor.adopt_open_order(db, o):
+                done += 1
+                print(f"  {o.number}: rezerv + ruxsat")
+                log_action(
+                    db,
+                    module="rezerv",
+                    action="otish",
+                    entity_type="order",
+                    entity_id=o.id,
+                    message="Rezerv qoidasiga o'tish: rezerv qurildi va tizim nomidan ruxsat berildi",
+                )
+        print(f"Texnologda: {len(orders)}, yangi rezerv + ruxsat: {done}")
         if apply:
             await db.commit()
             print("YOZILDI.")
         else:
-            print("Sinov rejimi — yozish uchun --apply")
+            await db.rollback()
+            print("Sinov rejimi (hech narsa yozilmadi) — yozish uchun --apply")
 
 
 def main() -> None:

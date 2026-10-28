@@ -1,23 +1,19 @@
 """Rezerv, ta'minot ehtiyoji va material moslash — `/ombor/...` (TZ §4.3)."""
 
 from decimal import Decimal
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from sqlalchemy import select
 
-from app.api.deps import ManagerOrTexnologUser, SessionDep, WarehouseReadUser, WarehouseUser, client_ip, require_roles
+from app.api.deps import DirectorUser, ManagerOrTexnologUser, SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import log_action
-from app.models import Order, User
-from app.models.enums import UserRole
+from app.models import Order
 from app.modules.ombor.models import CatalogItem, Rezerv, RezervLine
 from app.modules.ombor.schemas.rezerv import MaterialMapIn, RezervLineRead, RezervRead, ShortageRead
 from app.modules.ombor.services import rezerv
 
 router = APIRouter(prefix="/ombor", tags=["ombor"])
-
-DirectorUser = Annotated[User, Depends(require_roles(UserRole.DIRECTOR))]
 
 
 async def _order(db: SessionDep, order_id: int) -> Order:

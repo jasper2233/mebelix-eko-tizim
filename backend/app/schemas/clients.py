@@ -21,6 +21,9 @@ class ClientRead(BaseModel):
     phone_alt: str | None
     address: str | None
     notes: str | None
+    #: Doimiy mijoz va kredit limiti (so'm) — EKO TZ Q14; o'zgartirish faqat direktor
+    doimiy: bool = False
+    kredit_limit: Decimal | None = None
     created_at: datetime
     # Quyidagilar route'da hisoblanadi, bazada saqlanmaydi.
     orders_count: int = 0
@@ -77,3 +80,11 @@ class ClientUpdate(BaseModel):
     phone_alt: _Phone
     address: str | None = Field(default=None, max_length=255)
     notes: str | None = None
+
+
+class ClientCredit(BaseModel):
+    """Doimiy mijoz va kredit limiti — moliyaviy qaror, faqat direktor (EKO TZ Q14, Q22).
+    `kredit_limit` bo'sh = limit yo'q: doimiy bo'lsa ham to'lovsiz ishga tushmaydi."""
+
+    doimiy: bool
+    kredit_limit: Decimal | None = Field(default=None, ge=0, le=Decimal(10) ** 13)

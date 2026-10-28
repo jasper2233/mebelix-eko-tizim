@@ -127,3 +127,5 @@ WarehouseReadUser = Annotated[
 #: katalogni ko'radi, lekin qoldiqni ular yuritmaydi.
 WarehouseUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.SKLADCHI))]
 AdminUser = Annotated[User, Depends(require_roles(UserRole.ADMIN))]
+#: Moliyaviy qarorlar: kredit limiti, to'lovsiz ishlab chiqarishga ruxsat (EKO TZ Q14, Q22)
+DirectorUser = Annotated[User, Depends(require_roles(UserRole.DIRECTOR))]

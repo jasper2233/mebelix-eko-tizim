@@ -5,14 +5,14 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import defer
 
-from app.api.deps import ManagerUser, SessionDep, StaffReadUser, client_ip
+from app.api.deps import DirectorUser, ManagerUser, SessionDep, StaffReadUser, client_ip
 from app.api.routes._shared import drop_forbidden_nulls
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException
 from app.crud import crud_clients, log_action
 from app.models import ORDER_FAT_COLUMNS, Client, Order
 from app.models.enums import OrderStatus
-from app.schemas.clients import ClientCreate, ClientDetail, ClientOrderRow, ClientRead, ClientUpdate
+from app.schemas.clients import ClientCreate, ClientCredit, ClientDetail, ClientOrderRow, ClientRead, ClientUpdate
 from app.schemas.common import Message, Paginated
 
 router = APIRouter(prefix="/clients", tags=["clients"])
@@ -222,6 +222,32 @@ async def update_client(
         user_id=current_user.id,
         entity_type="client",
         entity_id=client.id,
+        ip=client_ip(request),
+    )
+    await db.commit()
+    await db.refresh(client)
+    return client
+
+
+DOIMIY_MATN = {True: "ha", False: "yo'q"}
+
+
+@router.patch("/{client_id}/kredit", response_model=ClientRead, operation_id="update_client_credit")
+async def update_client_credit(
+    db: SessionDep, current_user: DirectorUser, client_id: int, body: ClientCredit, request: Request
+) -> Client:
+    """Doimiy mijoz belgisi va kredit limiti — faqat direktor (EKO TZ Q14, Q22)."""
+    client = await crud_clients.get_or_404(db, "Mijoz topilmadi.", id=client_id)
+    client.doimiy = body.doimiy
+    client.kredit_limit = body.kredit_limit
+    log_action(
+        db,
+        module="clients",
+        action="kredit",
+        user_id=current_user.id,
+        entity_type="client",
+        entity_id=client.id,
+        message=f"Doimiy: {DOIMIY_MATN[body.doimiy]}, kredit limiti: {body.kredit_limit or '—'}",
         ip=client_ip(request),
     )
     await db.commit()

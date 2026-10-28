@@ -1030,6 +1030,23 @@ export type ClientCreate = {
 };
 
 /**
+ * ClientCredit
+ *
+ * Doimiy mijoz va kredit limiti — moliyaviy qaror, faqat direktor (EKO TZ Q14, Q22).
+ * `kredit_limit` bo'sh = limit yo'q: doimiy bo'lsa ham to'lovsiz ishga tushmaydi.
+ */
+export type ClientCredit = {
+    /**
+     * Doimiy
+     */
+    doimiy: boolean;
+    /**
+     * Kredit Limit
+     */
+    kredit_limit?: number | string | null;
+};
+
+/**
  * ClientDetail
  *
  * Qator ustiga bosilganda: to'liq ma'lumot + buyurtmalar ro'yxati.
@@ -1059,6 +1076,14 @@ export type ClientDetail = {
      * Notes
      */
     notes: string | null;
+    /**
+     * Doimiy
+     */
+    doimiy?: boolean;
+    /**
+     * Kredit Limit
+     */
+    kredit_limit?: string | null;
     /**
      * Created At
      */
@@ -1161,6 +1186,14 @@ export type ClientRead = {
      * Notes
      */
     notes: string | null;
+    /**
+     * Doimiy
+     */
+    doimiy?: boolean;
+    /**
+     * Kredit Limit
+     */
+    kredit_limit?: string | null;
     /**
      * Created At
      */
@@ -3894,6 +3927,28 @@ export type MachineUpdate = {
 };
 
 /**
+ * MaterialMapIn
+ */
+export type MaterialMapIn = {
+    /**
+     * Kind
+     */
+    kind: 'sheet' | 'band' | 'hardware';
+    /**
+     * Tashqi Kalit
+     */
+    tashqi_kalit: string;
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Koef
+     */
+    koef?: number | string;
+};
+
+/**
  * MaterialUsageItem
  *
  * ingest.py material_usage yozuvi: GibLab fayldan avtomatik registr.
@@ -5403,6 +5458,102 @@ export type ReportGroupRow = {
 };
 
 /**
+ * RezervLineRead
+ */
+export type RezervLineRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Tashqi Kalit
+     */
+    tashqi_kalit: string;
+    /**
+     * Tashqi Nom
+     */
+    tashqi_nom: string;
+    /**
+     * Fayl Qty
+     */
+    fayl_qty: string;
+    /**
+     * Fayl Birlik
+     */
+    fayl_birlik: string;
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Item Name
+     */
+    item_name?: string | null;
+    /**
+     * Item Unit
+     */
+    item_unit?: string | null;
+    /**
+     * Kerak Qty
+     */
+    kerak_qty: string;
+    /**
+     * Qoplangan Qty
+     */
+    qoplangan_qty: string;
+};
+
+/**
+ * RezervRead
+ */
+export type RezervRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Muddat
+     */
+    muddat: string;
+    /**
+     * Yechilgan At
+     */
+    yechilgan_at: string | null;
+    /**
+     * Tasdiq At
+     */
+    tasdiq_at: string | null;
+    /**
+     * Tolangan
+     */
+    tolangan: string;
+    /**
+     * Chegara
+     */
+    chegara: string;
+    /**
+     * Tosiq
+     */
+    tosiq: string | null;
+    /**
+     * Lines
+     */
+    lines: Array<RezervLineRead>;
+};
+
+/**
  * RouteCell
  *
  * One matrix cell: part × post.
@@ -5660,6 +5811,40 @@ export type ShiftStart = {
      * Join
      */
     join?: boolean;
+};
+
+/**
+ * ShortageRead
+ */
+export type ShortageRead = {
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Birlik
+     */
+    birlik: string;
+    /**
+     * Kerak
+     */
+    kerak: string;
+    /**
+     * Qoplangan
+     */
+    qoplangan: string;
+    /**
+     * Yetmaydi
+     */
+    yetmaydi: string;
+    /**
+     * Buyurtmalar
+     */
+    buyurtmalar: number;
 };
 
 /**
@@ -7858,6 +8043,36 @@ export type ReadClientDetailResponses = {
 };
 
 export type ReadClientDetailResponse = ReadClientDetailResponses[keyof ReadClientDetailResponses];
+
+export type UpdateClientCreditData = {
+    body: ClientCredit;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: never;
+    url: '/api/v1/clients/{client_id}/kredit';
+};
+
+export type UpdateClientCreditErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateClientCreditError = UpdateClientCreditErrors[keyof UpdateClientCreditErrors];
+
+export type UpdateClientCreditResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClientRead;
+};
+
+export type UpdateClientCreditResponse = UpdateClientCreditResponses[keyof UpdateClientCreditResponses];
 
 export type ReadEmployeesData = {
     body?: never;
@@ -10226,6 +10441,141 @@ export type ReadStockItemHistoryResponses = {
 };
 
 export type ReadStockItemHistoryResponse = ReadStockItemHistoryResponses[keyof ReadStockItemHistoryResponses];
+
+export type ReadOrderRezervData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/rezerv/{order_id}';
+};
+
+export type ReadOrderRezervErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderRezervError = ReadOrderRezervErrors[keyof ReadOrderRezervErrors];
+
+export type ReadOrderRezervResponses = {
+    /**
+     * Successful Response
+     */
+    200: RezervRead;
+};
+
+export type ReadOrderRezervResponse = ReadOrderRezervResponses[keyof ReadOrderRezervResponses];
+
+export type RebuildOrderRezervData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/rezerv/{order_id}/qayta';
+};
+
+export type RebuildOrderRezervErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RebuildOrderRezervError = RebuildOrderRezervErrors[keyof RebuildOrderRezervErrors];
+
+export type RebuildOrderRezervResponses = {
+    /**
+     * Successful Response
+     */
+    200: RezervRead;
+};
+
+export type RebuildOrderRezervResponse = RebuildOrderRezervResponses[keyof RebuildOrderRezervResponses];
+
+export type ApproveOrderRezervData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/rezerv/{order_id}/tasdiq';
+};
+
+export type ApproveOrderRezervErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApproveOrderRezervError = ApproveOrderRezervErrors[keyof ApproveOrderRezervErrors];
+
+export type ApproveOrderRezervResponses = {
+    /**
+     * Successful Response
+     */
+    200: RezervRead;
+};
+
+export type ApproveOrderRezervResponse = ApproveOrderRezervResponses[keyof ApproveOrderRezervResponses];
+
+export type ReadSupplyNeedsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/taminot';
+};
+
+export type ReadSupplyNeedsResponses = {
+    /**
+     * Response Read Supply Needs
+     *
+     * Successful Response
+     */
+    200: Array<ShortageRead>;
+};
+
+export type ReadSupplyNeedsResponse = ReadSupplyNeedsResponses[keyof ReadSupplyNeedsResponses];
+
+export type MapProjectMaterialData = {
+    body: MaterialMapIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/moslash';
+};
+
+export type MapProjectMaterialErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MapProjectMaterialError = MapProjectMaterialErrors[keyof MapProjectMaterialErrors];
+
+export type MapProjectMaterialResponses = {
+    /**
+     * Response Map Project Material
+     *
+     * Successful Response
+     */
+    200: Array<ShortageRead>;
+};
+
+export type MapProjectMaterialResponse = MapProjectMaterialResponses[keyof MapProjectMaterialResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

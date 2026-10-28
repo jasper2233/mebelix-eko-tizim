@@ -65,6 +65,10 @@ async def _tirik(db: AsyncSession, order_id: int) -> Rezerv | None:
     ).scalar_one_or_none()
 
 
+async def has_live(db: AsyncSession, order_id: int) -> bool:
+    return await _tirik(db, order_id) is not None
+
+
 async def reserved_qty(db: AsyncSession, item_ids: Iterable[int]) -> dict[int, Decimal]:
     """Pozitsiyalar bo'yicha buyurtmalarga band (qoplangan) miqdor."""
     ids = list(set(item_ids))

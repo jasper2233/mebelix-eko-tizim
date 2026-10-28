@@ -33,3 +33,13 @@ async def on_order_cancelled(db: AsyncSession, order_id: int) -> None:
 async def expire_reservations(db: AsyncSession) -> int:
     """B3 (cron): to'lov muddati o'tgan rezervlar bo'shatiladi. Nechtasi o'zgargani qaytadi."""
     return await rezerv.expire_due(db)
+
+
+async def adopt_open_order(db: AsyncSession, order: Order) -> bool:
+    """Rezerv qoidasiga o'tish kuni (bir martalik): tirik rezervi yo'q buyurtmaga rezerv quriladi va
+    tizim nomidan ruxsat beriladi. Rezervi bor yoki fayli yo'q bo'lsa — hech narsa qilmaydi (False)."""
+    if not order.material_usage or await rezerv.has_live(db, order.id):
+        return False
+    await rezerv.reserve_for_order(db, order)
+    await rezerv.approve(db, order.id, None)
+    return True
