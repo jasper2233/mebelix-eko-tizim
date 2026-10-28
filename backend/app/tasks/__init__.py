@@ -1,6 +1,8 @@
 import base64
+import functools
 import json
 import logging
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -15,10 +17,13 @@ if TYPE_CHECKING:
 
 from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
+from app.core.tenancy import DEFAULT_TENANT, tkey, use_tenant
+from app.core.utils.queue import TENANT_KWARG
 from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import AndonEvent, BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
 from app.models.enums import SessionStatus
+from app.modules.platforma import service as platforma
 from app.services.activity import last_activity
 from app.services.downtimes import SYNC_WINDOW, sync_machine
 from app.services.labels import (
@@ -44,7 +49,7 @@ def agent_revoked_key(agent_id: int) -> str:
     da sezilardi va bekor qilingan token o'sha vaqt davomida chek olib chop
     etaverardi (prod-repro bilan o'lchandi: 295 s). TTL 10 daqiqa — ulanish
     shu vaqt ichida albatta uziladi, keyin bayroq keraksiz."""
-    return f"mes:agent:revoked:{agent_id}"
+    return tkey(f"mes:agent:revoked:{agent_id}")
 
 
 def bridge_conn_key(agent_id: int) -> str:
@@ -56,7 +61,7 @@ def bridge_conn_key(agent_id: int) -> str:
     uzilgan» belgisida qotib qolardi, agent esa ishlab turardi (prod 2026-10-03).
     Endi «uzildi» ni faqat kalitda hali O'Z id'si turgan ulanish chiqaradi
     (`ws.py: _bridge_gone`). TTL 10 daqiqa — eski soket bundan ancha oldin yopiladi."""
-    return f"mes:bridge:conn:{agent_id}"
+    return tkey(f"mes:bridge:conn:{agent_id}")
 
 
 def print_queue_key(agent_id: int) -> str:
@@ -74,7 +79,7 @@ def print_queue_key(agent_id: int) -> str:
     qaytarib jimgina yo'qolardi. Endi taskning o'zida `agent_id` ning
     standart qiymati YO'Q, ya'ni agentni unutgan chaqiruvchi TypeError oladi.
     """
-    return f"{PRINT_QUEUE_KEY}:{agent_id}"
+    return tkey(f"{PRINT_QUEUE_KEY}:{agent_id}")
 
 
 #: Agent `last_seen_at` ni har 5 daqiqada yangilaydi — 6 daqiqadan yangi bo'lsa
@@ -392,4 +397,42 @@ async def close_idle_sessions(ctx: dict[str, Any]) -> str:
     return f"closed:{len(closed)}"
 
 
-all_tasks = [print_label, print_pachka_label, print_waste_label, print_badge]
+TaskFn = Callable[..., Coroutine[Any, Any, str]]
+
+
+def tenant_task(fn: TaskFn) -> TaskFn:
+    """Vazifani navbatga qo'ygan obunachi nomidan bajaradi (`queue.enqueue` uzatgan `eko_tenant`).
+
+    `functools.wraps` — arq vazifani `__qualname__` bo'yicha taniydi, nom o'zgarmasin.
+    """
+
+    @functools.wraps(fn)
+    async def run(ctx: dict[str, Any], *args: Any, **kwargs: Any) -> str:
+        with use_tenant(kwargs.pop(TENANT_KWARG, DEFAULT_TENANT)):
+            return await fn(ctx, *args, **kwargs)
+
+    return run
+
+
+def per_tenant_cron(fn: TaskFn) -> TaskFn:
+    """Cron vazifasini HAR faol obunachi uchun ketma-ket bajaradi. Bittasi yiqilsa qolganlari
+    to'xtamaydi — xato logga yoziladi va natijada `<kod>:xato` bo'ladi."""
+
+    @functools.wraps(fn)
+    async def run(ctx: dict[str, Any]) -> str:
+        results: list[str] = []
+        for kod in await platforma.active_tenants():
+            with use_tenant(kod):
+                try:
+                    results.append(f"{kod}:{await fn(ctx)}")
+                except Exception:
+                    logger.exception("Cron %s obunachi %s da yiqildi", fn.__name__, kod)
+                    results.append(f"{kod}:xato")
+        return "; ".join(results)
+
+    return run
+
+
+all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
+sync_downtimes_all = per_tenant_cron(sync_downtimes)
+close_idle_sessions_all = per_tenant_cron(close_idle_sessions)

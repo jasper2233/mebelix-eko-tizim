@@ -207,7 +207,7 @@ async def print_employee_badge(
             status_code=422,
             detail=f"Bir nechta printer bor — qaysi biridan chiqarishni tanlang: {nomlar}",
         )
-    await queue.pool.enqueue_job("print_badge", employee.id, target.id)
+    await queue.enqueue("print_badge", employee.id, target.id)
     log_action(
         db,
         module="print",

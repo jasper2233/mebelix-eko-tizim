@@ -16,6 +16,8 @@ from typing import Any
 from fastapi import WebSocket
 from redis.asyncio import Redis
 
+from app.core.tenancy import DEFAULT_TENANT, tenant
+
 logger = logging.getLogger(__name__)
 
 #: Pub/sub uzilgach qayta obuna oralig'i. Qisqa: fan-out to'xtagan har soniya
@@ -31,10 +33,14 @@ class WsClient:
     scope: str  # "terminal" | "tablo" | "dashboard"
     post_id: int | None = None
     machine_id: int | None = None
+    #: Ulanish ochilgan obunachi — kanal hammaga umumiy, boshqa obunachi hodisasi o'tkazilmaydi
+    tenant: str = field(default_factory=tenant)
 
     def wants(self, event: dict[str, Any]) -> bool:
         """Terminallar O'Z posti/ish markazi eventlarini oladi;
         dashboard va TABLO hammasini; nishonsiz event esa hammaga ketadi."""
+        if event.get("tenant", DEFAULT_TENANT) != self.tenant:
+            return False
         target_post = event.get("post_id")
         target_machine = event.get("machine_id")
         # TABLO — devor ekrani, u BUTUN tsex matritsasini ko'rsatadi, ya'ni post
@@ -67,7 +73,7 @@ class WsManager:
 
     async def publish(self, event_type: str, payload: dict[str, Any], **targets: int | None) -> None:
         """Fire an event: type + payload (+ post_id/machine_id targeting)."""
-        event: dict[str, Any] = {"type": event_type, "payload": payload}
+        event: dict[str, Any] = {"type": event_type, "payload": payload, "tenant": tenant()}
         event.update({k: v for k, v in targets.items() if v is not None})
         if self.redis is not None:
             try:

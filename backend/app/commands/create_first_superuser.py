@@ -12,10 +12,20 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def create_first_user(session: AsyncSession) -> None:
-    name = settings.ADMIN_NAME
-    phone = settings.ADMIN_PHONE
-    username = settings.ADMIN_USERNAME
+async def create_first_user(
+    session: AsyncSession,
+    *,
+    name: str | None = None,
+    phone: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+) -> None:
+    """Birinchi admin. Argumentlar berilmasa `.env` dagi `ADMIN_*`; yangi obunachi yaratilganda
+    (`commands/platforma.py create`) — o'sha obunachining o'z admini."""
+    name = name or settings.ADMIN_NAME
+    phone = phone or settings.ADMIN_PHONE
+    username = username or settings.ADMIN_USERNAME
+    password = password or settings.ADMIN_PASSWORD
 
     # Soft-delete qilingan eski admin qatori yangi seed'ni bloklamasin.
     # Telefon VA username bo'yicha qidiramiz: ADMIN_PHONE rotatsiya qilinsa ham
@@ -32,7 +42,7 @@ async def create_first_user(session: AsyncSession) -> None:
             name=name,
             phone=phone,
             username=username,
-            hashed_password=await get_password_hash(settings.ADMIN_PASSWORD),
+            hashed_password=await get_password_hash(password),
             is_active=True,
             is_superuser=True,
         )

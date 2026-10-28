@@ -7,7 +7,13 @@ from arq.worker import Worker
 
 from app.core.health import check_database_connection
 from app.core.logger import setup_logging
-from app.tasks import DOWNTIME_SWEEP_MINUTES, IDLE_SWEEP_MINUTES, all_tasks, close_idle_sessions, sync_downtimes
+from app.tasks import (
+    DOWNTIME_SWEEP_MINUTES,
+    IDLE_SWEEP_MINUTES,
+    all_tasks,
+    close_idle_sessions_all,
+    sync_downtimes_all,
+)
 
 from .config import settings
 from .utils.queue import QUEUE_SEKIN
@@ -37,9 +43,9 @@ class WorkerSettings:
     # Harakatsiz smenalarni yopish (`services/activity.py`). `unique` (sukut) — bir nechta
     # worker nusxasi bo'lsa ham bitta davrda bitta marta ishlaydi.
     cron_jobs = [
-        cron(close_idle_sessions, minute=set(range(0, 60, IDLE_SWEEP_MINUTES))),
+        cron(close_idle_sessions_all, minute=set(range(0, 60, IDLE_SWEEP_MINUTES))),
         # Pico to'xtashlarini yozish (`services/downtimes.py`) — terminal o'chiq bo'lsa ham
-        cron(sync_downtimes, minute=set(range(0, 60, DOWNTIME_SWEEP_MINUTES))),
+        cron(sync_downtimes_all, minute=set(range(0, 60, DOWNTIME_SWEEP_MINUTES))),
     ]
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup

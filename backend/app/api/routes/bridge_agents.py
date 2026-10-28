@@ -30,6 +30,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from app.api.deps import AdminUser, SessionDep, client_ip
 from app.core.config import settings
 from app.core.exceptions import DuplicateValueException, NotFoundException
+from app.core.tenancy import tkey
 from app.core.ws import ws_manager
 from app.crud import crud_bridge_agents, crud_machines, log_action
 from app.models import AndonEvent, BridgeAgent, Machine, Post
@@ -388,7 +389,7 @@ async def push_bridge_logs(
     if not lines:
         return Message(message="bo'sh")
     async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
-        key = AGENT_LOG_KEY.format(agent.id)
+        key = tkey(AGENT_LOG_KEY.format(agent.id))
         # Eng yangisi boshida tursin: LPUSH teskari tartibda beriladi
         await redis.lpush(key, *reversed(lines))
         await redis.ltrim(key, 0, AGENT_LOG_KEEP - 1)
@@ -404,7 +405,7 @@ async def read_bridge_logs(db: SessionDep, _: AdminUser, agent_id: int) -> list[
     so'rashga majbur edi — tsexdagi kompyuterga masofadan kirish yo'q."""
     await crud_bridge_agents.get_or_404(db, "Agent topilmadi.", id=agent_id)
     async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
-        rows = await redis.lrange(AGENT_LOG_KEY.format(agent_id), 0, AGENT_LOG_KEEP - 1)
+        rows = await redis.lrange(tkey(AGENT_LOG_KEY.format(agent_id)), 0, AGENT_LOG_KEEP - 1)
     return [r.decode() if isinstance(r, bytes) else r for r in rows]
 
 

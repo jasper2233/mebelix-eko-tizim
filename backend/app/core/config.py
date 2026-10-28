@@ -37,6 +37,11 @@ class ProcessRole(StrEnum):
     WORKER = "worker"  # arq ishchilari
 
 
+class TenancyMode(StrEnum):
+    SINGLE = "single"
+    MULTI = "multi"
+
+
 #: Rol bo'yicha standart `statement_timeout` (ms). 0 = cheklovsiz (Postgres sukuti).
 #: `DB_STATEMENT_TIMEOUT_MS` berilsa shu jadval e'tiborsiz qoladi.
 _STATEMENT_TIMEOUT_MS = {
@@ -80,6 +85,20 @@ class Settings(BaseSettings):
 
     # === Process role (EKO TIZIM TZ §2.2) ===
     API_ROLE: ProcessRole = ProcessRole.ALL
+
+    # === Obuna / ko'p ijarachi (EKO TIZIM TZ §2.4) ===
+    #: `single` — bitta korxona, bitta baza (`POSTGRES_DB`); mijoz serveri va hozirgi MES.
+    #: `multi` — `POSTGRES_DB` platforma bazasi, har obunachi `t_<kod>` bazasida, kod subdomendan.
+    TENANCY_MODE: TenancyMode = TenancyMode.SINGLE
+    #: `multi` da obunachi manzili `<kod>.<BASE_DOMAIN>`
+    BASE_DOMAIN: str = "localhost"
+    #: Har obunachi engine'i kichik: yuzlab obunachi bitta Postgres'ga sig'sin (oldida PgBouncer)
+    TENANT_DB_POOL_SIZE: int = 2
+    TENANT_DB_MAX_OVERFLOW: int = 3
+    #: Obunachi holati (faol/to'xtatilgan, modullar) jarayon ichida shuncha soniya keshlanadi
+    TENANT_CACHE_SECONDS: int = 30
+    #: `single` rejimda yoqilgan modullar (`multi` da — obunachi tarifidan)
+    ENABLED_MODULES: list[str] = ["mes", "ombor", "kassa", "moliya", "soliq", "kroy"]
 
     # === First admin user (created on startup) ===
     ADMIN_NAME: str = "admin"
@@ -153,10 +172,14 @@ class Settings(BaseSettings):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def POSTGRES_URI(self) -> str:
+        return self.postgres_uri_for(self.POSTGRES_DB)
+
+    def postgres_uri_for(self, database: str) -> str:
+        """Shu serverdagi boshqa baza (obunachi `t_<kod>`) uchun URI."""
         # DSN'da band belgili parol (@ / : # ? %) xom f-string'da host/bazaga aylanadi — user/password
         # percent-encode qilinadi. Baza nomi EMAS: SQLAlchemy faqat user/password'ni unquote qiladi.
         credentials = f"{quote(self.POSTGRES_USER, safe='')}:{quote(self.POSTGRES_PASSWORD, safe='')}"
-        location = f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        location = f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{database}"
         return f"{credentials}@{location}"
 
     @computed_field  # type: ignore[prop-decorator]
@@ -207,4 +230,11 @@ def upload_root() -> Path:
     path = Path(settings.UPLOAD_DIR)
     if not path.is_absolute():
         path = Path(__file__).resolve().parents[2] / path
+    # Obunachi fayllari o'z papkasida (`t/<kod>`) — biri boshqasinikini ochib bo'lmasin.
+    # `single` rejimda yo'l avvalgidek: mavjud fayllar joyida qoladi.
+    from app.core.tenancy import tenant_upload_subdir
+
+    sub = tenant_upload_subdir()
+    if sub is not None:
+        path = path / sub
     return path.resolve()

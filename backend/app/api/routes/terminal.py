@@ -1097,7 +1097,7 @@ async def print_waste_item_label(db: SessionDep, user: TerminalUser, waste_id: i
     await _claim_label(db, WasteItem, w.id)
     printer_kutilmoqda = not agent_online(agent.last_seen_at)
     if queue.pool is not None:
-        await queue.pool.enqueue_job("print_waste_label", waste_id, agent.id)
+        await queue.enqueue("print_waste_label", waste_id, agent.id)
     await db.commit()
     return Message(
         message=(
@@ -1198,7 +1198,7 @@ async def print_instance_label(db: SessionDep, user: TerminalUser, instance_id: 
     # chiqa olardi. Bu tartibda esa eng yomon holat — ortiqcha yorliq, u qulfdan
     # ancha arzon.
     if queue.pool is not None:
-        await queue.pool.enqueue_job("print_label", instance_id, print_agent_id)
+        await queue.enqueue("print_label", instance_id, print_agent_id)
     await db.commit()
     await ws_manager.publish("label.printed", {"instance_id": instance_id, "qr_text": qr_text})
     natija = (

@@ -497,7 +497,7 @@ async def close_pachka(db: SessionDep, user: PackUser, ctx: PackCtx, pachka_id: 
     # Tekshiruv bilan shu nuqta orasida navbat o'chgan bo'lsa qadoq YOPIQ-u cheksiz
     # qolmasin: ochiq holatga qaytariladi, qadoqlovchi qayta bosadi.
     try:
-        await queue.pool.enqueue_job("print_pachka_label", pachka.id, agent.id)
+        await queue.enqueue("print_pachka_label", pachka.id, agent.id)
     except Exception:
         pachka.status = PachkaStatus.OPEN
         pachka.closed_at = None

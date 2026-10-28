@@ -19,9 +19,11 @@ from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.deps import get_current_superuser
 from app.core import perf
+from app.core.db import dispose_tenant_engines
 from app.core.health import check_database_connection, check_redis_connection
 from app.core.logger import setup_logging
 from app.core.middleware import RequestLoggingMiddleware
+from app.core.tenancy_middleware import TenantMiddleware
 from app.core.utils.rate_limit import rate_limiter
 from app.core.ws import ws_manager
 
@@ -114,6 +116,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
             await ws_redis.aclose()
         if queue.pool is not None:
             await queue.pool.aclose()  # type: ignore
+        await dispose_tenant_engines()
         if rate_limiter.client is not None:
             await rate_limiter.client.aclose()  # type: ignore[attr-defined]
 
@@ -176,6 +179,8 @@ def create_application(router: APIRouter) -> FastAPI:
         ProxyHeadersMiddleware,  # type: ignore[arg-type]
         trusted_hosts=settings.FORWARDED_ALLOW_IPS,
     )
+    # ENG TASHQI qatlam: obunachi ContextVar'i qolgan hamma middleware va handlerga meros o'tsin
+    application.add_middleware(TenantMiddleware)
     _install_metrics(application)
     _install_docs_router(application)
     return application

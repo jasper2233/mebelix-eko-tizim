@@ -7,7 +7,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from app.core.config import settings
 from app.core.db import DATABASE_URL, Base
+from app.core.tenancy import tenant_db_name
 
 config = context.config
 
@@ -15,7 +17,16 @@ config = context.config
 # satrni olamiz, ya'ni driver/escaping tuzatishi migratsiyaga ham o'z-o'zidan tegadi.
 # `%` ni ikkilantirish SHART: set_main_option qiymatni configparser'ga yozadi va u `%` ni
 # interpolatsiya boshlanishi deb o'qiydi — percent-encode qilingan parol ValueError beradi.
-config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
+#
+# `alembic -x tenant=<kod> upgrade head` — obunachi bazasi (`t_<kod>`, `multi` rejim, TZ §2.4).
+# Hammasi birdaniga: `python -m app.commands.platforma migrate-all`.
+_tenant = context.get_x_argument(as_dictionary=True).get("tenant")
+_url = (
+    DATABASE_URL
+    if not _tenant
+    else f"{settings.POSTGRES_ASYNC_PREFIX}{settings.postgres_uri_for(tenant_db_name(_tenant))}"
+)
+config.set_main_option("sqlalchemy.url", _url.replace("%", "%%"))
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

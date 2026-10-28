@@ -19,6 +19,7 @@ from redis.asyncio import Redis as AsyncRedis
 from redis.exceptions import RedisError
 
 from app.core.config import TASHKENT_TZ, settings
+from app.core.tenancy import tkey
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,9 @@ async def save_live(machine_id: int, live: dict[str, Any]) -> bool:
     esa yordamchi — uning xatosi agentga 500 qaytarib, navbatni qayta yubortirmasin."""
     try:
         async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
-            old_raw = await redis.set(ANDON_LIVE_KEY.format(machine_id), json.dumps(live), ex=ANDON_LIVE_TTL, get=True)
+            old_raw = await redis.set(
+                tkey(ANDON_LIVE_KEY.format(machine_id)), json.dumps(live), ex=ANDON_LIVE_TTL, get=True
+            )
     except (RedisError, OSError) as exc:
         logger.warning("andon jonli holati yozilmadi (machine %s): %r", machine_id, exc)
         return False
@@ -60,7 +63,7 @@ async def read_live(machine_ids: Iterable[int]) -> dict[int, dict[str, Any]]:
         return {}
     try:
         async with AsyncRedis.from_url(settings.REDIS_URL) as redis:
-            rows = await redis.mget([ANDON_LIVE_KEY.format(mid) for mid in ids])
+            rows = await redis.mget([tkey(ANDON_LIVE_KEY.format(mid)) for mid in ids])
     except (RedisError, OSError) as exc:
         logger.warning("andon jonli holati o'qilmadi: %r", exc)
         return {}

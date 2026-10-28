@@ -20,6 +20,7 @@ from datetime import UTC, datetime
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenancy import tkey
 from app.models.enums import POST_ROLES, UserRole
 from app.models.user import User
 from app.services.settings_service import IDLE_OPERATOR_MINUTES, IDLE_STAFF_MINUTES, get_setting
@@ -28,7 +29,7 @@ from app.services.settings_service import IDLE_OPERATOR_MINUTES, IDLE_STAFF_MINU
 def _key(user_id: int) -> str:
     # ponytail: TTL yo'q — kalit hisobga bittadan, bir necha o'nta. TTL qo'yilsa
     # dam olish kunlaridan keyin kalit yo'qolib «faollik noma'lum = ruxsat» bo'lardi.
-    return f"mes:activity:user:{user_id}"
+    return tkey(f"mes:activity:user:{user_id}")
 
 
 async def touch_activity(redis: Redis | None, user_id: int) -> None:

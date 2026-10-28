@@ -11,6 +11,7 @@ from app.core.security import ACCESS_COOKIE_NAME, TokenType, verify_token
 from app.crud import crud_users
 from app.models.enums import UserLevel, UserRole, role_level
 from app.models.user import User
+from app.modules.platforma import service as platforma
 
 SessionDep = Annotated[AsyncSession, Depends(async_get_db)]
 
@@ -85,6 +86,20 @@ def require_level(level: UserLevel) -> Callable[..., Coroutine[Any, Any, User]]:
         if current_user.is_superuser or role_level(current_user.role) >= level:
             return current_user
         raise ForbiddenException("Sizda yetarli huquq yo'q.")
+
+    return checker
+
+
+def require_module(name: str) -> Callable[..., Coroutine[Any, Any, None]]:
+    """Dependency factory: modul obunachi tarifida yoqilganmi (TZ §2.4, 4-qoida).
+
+    Router darajasida ulanadi: `include_router(r, dependencies=[Depends(require_module("kassa"))])`.
+    `single` rejimda `ENABLED_MODULES` sozlamasi (sukut — hammasi).
+    """
+
+    async def checker() -> None:
+        if not await platforma.module_enabled(name):
+            raise ForbiddenException("Bu modul tarifingizga kirmaydi.")
 
     return checker
 

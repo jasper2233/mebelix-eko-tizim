@@ -12,6 +12,7 @@ from starlette.concurrency import run_in_threadpool
 from app.schemas.auth import TokenData
 
 from .config import EnvironmentOption, settings
+from .tenancy import DEFAULT_TENANT, tenant
 
 SECRET_KEY: SecretStr = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
@@ -57,7 +58,9 @@ def _hash_password_sync(password: str) -> str:
 
 def _create_token(data: dict[str, Any], token_type: TokenType, expires_delta: timedelta) -> str:
     expire = datetime.now(UTC).replace(tzinfo=None) + expires_delta
-    payload = {**data, "exp": expire, "token_type": token_type.value}
+    # `tid` — qaysi obunachining tokeni. Obunachilar bazasida user id'lar to'qnashadi
+    # (har birida admin id=1), shuning uchun tokenni boshqa subdomenda ishlatib bo'lmasin.
+    payload = {**data, "exp": expire, "token_type": token_type.value, "tid": tenant()}
     return jwt.encode(payload, SECRET_KEY.get_secret_value(), algorithm=ALGORITHM)
 
 
@@ -87,6 +90,9 @@ def verify_token(token: str, expected_token_type: TokenType, *, verify_exp: bool
 
     subject = payload.get("sub")
     if subject is None or payload.get("token_type") != expected_token_type.value:
+        return None
+    # `tid` siz eski tokenlar (EKO TIZIMdan oldingi) standart obunachiniki hisoblanadi
+    if payload.get("tid", DEFAULT_TENANT) != tenant():
         return None
 
     try:
