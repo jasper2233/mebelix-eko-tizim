@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { ClientsService } from "@/client"
+import { ClientCredit } from "@/components/Clients/ClientCredit"
 import { ClientSegment } from "@/components/Clients/ClientSegment"
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { StatusBadge } from "@/components/Common/StatusBadge"
@@ -110,6 +111,8 @@ export function ClientCard({
                 </div>
               )}
             </div>
+
+            <ClientCredit key={data.id} client={data} />
 
             <div className="max-h-[50vh] overflow-y-auto">
               <Table>

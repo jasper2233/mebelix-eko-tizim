@@ -320,6 +320,9 @@ async def cancel_for_order(db: AsyncSession, order_id: int) -> None:
 @dataclass
 class Shortage:
     item_id: int | None
+    #: Moslanmagan qatorda — moslash kaliti (`/ombor/moslash` ga shu ikkisi yuboriladi)
+    kind: str | None
+    tashqi_kalit: str | None
     nom: str
     birlik: str
     kerak: Decimal
@@ -333,9 +336,14 @@ async def shortages(db: AsyncSession) -> list[Shortage]:
     # Moslangan qatorlar pozitsiya bo'yicha bitta guruh (fayldagi nomlari har xil bo'lsa ham)
     nom = func.coalesce(CatalogItem.name, RezervLine.tashqi_nom)
     birlik = func.coalesce(CatalogItem.unit, RezervLine.fayl_birlik)
+    moslanmagan = RezervLine.item_id.is_(None)
+    kind = case((moslanmagan, RezervLine.kind), else_=None)
+    kalit = case((moslanmagan, RezervLine.tashqi_kalit), else_=None)
     rows = await db.execute(
         select(
             RezervLine.item_id,
+            kind,
+            kalit,
             nom,
             birlik,
             func.sum(case((RezervLine.item_id.is_(None), RezervLine.fayl_qty), else_=RezervLine.kerak_qty)),
@@ -350,7 +358,9 @@ async def shortages(db: AsyncSession) -> list[Shortage]:
             RezervLine.is_deleted == False,  # noqa: E712
             (RezervLine.item_id.is_(None)) | (RezervLine.kerak_qty > RezervLine.qoplangan_qty),
         )
-        .group_by(RezervLine.item_id, nom, birlik)
+        .group_by(RezervLine.item_id, kind, kalit, nom, birlik)
         .order_by(nom)
     )
-    return [Shortage(iid, n_, b_ or "", Decimal(k), Decimal(q), n) for iid, n_, b_, k, q, n in rows.all()]
+    return [
+        Shortage(iid, kd, kl, n_, b_ or "", Decimal(k), Decimal(q), n) for iid, kd, kl, n_, b_, k, q, n in rows.all()
+    ]

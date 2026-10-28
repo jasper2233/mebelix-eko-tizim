@@ -34,6 +34,7 @@ import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
+import { RezervPanel } from "@/components/Orders/RezervPanel"
 import {
   UnplacedArraBanner,
   UploadWarningsDialog,
@@ -71,6 +72,7 @@ import {
   isAdmin,
   isManager,
   isSuperuser,
+  isWarehouseStaff,
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
   remainingPayment,
@@ -585,6 +587,11 @@ function OrderDetailPage() {
           />
         )}
       </Card>
+
+      {/* Material rezervi va to'lov chegarasi (EKO TZ §4.3) — fayl yuklangach */}
+      {isWarehouseStaff(currentUser) && order.project_uuid && (
+        <RezervPanel orderId={order.id} />
+      )}
 
       {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
           qaysi ishni bajarishini yaxshiroq biladi. */}

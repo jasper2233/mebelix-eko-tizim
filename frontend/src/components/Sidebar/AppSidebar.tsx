@@ -192,6 +192,14 @@ export const NAV_ITEMS: (Item & {
           p === "/warehouse/inv" ||
           (p === "/warehouse/doc" && s.turi === "inv"),
       },
+      // Rezervlarda yetmayotgan va katalogga moslanmagan materiallar (EKO TZ §4.3)
+      {
+        icon: ClipboardList,
+        title: "Ta'minot ehtiyoji",
+        path: "/warehouse/taminot",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/taminot",
+      },
       {
         icon: FileText,
         title: "Hujjatlar",

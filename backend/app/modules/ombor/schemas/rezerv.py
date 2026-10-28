@@ -38,6 +38,9 @@ class RezervRead(BaseModel):
 
 class ShortageRead(BaseModel):
     item_id: int | None
+    #: Faqat moslanmagan qatorda: moslash uchun kalit
+    kind: str | None = None
+    tashqi_kalit: str | None = None
     nom: str
     birlik: str
     kerak: Decimal

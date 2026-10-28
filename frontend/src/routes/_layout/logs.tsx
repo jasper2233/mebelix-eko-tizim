@@ -80,6 +80,7 @@ const MODULE_LABELS: Record<string, string> = {
   settings: "Sozlamalar",
   system: "Tizim holati",
   catalog: "Mahsulotlar ombori",
+  rezerv: "Rezerv",
 }
 const MODULE_ORDER = Object.keys(MODULE_LABELS)
 

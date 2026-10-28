@@ -113,6 +113,8 @@ async def read_supply_needs(db: SessionDep, _: WarehouseReadUser) -> list[Shorta
     return [
         ShortageRead(
             item_id=s.item_id,
+            kind=s.kind,
+            tashqi_kalit=s.tashqi_kalit,
             nom=s.nom,
             birlik=s.birlik,
             kerak=s.kerak,

@@ -5822,6 +5822,14 @@ export type ShortageRead = {
      */
     item_id: number | null;
     /**
+     * Kind
+     */
+    kind?: string | null;
+    /**
+     * Tashqi Kalit
+     */
+    tashqi_kalit?: string | null;
+    /**
      * Nom
      */
     nom: string;

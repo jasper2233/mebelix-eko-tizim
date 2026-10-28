@@ -23,7 +23,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 1b. Ko'p ijarachi | tayyor, lokal sinalgan | pastda |
 | 2.1 Ombor moduli | tayyor (kod ko'chirildi, xulq o'zgarmadi) | pastda |
 | 2.2 Rezerv (backend) | tayyor, lokal sinalgan | pastda |
-| 2.2b Rezerv (interfeys) | navbatda | |
+| 2.2b Rezerv (interfeys) | tayyor, brauzerda sinalgan | pastda |
 | 2.3 Qoldiq bo'laklari, TMO | navbatda | |
 
 ### 1a — nima qo'shildi
@@ -112,3 +112,17 @@ buyurtma summasi — `order.amount` (kassagacha, Q24; faqat `paid_and_required` 
 Tekshirildi: `rezerv_oracle.py` 23/23 (qoplash, band qoldiq sotilmasligi, moslash, kirim qoplashi, 50 % chegara,
 muddat o'tishi, kredit limiti, direktor ruxsati, bekor, ta'minot ro'yxati); HTTP: rezerv yo'llari, avans
 999 999 → `faol`, 1 000 000 → `yechildi`, bekor → `bekor`; migratsiya upgrade/downgrade/upgrade, `alembic check` toza.
+
+### 2.2b — interfeys va o'tish
+
+| Qism | Joy | Kim |
+| --- | --- | --- |
+| Buyurtma kartasida «Material rezervi» | `components/Orders/RezervPanel.tsx` | ofis va skladchi ko'radi; «Qayta hisoblash» — menejer/texnolog; «To'lovsiz ruxsat berish» — direktor |
+| «Ta'minot ehtiyoji» sahifasi + moslash oynasi | `routes/_layout/warehouse/taminot.tsx` (skladchi menyusida) | ko'rish — ombor xodimlari; moslash — skladchi, menejer |
+| Mijoz kartasida doimiy/kredit | `components/Clients/ClientCredit.tsx`, `PATCH /clients/{id}/kredit` | hamma ko'radi, faqat direktor o'zgartiradi |
+| O'tish kuni | `python -m app.commands.rezerv_otish [--apply]` | texnologdagi buyurtmalarga rezerv + tizim ruxsati; PRODUCTION ga tegilmaydi |
+
+Kromka katalogda **metr**da (moslashda koef 1). Rulon butunligicha, ortig'i bilan beriladi — rulon hisobi 2.3 da (sexga berish).
+
+Brauzerda tekshirildi (lokal backend + vite): panel to'langan va to'lanmagan buyurtmada, to'siq matni, direktor tugmasi,
+ta'minot ro'yxati, moslash oynasi (qidiruv → tanlash → saqlash → ro'yxat yangilandi); konsolda xato yo'q.
