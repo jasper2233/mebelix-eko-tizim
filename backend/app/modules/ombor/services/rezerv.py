@@ -295,7 +295,7 @@ async def production_block_reason(db: AsyncSession, order: Order) -> str | None:
     return f"To'lov chegarasi bajarilmagan: to'langan {paid}, kerak {required} so'm. Direktor ruxsati kerak."
 
 
-async def approve(db: AsyncSession, order_id: int, user_id: int) -> Rezerv | None:
+async def approve(db: AsyncSession, order_id: int, user_id: int | None) -> Rezerv | None:
     """Direktor ruxsati (Q22): to'lovsiz yoki limitdan oshgan buyurtma ishlab chiqarishga o'tadi."""
     rez = await _tirik(db, order_id)
     if rez is None:
