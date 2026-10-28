@@ -36,6 +36,9 @@ jobs:
         run: cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
       - name: Types (mypy)
         run: cd backend && uv run mypy app
+      - name: Modul chegarasi (EKO TIZIM)
+        # app.modules.<m> ga tashqaridan faqat .service orqali (backend/app/modules/__init__.py)
+        run: python3 scripts/check_module_boundaries.py
       - name: Brend aktivlari (design/logo/ bilan mos)
         # Logo/ikonka nusxalari QO'LDA tahrirlanmaydi — `scripts/brand-assets.py` ularni
         # design/logo/ dan yasaydi. Qo'lda ko'chirilganda masterdan jimgina ajralardi

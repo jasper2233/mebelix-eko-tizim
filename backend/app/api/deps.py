@@ -9,7 +9,7 @@ from app.core.db import async_get_db
 from app.core.exceptions import ForbiddenException, UnauthorizedException
 from app.core.security import ACCESS_COOKIE_NAME, TokenType, verify_token
 from app.crud import crud_users
-from app.models.enums import UserRole
+from app.models.enums import UserLevel, UserRole, role_level
 from app.models.user import User
 
 SessionDep = Annotated[AsyncSession, Depends(async_get_db)]
@@ -68,6 +68,21 @@ def require_roles(*roles: UserRole) -> Callable[..., Coroutine[Any, Any, User]]:
 
     async def checker(current_user: CurrentUser) -> User:
         if current_user.is_superuser or current_user.role == UserRole.ADMIN or current_user.role in roles:
+            return current_user
+        raise ForbiddenException("Sizda yetarli huquq yo'q.")
+
+    return checker
+
+
+def require_level(level: UserLevel) -> Callable[..., Coroutine[Any, Any, User]]:
+    """Dependency factory: rol darajasi `level` dan past bo'lmasin (TZ §3). Superuser doim o'tadi.
+
+    Yangi modullar (kassa, moliya, ...) rollar ro'yxati o'rniga shuni ishlatadi: yangi rol
+    qo'shilganda har endpointni qayta yozish shart bo'lmaydi.
+    """
+
+    async def checker(current_user: CurrentUser) -> User:
+        if current_user.is_superuser or role_level(current_user.role) >= level:
             return current_user
         raise ForbiddenException("Sizda yetarli huquq yo'q.")
 

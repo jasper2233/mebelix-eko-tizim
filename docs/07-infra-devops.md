@@ -13,6 +13,17 @@ Stack ikki rejimda ishlaydi:
 
 Servislar: `db` (PostgreSQL 15), `redis` (Redis 7, ARQ queue + rate limit), `api` (FastAPI), `worker` (ARQ background worker), `frontend` (Vite build + nginx), production'da qo'shimcha `caddy` (reverse proxy + TLS).
 
+**EKO TIZIM (2026-10-28, TZ §2.2): prodda sex va ofis trafigi ajratilgan.**
+
+| Servis | `API_ROLE` | `statement_timeout` | Vazifa |
+| --- | --- | --- | --- |
+| `api` | `ofis` | 30 s | sex yo'llaridan boshqa hammasi; prestart (migratsiya, seed) FAQAT shu yerda. Nomi `deploy.sh` uchun o'zgarmagan |
+| `api-sex` | `sex` | 3 s | `/api/v1/{terminal,scans,pachka,tmo,tablo,bridge-agents,ws}` — Caddy shu yo'llarni yuboradi; prestart yo'q, `api` sog'lom bo'lgach ko'tariladi; `GUNICORN_SEX_WORKERS` (sukut 2) |
+| `worker` | `worker` | 300 s | tez navbat (arq sukuti): cheklar, cron'lar |
+| `worker-sekin` | `worker` | 300 s | `QUEUE_SEKIN = "arq:sekin"` (`core/utils/queue.py`): hisobot, eksport, ESF; cron yo'q |
+
+`API_ROLE` sukuti `all` (timeout yo'q) — lokal dev va bitta jarayonli deploy avvalgidek ishlaydi. `DB_STATEMENT_TIMEOUT_MS` berilsa rol jadvali o'rniga shu qiymat (0 = cheklovsiz). Timeout asyncpg `server_settings` orqali ulanish ochilganda qo'yiladi (`core/db.py`); alembic o'z engine'ini quradi, migratsiyaga ta'sir qilmaydi. Real-time hodisalar Redis pub/sub orqali (`core/ws.py`), shuning uchun WS mijozi `api-sex` da bo'lsa ham `api` dagi hodisani oladi.
+
 So'rov oqimi (production):
 
 ```

@@ -23,6 +23,30 @@ class EnvironmentOption(StrEnum):
     PRODUCTION = "production"
 
 
+class ProcessRole(StrEnum):
+    """Jarayon qaysi trafikni xizmat qiladi (EKO TIZIM TZ §2.2).
+
+    Kod bitta image'da; compose har konteynerga o'z rolini beradi va Caddy sex
+    yo'llarini `api-sex` ga, qolganini `api` (ofis) ga yuboradi. Maqsad — ofisdagi
+    og'ir so'rov terminal skanini sekinlashtirmasin.
+    """
+
+    ALL = "all"  # bitta jarayon hammasini xizmat qiladi (lokal ishlab chiqish, eski deploy)
+    SEX = "sex"  # terminal, skan, pachka, tablo, bridge-agent — qisqa so'rovlar
+    OFIS = "ofis"  # hujjatlar, kassa, moliya, hisobotlar
+    WORKER = "worker"  # arq ishchilari
+
+
+#: Rol bo'yicha standart `statement_timeout` (ms). 0 = cheklovsiz (Postgres sukuti).
+#: `DB_STATEMENT_TIMEOUT_MS` berilsa shu jadval e'tiborsiz qoladi.
+_STATEMENT_TIMEOUT_MS = {
+    ProcessRole.ALL: 0,
+    ProcessRole.SEX: 3_000,
+    ProcessRole.OFIS: 30_000,
+    ProcessRole.WORKER: 300_000,
+}
+
+
 class Settings(BaseSettings):
     """All application settings, flat. Grouped by `# === Section ===` comments for readability only."""
 
@@ -51,6 +75,11 @@ class Settings(BaseSettings):
     POSTGRES_ASYNC_PREFIX: str = "postgresql+asyncpg://"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    #: Bo'sh = rol jadvalidan (`_STATEMENT_TIMEOUT_MS`); son berilsa — aynan shu (0 = cheklovsiz)
+    DB_STATEMENT_TIMEOUT_MS: int | None = None
+
+    # === Process role (EKO TIZIM TZ §2.2) ===
+    API_ROLE: ProcessRole = ProcessRole.ALL
 
     # === First admin user (created on startup) ===
     ADMIN_NAME: str = "admin"
@@ -129,6 +158,13 @@ class Settings(BaseSettings):
         credentials = f"{quote(self.POSTGRES_USER, safe='')}:{quote(self.POSTGRES_PASSWORD, safe='')}"
         location = f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         return f"{credentials}@{location}"
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def STATEMENT_TIMEOUT_MS(self) -> int:
+        if self.DB_STATEMENT_TIMEOUT_MS is not None:
+            return self.DB_STATEMENT_TIMEOUT_MS
+        return _STATEMENT_TIMEOUT_MS[self.API_ROLE]
 
     @computed_field  # type: ignore[prop-decorator]
     @property

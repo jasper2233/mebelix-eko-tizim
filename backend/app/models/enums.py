@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 from sqlalchemy import Enum as SAEnum
 
@@ -29,6 +29,44 @@ class UserRole(StrEnum):
     #: tsex roli va beyjik bilan ishlaydi. `POST_ROLES` da ATAYLAB yo'q — bu
     #: lavozimning posti ham, terminali ham yo'q.
     SKLADCHI = "skladchi"
+
+
+class UserLevel(IntEnum):
+    """Interfeys darajasi (EKO TIZIM TZ §3). Yuqori daraja quyi daraja ekranini ochadi
+    (nazorat uchun), teskarisi — yo'q. Frontend oynasi: `lib/mes.ts: ROLE_LEVEL`."""
+
+    #: Jarayon hodimlari — terminal/planshet, bejik + PIN, bitta ekran = bitta vazifa
+    JARAYON = 1
+    #: O'rta bo'g'in — kassir, skladchi, usta: qadam-baqadam formalar
+    ORTA = 2
+    #: Ofis — zich jadvallar, hisobotlar, sozlamalar
+    OFIS = 3
+
+
+#: Har rol aniq bitta darajada. Yangi rol qo'shilsa shu jadvalga ham yoziladi —
+#: `role_level` topa olmasa KeyError beradi (jimgina eng past daraja bermaydi).
+ROLE_LEVEL: dict[UserRole, UserLevel] = {
+    UserRole.ADMIN: UserLevel.OFIS,
+    UserRole.DIRECTOR: UserLevel.OFIS,
+    UserRole.MANAGER: UserLevel.OFIS,
+    UserRole.TEXNOLOG: UserLevel.OFIS,
+    UserRole.SKLADCHI: UserLevel.ORTA,
+    UserRole.TERMINAL: UserLevel.JARAYON,
+    UserRole.TABLO: UserLevel.JARAYON,
+    UserRole.ARRACHI: UserLevel.JARAYON,
+    UserRole.KROMKACHI: UserLevel.JARAYON,
+    UserRole.OVALCHI: UserLevel.JARAYON,
+    UserRole.PRISADKACHI: UserLevel.JARAYON,
+    UserRole.ROVERCHI: UserLevel.JARAYON,
+    UserRole.STOLYAR: UserLevel.JARAYON,
+    UserRole.BOYOQCHI: UserLevel.JARAYON,
+    UserRole.UPAKOVKACHI: UserLevel.JARAYON,
+    UserRole.OMBORCHI: UserLevel.JARAYON,
+}
+
+
+def role_level(role: UserRole) -> UserLevel:
+    return ROLE_LEVEL[role]
 
 
 class PostCode(StrEnum):

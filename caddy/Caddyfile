@@ -12,6 +12,32 @@
 
 	# Host passthrough, X-Forwarded-For va X-Forwarded-Proto'ni Caddy reverse_proxy
 	# o'zi qo'yadi — qo'lda `header_up` yozish shart emas.
+
+	# SEX trafigi alohida jarayonga (EKO TIZIM TZ §2.2): ofisdagi og'ir so'rov skanni
+	# kutdirmasin. Caddy `handle` larni yo'l uzunligi bo'yicha saralaydi — bu
+	# yo'llar `/api*` dan uzun, shuning uchun undan OLDIN tekshiriladi.
+	handle /api/v1/terminal* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/scans* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/pachka* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/tmo* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/tablo* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/bridge-agents* {
+		reverse_proxy api-sex:8000
+	}
+	handle /api/v1/ws/* {
+		reverse_proxy api-sex:8000
+	}
+
 	handle /api* {
 		reverse_proxy api:8000
 	}

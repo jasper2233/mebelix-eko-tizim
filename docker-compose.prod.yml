@@ -98,10 +98,44 @@ services:
       REDIS_HOST: redis
       # deploy.sh rollback'i 1 qiladi — eski image yangi sxemada migratsiyasiz ko'tariladi
       SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-0}
+      # OFIS jarayoni (EKO TIZIM TZ §2.2): sex yo'llaridan boshqa hamma narsa. Servis nomi
+      # `api` ataylab o'zgarmadi — deploy.sh (`run --rm api alembic ...`) unga tayanadi.
+      API_ROLE: ofis
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  api-sex:
+    # SEX jarayoni (EKO TIZIM TZ §2.2): terminal, skan, pachka, TMO, tablo, bridge, WS.
+    # Image va kod `api` bilan bir xil; Caddy shu yo'llarni bu yerga yuboradi, shunda
+    # ofisdagi og'ir so'rov skanni kutdirmaydi. statement_timeout 3 s (`core/config.py`).
+    # prestart YO'Q: migratsiya va seed faqat `api` da — ikki jarayon bir vaqtda
+    # `alembic upgrade` qilmasin. Shuning uchun `api` sog'lom bo'lgach ko'tariladi.
+    image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
+    command: bash -c "gunicorn app.main:app -w ${GUNICORN_SEX_WORKERS:-2} -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '${GUNICORN_FORWARDED_ALLOW_IPS:-172.16.0.0/12}'"
+    restart: always
+    logging: *logging
+    expose:
+      - "8000"
+    volumes:
+      - uploads_data:/app/backend/uploads
+      - ./agent-dist:/app/backend/agent-dist:ro
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      REDIS_HOST: redis
+      API_ROLE: sex
+    depends_on:
+      api:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
@@ -132,6 +166,31 @@ services:
     environment:
       POSTGRES_SERVER: db
       REDIS_HOST: redis
+      API_ROLE: worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-sekin:
+    # Sekin navbat (`QUEUE_SEKIN`): hisobot, eksport, ESF — chek navbatini kutdirmaydi (TZ §2.2)
+    image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
+    command: arq app.core.worker.WorkerSekinSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT
+    restart: always
+    healthcheck:
+      test: ["CMD", "arq", "app.core.worker.WorkerSekinSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging: *logging
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: db
+      REDIS_HOST: redis
+      API_ROLE: worker
     depends_on:
       db:
         condition: service_healthy
@@ -177,6 +236,8 @@ services:
       frontend:
         condition: service_started
       api:
+        condition: service_healthy
+      api-sex:
         condition: service_healthy
     healthcheck:
       # SITE_ADDRESS domen bo'lganda :80 avto-redirect qiladi — shuning uchun alohida :8080 health blokiga qaraymiz.

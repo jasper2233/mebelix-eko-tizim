@@ -10,6 +10,7 @@ from app.core.logger import setup_logging
 from app.tasks import DOWNTIME_SWEEP_MINUTES, IDLE_SWEEP_MINUTES, all_tasks, close_idle_sessions, sync_downtimes
 
 from .config import settings
+from .utils.queue import QUEUE_SEKIN
 
 try:
     import uvloop
@@ -51,3 +52,11 @@ class WorkerSettings:
     # "unhealthy" bo'lib turardi va deploy uni ishlamayapti deb hisoblardi.
     # 30s — healthcheck intervali bilan bir xil.
     health_check_interval = 30
+
+
+class WorkerSekinSettings(WorkerSettings):
+    """Sekin navbat ishchisi (`QUEUE_SEKIN`). Funksiyalar bir xil — qaysi navbatga tushishini
+    chaqiruvchi hal qiladi. Cron'lar faqat tez ishchida: ikki marta ishlamasin."""
+
+    queue_name = QUEUE_SEKIN
+    cron_jobs = []

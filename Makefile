@@ -59,6 +59,7 @@ brand-assets: ## Brend nusxalari design/logo/ ga mosmi (CI ham shuni chaqiradi);
 lint: ## Run linting checks (ruff check + format check + mypy, CI bilan bir xil)
 	cd backend && uv run ruff check --no-fix app && uv run ruff format --check app
 	cd backend && uv run mypy app
+	python3 scripts/check_module_boundaries.py
 
 .PHONY: format
 format: ## Backendni formatlaydi va tuzatadi (ruff, `lint` bilan bir xil qamrov: backend/app)

@@ -13,6 +13,12 @@ class Base(DeclarativeBase, MappedAsDataclass):
 
 DATABASE_URL = f"{settings.POSTGRES_ASYNC_PREFIX}{settings.POSTGRES_URI}"
 
+# `statement_timeout` ulanish ochilganda o'rnatiladi (asyncpg `server_settings`): sex jarayonida
+# qotib qolgan so'rov 3 s da uziladi va pulni band qilib turmaydi. Alembic o'z engine'ini
+# quradi (`migrations/env.py`) — migratsiyalarga bu cheklov tegmaydi.
+_connect_args: dict[str, dict[str, str]] = {}
+if settings.STATEMENT_TIMEOUT_MS > 0:
+    _connect_args["server_settings"] = {"statement_timeout": str(settings.STATEMENT_TIMEOUT_MS)}
 
 async_engine = create_async_engine(
     DATABASE_URL,
@@ -21,6 +27,7 @@ async_engine = create_async_engine(
     pool_size=settings.DB_POOL_SIZE,
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_pre_ping=True,
+    connect_args=_connect_args,
 )
 
 local_session = async_sessionmaker(bind=async_engine, class_=AsyncSession, expire_on_commit=False)

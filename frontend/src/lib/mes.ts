@@ -202,12 +202,39 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   skladchi: "Mahsulot omborchisi",
 }
 
+// Interfeys darajasi (EKO TIZIM TZ §3) — backend `models/enums.py: ROLE_LEVEL`
+// ning QO'LDA oynasi. 1 — jarayon hodimlari, 2 — o'rta bo'g'in, 3 — ofis.
+// Record<UserRole, …> — yangi rol darajasiz qolsa build yiqiladi.
+export const LEVEL = { jarayon: 1, orta: 2, ofis: 3 } as const
+export type UserLevel = (typeof LEVEL)[keyof typeof LEVEL]
+export const ROLE_LEVEL: Record<UserRole, UserLevel> = {
+  admin: LEVEL.ofis,
+  director: LEVEL.ofis,
+  manager: LEVEL.ofis,
+  texnolog: LEVEL.ofis,
+  skladchi: LEVEL.orta,
+  terminal: LEVEL.jarayon,
+  tablo: LEVEL.jarayon,
+  arrachi: LEVEL.jarayon,
+  kromkachi: LEVEL.jarayon,
+  ovalchi: LEVEL.jarayon,
+  prisadkachi: LEVEL.jarayon,
+  roverchi: LEVEL.jarayon,
+  stolyar: LEVEL.jarayon,
+  boyoqchi: LEVEL.jarayon,
+  upakovkachi: LEVEL.jarayon,
+  omborchi: LEVEL.jarayon,
+}
+
 // Sahifa huquqi BITTA joyda: sidebar menyusi ham, route guard ham shu ikkisini
 // ishlatadi. Ilgari ikkalasi alohida yozilgani uchun "menyuda ko'rinadi, ochsang
 // bosh sahifaga uloqtiradi" holati chiqib qolgandi.
 // Rol nomi UserRole (backend enum'i) dan: rol qayta nomlansa solishtirish
 // jimgina "false" bo'lib qolmasin — ROLE_LABELS kabi build yiqilsin
 type RoleUser = { role?: UserRole | null; is_superuser?: boolean | null }
+/** Daraja `level` yoki undan yuqori (backend `require_level` oynasi). Superuser doim o'tadi */
+export const hasLevel = (u: RoleUser | null | undefined, level: UserLevel) =>
+  Boolean(u?.is_superuser || (u?.role && ROLE_LEVEL[u.role] >= level))
 /** Foydalanuvchilarni boshqarish — telefon raqamlar ochiladi (backend SuperUserDep) */
 export const isSuperuser = (u?: RoleUser | null) => Boolean(u?.is_superuser)
 /** Tizim sozlamalari: printer agentlar, loglar/audit izi (backend AdminUser) */
