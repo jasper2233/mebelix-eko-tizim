@@ -320,6 +320,7 @@ class YoqotishQator(BaseModel):
     brak: Decimal | None
     jami: Decimal | None
     sabablar: list[YoqotishSabab]
+    malumotsiz_kun: int = 0
 
 
 @router.get("/stanoklar", response_model=list[StanokRead], operation_id="tannarx_stanoklar")
@@ -391,10 +392,17 @@ async def tannarx_asbob_qosh(db: SessionDep, user: TannarxUser, body: AsbobIn, r
 
 @router.get("/buyurtmalar", response_model=list[TannarxQator], operation_id="tannarx_buyurtmalar")
 async def tannarx_buyurtmalar(
-    db: SessionDep, _: TannarxUser, dan: date | None = None, gacha: date | None = None, order_id: int | None = None
+    db: SessionDep,
+    _: TannarxUser,
+    dan: date | None = None,
+    gacha: date | None = None,
+    order_id: int | None = None,
+    jarayonda: bool = False,
 ) -> list[TannarxQator]:
-    """To'liq (boshqaruv) tannarx: davrda yetkazilgan buyurtmalar yoki bitta buyurtma (`order_id`)."""
-    if order_id is not None:
+    """To'liq (boshqaruv) tannarx: davrda yetkazilganlar, jarayondagilar (`jarayonda`) yoki bitta buyurtma."""
+    if jarayonda:
+        orders = await norma.jarayondagilar(db)
+    elif order_id is not None:
         o = await db.get(Order, order_id)
         orders = [o] if o is not None else []
     elif dan and gacha:
@@ -452,6 +460,7 @@ async def tannarx_oee_yoqotish(db: SessionDep, _: TannarxUser, dan: date, gacha:
                 brak=qism[2],
                 jami=None if y.soat_narxi is None else sum((q or Decimal(0) for q in qism), Decimal(0)),
                 sabablar=[YoqotishSabab(nom=n, soniya=s, pul=y.pul(s)) for n, s in y.sabablar],
+                malumotsiz_kun=y.malumotsiz_kun,
             )
         )
     return out

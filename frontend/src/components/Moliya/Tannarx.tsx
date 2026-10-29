@@ -68,17 +68,43 @@ export function Tannarx() {
 }
 
 function Buyurtmalar({ dan, gacha }: { dan: string; gacha: string }) {
+  const [jarayonda, setJarayonda] = useState(false)
   const { data, isLoading } = useQuery({
-    queryKey: ["tannarx", "buyurtmalar", dan, gacha],
+    queryKey: ["tannarx", "buyurtmalar", dan, gacha, jarayonda],
     queryFn: async () =>
-      (await TannarxService.tannarxBuyurtmalar({ query: { dan, gacha } })).data,
-    enabled: !!dan && !!gacha && dan <= gacha,
+      (
+        await TannarxService.tannarxBuyurtmalar({
+          query: jarayonda ? { jarayonda } : { dan, gacha },
+        })
+      ).data,
+    enabled: jarayonda || (!!dan && !!gacha && dan <= gacha),
   })
   const rows = data ?? []
   const jam = (k: keyof TannarxQator) =>
     rows.reduce((a, r) => a + Number(r[k] ?? 0), 0)
   return (
-    <Karta title="Buyurtmalarning to'liq tannarxi (yetkazilganlar)">
+    <Karta title="Buyurtmalarning to'liq tannarxi">
+      <div className="flex gap-2">
+        {(
+          [
+            [false, "Davrda yetkazilgan"],
+            [true, "Jarayonda (yig'ilib bormoqda)"],
+          ] as const
+        ).map(([v, l]) => (
+          <button
+            key={l}
+            type="button"
+            onClick={() => setJarayonda(v)}
+            className={cn(
+              "rounded-full border px-3 py-1 text-sm",
+              jarayonda === v &&
+                "border-primary bg-primary text-primary-foreground",
+            )}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
       <p className="text-sm text-muted-foreground">
         Moliya P&L dagi tannarx — material va tasdiqlangan ish haqi. Bu yerda
         to'liq boshqaruv tannarxi: unga kromka (sexga rulonda beriladi), stanok
@@ -88,7 +114,13 @@ function Buyurtmalar({ dan, gacha }: { dan: string; gacha: string }) {
       {isLoading ? (
         <Skeleton className="h-24" />
       ) : rows.length === 0 ? (
-        <Bosh text="Bu davrda yetkazilgan buyurtma yo'q" />
+        <Bosh
+          text={
+            jarayonda
+              ? "Sexda ishi boshlangan buyurtma yo'q"
+              : "Bu davrda yetkazilgan buyurtma yo'q"
+          }
+        />
       ) : (
         <Jadval
           bosh={[
@@ -244,6 +276,11 @@ function OeeYoqotish({ dan, gacha }: { dan: string; gacha: string }) {
                     <span className="text-red-700">soat narxi yo'q</span>
                   )}
                 </div>
+                {(r.malumotsiz_kun ?? 0) > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {r.malumotsiz_kun} kun ma'lumotsiz — hisobga kirmadi
+                  </div>
+                )}
               </TableCell>
               <TableCell className={tdNum}>
                 {r.oee_pct == null ? "—" : `${r.oee_pct}%`}

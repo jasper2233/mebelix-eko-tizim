@@ -38,6 +38,12 @@ async def main() -> None:
         y = {r.nom: r for r in await norma.oee_yoqotish(db, kecha, kecha)}["Prisadka"]
         tek("narx yo'q — pul None", (y.soat_narxi, y.pul(y.to_xtash_s)), (None, None))
         tek("soniyalar: to'xtash, sekin, brak", (y.to_xtash_s, y.sekin_s, y.brak_s), (7200, 19440, 432))
+        y5 = {r.nom: r for r in await norma.oee_yoqotish(db, kecha - timedelta(days=5), kecha)}["Prisadka"]
+        tek(
+            "ma'lumotsiz kunlar to'xtash emas — 6 kunlik davr = kechagi kun",
+            (y5.to_xtash_s, y5.sekin_s, y5.malumotsiz_kun >= 4),
+            (7200, 19440, True),
+        )
         await norma.stanok_narx_qosh(db, p.id, D(3600), kecha - timedelta(days=5), None)
         y = {r.nom: r for r in await norma.oee_yoqotish(db, kecha, kecha)}["Prisadka"]
         tek(

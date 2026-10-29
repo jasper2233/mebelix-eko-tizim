@@ -254,6 +254,13 @@ async def buyurtmalar(db: AsyncSession, dan: date, gacha: date) -> list[Order]:
     )
 
 
+async def jarayondagilar(db: AsyncSession) -> list[Order]:
+    """Hali yetkazilmagan, lekin sexda ishi boshlangan (skani bor) buyurtmalar — tannarx yig'ilib bormoqda."""
+    skanli = select(Scan.order_id).where(Scan.is_deleted == False).distinct()  # noqa: E712
+    q = select(Order).where(Order.delivered_at.is_(None), Order.id.in_(skanli)).order_by(Order.id)
+    return list((await db.execute(q)).scalars())
+
+
 # ───────────────────────── OEE yo'qotishi pulda ─────────────────────────
 @dataclass
 class Yoqotish:
@@ -266,6 +273,8 @@ class Yoqotish:
     brak_s: int
     oee_pct: float | None
     sabablar: list[tuple[str, int]]
+    #: Stanokdan umuman ma'lumot kelmagan kunlar (o'rnatilmagan, Pico o'chiq) — hisobga kirmadi
+    malumotsiz_kun: int = 0
 
     def pul(self, s: int) -> Decimal | None:
         if self.soat_narxi is None:
@@ -275,27 +284,41 @@ class Yoqotish:
 
 async def oee_yoqotish(db: AsyncSession, dan: date, gacha: date) -> list[Yoqotish]:
     """Stanok bo'yicha yo'qotilgan vaqt uch qismda: to'xtash (Availability), sekin ishlash (Performance),
-    brak (Quality) — va ularning puli soat narxi bilan (davr oxiridagi narx)."""
+    brak (Quality) — va ularning puli soat narxi bilan (davr oxiridagi narx).
+
+    Faqat stanokdan ma'lumot kelgan kunlar: MES hisobotida ma'lumotsiz vaqt «o'chiq» (to'xtash) sanaladi, lekin
+    stanok hali o'rnatilmagan yoki Pico ulanmagan kunni pulli yo'qotish deyish — soxta raqam (bir oyda yuzlab soat)."""
     from app.api.routes.reports import build_machine_time_report
 
     rep = await build_machine_time_report(db, dan, gacha)
     narx = await stanok_narxlari(db)
     out = []
+    kunlar: dict[int, list[tuple[int, int]]] = defaultdict(list)  # stanok -> [(reja, ishladi)] ma'lumotli kunlar
+    bosh: dict[int, int] = defaultdict(int)
+    for d in rep.days:
+        if sum(d.seconds.values()) > 0:
+            kunlar[d.machine_id].append((d.planned_s, d.run_s))
+        elif d.planned_s > 0:
+            bosh[d.machine_id] += 1
     for r in rep.rows:
-        if r.planned_s <= 0:
+        planned = sum(p for p, _ in kunlar[r.machine_id])
+        run = sum(x for _, x in kunlar[r.machine_id])
+        if planned <= 0:
             continue
-        sekin = max(r.run_s - r.ideal_s, 0) if r.ideal_s > 0 else 0
+        sekin = max(run - r.ideal_s, 0) if r.ideal_s > 0 else 0
         brak = round(r.ideal_s * r.defects / r.parts) if r.parts > 0 and r.ideal_s > 0 else 0
+        oee = round(r.ideal_s * max(r.parts - r.defects, 0) * 100 / (planned * r.parts), 1) if r.parts else None
         out.append(
             Yoqotish(
                 machine_id=r.machine_id,
                 nom=r.machine_name,
                 soat_narxi=_amaldagi(narx.get(r.machine_id, []), gacha),
-                planned_s=r.planned_s,
-                to_xtash_s=r.planned_s - r.run_s,
+                planned_s=planned,
+                to_xtash_s=planned - run,
                 sekin_s=sekin,
                 brak_s=brak,
-                oee_pct=r.oee_pct,
+                oee_pct=oee if r.ideal_s > 0 else None,
+                malumotsiz_kun=bosh[r.machine_id],
                 sabablar=[(s.name, s.seconds) for s in r.reasons if not s.is_planned][:5],
             )
         )

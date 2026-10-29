@@ -10276,6 +10276,10 @@ export type YoqotishQator = {
      * Sabablar
      */
     sabablar: Array<YoqotishSabab>;
+    /**
+     * Malumotsiz Kun
+     */
+    malumotsiz_kun?: number;
 };
 
 /**
@@ -16255,6 +16259,10 @@ export type TannarxBuyurtmalarData = {
          * Order Id
          */
         order_id?: number | null;
+        /**
+         * Jarayonda
+         */
+        jarayonda?: boolean;
     };
     url: '/api/v1/tannarx/buyurtmalar';
 };

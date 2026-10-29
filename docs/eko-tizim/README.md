@@ -546,7 +546,11 @@ Moliya → **Tannarx** (`/tannarx/buyurtmalar`, `/tannarx/oee-yoqotish`, normala
   (ideal × brak/detal) × soat narxi; asosiy rejasiz to'xtash sabablari pulda.
 - Stanok va asbob normasi **buxgalteriyaga yozilmaydi**: haqiqiy puli (asbob xaridi, elektr) allaqachon
   xarajat/2510 da — normani provodka qilish ikki marta sanash bo'lardi. Narxlar o'tgan sanaga ham yoziladi.
-- Orakllar: `tannarx_oracle.py` (26), `oee_pul_oracle.py` (3, `oee_oracle` ssenariysi ustida).
+- «Jarayonda» — yetkazilmagan, lekin skani bor buyurtmalarning yig'ilib borayotgan tannarxi.
+- OEE yo'qotishi faqat stanokdan ma'lumot kelgan kunlar bo'yicha: MES hisobotida ma'lumotsiz vaqt «o'chiq»
+  sanaladi, lekin stanok o'rnatilmagan / Pico ulanmagan kunlar pulli yo'qotish emas (necha kun chiqarilgani
+  ko'rsatiladi). MES ning o'z OEE hisobotida bunday kunlar uchun `oee_start_date` sozlamasi bor.
+- Orakllar: `tannarx_oracle.py` (26), `oee_pul_oracle.py` (4, `oee_oracle` ssenariysi ustida).
 
 Ochiq: kromka mashina vaqti (lenta tezligi skanda yo'q — hozir kromka metri normasi bilan), asbob resursini
 haqiqiy almashtirishlardan hisoblash, ikkinchi Prisadka uchun alohida ideal sikl.

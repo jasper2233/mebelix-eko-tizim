@@ -3335,7 +3335,7 @@ export class TannarxService {
     /**
      * Tannarx Buyurtmalar
      *
-     * To'liq (boshqaruv) tannarx: davrda yetkazilgan buyurtmalar yoki bitta buyurtma (`order_id`).
+     * To'liq (boshqaruv) tannarx: davrda yetkazilganlar, jarayondagilar (`jarayonda`) yoki bitta buyurtma.
      */
     public static tannarxBuyurtmalar<ThrowOnError extends boolean = true>(options?: Options<TannarxBuyurtmalarData, ThrowOnError>): RequestResult<TannarxBuyurtmalarResponses, TannarxBuyurtmalarErrors, ThrowOnError> {
         return (options?.client ?? client).get<TannarxBuyurtmalarResponses, TannarxBuyurtmalarErrors, ThrowOnError>({
