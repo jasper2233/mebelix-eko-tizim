@@ -10,11 +10,13 @@ import anyio
 import fastapi
 from arq import create_pool
 from arq.connections import RedisSettings as ArqRedisSettings
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
 from redis.asyncio import Redis as AsyncRedis
+from sqlalchemy.exc import DBAPIError
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.deps import get_current_superuser
@@ -145,6 +147,35 @@ def _install_docs_router(application: FastAPI) -> None:
     application.include_router(docs_router)
 
 
+#: Vaqtinchalik to'qnashuv: qulf kutish chegarasi, o'zaro qulflanish, ketma-ketlik xatosi, so'rov vaqti
+_BAND = {"55P03", "40P01", "40001", "57014"}
+#: Baza qoidasi buzildi: CHECK cheklovi yoki o'zgarmas jurnal trigger'i (EKO 2.4) — kodda xato bor
+_QOIDA = {"23514", "23001"}
+
+
+async def _db_error(request: Request, exc: Exception) -> Response:
+    """Baza xatosini 500 o'rniga tushunarli javobga aylantiradi (EKO 2.4, prototip qoidasi).
+
+    Band — 503 va `Retry-After`: foydalanuvchi bir necha soniyadan keyin qayta bosadi, hech narsa yarim
+    yozilmaydi (tranzaksiya to'liq qaytarilgan). Qoida buzilishi — 409 va ERROR logi: bu kod xatosi."""
+    orig = getattr(exc, "orig", None)
+    code = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
+    if code in _BAND:
+        logger.warning("DB band (%s): %s %s", code, request.method, request.url.path)
+        return JSONResponse(
+            status_code=503,
+            content={"detail": "Tizim hozir band — bir necha soniyadan keyin qayta urinib ko'ring."},
+            headers={"Retry-After": "2"},
+        )
+    if code in _QOIDA:
+        logger.error("DB qoidasi buzildi (%s): %s %s — %s", code, request.method, request.url.path, orig)
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "Amal hisob qoidasini buzadi (masalan, qoldiq manfiy bo'lardi) — bajarilmadi."},
+        )
+    raise exc
+
+
 def create_application(router: APIRouter) -> FastAPI:
     """Build the FastAPI app: metadata, lifespan, middleware (CORS + request logging), and env-conditional docs."""
     setup_logging()
@@ -159,6 +190,7 @@ def create_application(router: APIRouter) -> FastAPI:
         openapi_url=None,
     )
     application.include_router(router)
+    application.add_exception_handler(DBAPIError, _db_error)
     application.add_middleware(RequestLoggingMiddleware)
     application.add_middleware(
         CORSMiddleware,

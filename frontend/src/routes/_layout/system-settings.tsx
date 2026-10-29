@@ -30,6 +30,7 @@ import {
   KromkaKalCard,
   RoverCycleCard,
 } from "@/components/Settings/MachineCards"
+import { OmborQoidalarCard } from "@/components/Settings/OmborQoidalarCard"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -130,6 +131,7 @@ function SystemSettingsPage() {
               <>
                 <CustomSuffixCard settings={settings} />
                 <IdleLogoutCard settings={settings} />
+                <OmborQoidalarCard settings={settings} />
               </>
             ))}
           </div>

@@ -5,6 +5,9 @@
     3) solishtirish: seed + kirim + sotuv + berishdan keyin farq 0; qoldiqni jurnalsiz buzish — ushlanadi
     4) parallel: qoldiq 5, 10 ta bir vaqtdagi sotuv (har biri 1) — aniq 5 tasi o'tadi, qoldiq 0
     5) parallel: bitta list barkodi ikki joyda bir vaqtda skanerlanadi — faqat bittasi o'tadi
+    7) storno: tegilmagan kirim — qoldiq qaytadi, barkodlar yopiladi, takror storno — rad;
+       sotilgan kirim — rad; sotuv stornosi — qoldiq qaytadi; har biridan keyin solishtirish 0
+    8) ikki kalit: yoqilganda yozgan odam o'zi tasdiqlay olmaydi, boshqasi tasdiqlaydi
 Sinov bazasida yurgiziladi va ma'lumot QOLDIRADI (parallel sinov commit qiladi) — prod EMAS:
     cd backend && uv run python ../scripts/oracles/mustahkamlik_oracle.py
 """
@@ -17,12 +20,14 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError
 
 from app.core.db import local_session
-from app.models import Client, Order
+from app.models import Client, Order, User
 from app.models.enums import OrderStatus
-from app.modules.ombor.models import CatalogItem, MaterialBirlik
+from app.modules.ombor.models import CatalogItem, MaterialBirlik, StockDoc
 from app.modules.ombor.schemas.stock import DocIn, DocLineIn
 from app.modules.ombor.services import berish, birlik, rezerv, solishtirish
 from app.modules.ombor.services.stock import DocError, adjust_quantity, confirm, save_draft
+from app.modules.ombor.services.storno import storno
+from app.services.settings_service import OMBOR_IKKI_KALIT, set_setting
 
 natija: list[bool] = []
 
@@ -202,7 +207,97 @@ async def main() -> None:
         tek("jurnal farqi topildi", len(f), 1)
         await db.rollback()
 
+    print("7) storno")
+    async with local_session() as db:
+        q0 = (await db.get(CatalogItem, aid)).quantity  # type: ignore[union-attr]
+        k1 = await kirim(db, aid, 4)
+        st = await storno(db, k1, None, "xato kiritildi")
+        a = await db.get(CatalogItem, aid)
+        tek("kirim stornosi: qoldiq qaytdi", a.quantity, q0)  # type: ignore[union-attr]
+        tek("asl hujjat storno holatida, STR raqami", (k1.status, st.no.startswith("STR-")), ("storno", True))
+        tek("barkodlar yopildi", await birlik.labeled(db, aid), q0)
+        try:
+            await storno(db, k1, None, "yana")
+            tek("takror storno rad", False, True)
+        except DocError:
+            tek("takror storno rad", True, True)
+        await db.commit()
+    tek("kirim stornosidan keyin farq yo'q", await farqlar(), [])
+    async with local_session() as db:
+        # Band bo'lmagan alohida pozitsiya: yagona partiyasidan sotilsa — kirim stornosi rad
+        b = (
+            await db.execute(
+                select(CatalogItem)
+                .where(CatalogItem.catalog == "M", CatalogItem.unit == "list", CatalogItem.id != aid)
+                .order_by(CatalogItem.id)
+                .limit(1)
+            )
+        ).scalar_one()
+        await adjust_quantity(db, b, D(0), None)
+        bid = b.id
+        k2id = (await kirim(db, bid, 2)).id
+        await db.commit()
+    await sotuv(bid, 99)
+    async with local_session() as db:
+        k2 = await db.get(StockDoc, k2id)
+        assert k2 is not None
+        try:
+            await storno(db, k2, None, "sotilgan")
+            tek("sotilgan kirim stornosi rad", False, True)
+        except DocError as e:
+            tek("sotilgan kirim stornosi rad", "allaqachon sotilgan" in str(e), True)
+        await db.rollback()
+    async with local_session() as db:
+        s1 = (
+            await db.execute(select(StockDoc).where(StockDoc.kind == "chiqim").order_by(StockDoc.id.desc()).limit(1))
+        ).scalar_one()
+        q1 = (await db.get(CatalogItem, bid)).quantity  # type: ignore[union-attr]
+        await storno(db, s1, None, "mijoz qaytardi")
+        tek("sotuv stornosi: +1", (await db.get(CatalogItem, bid)).quantity, q1 + 1)  # type: ignore[union-attr]
+        await db.commit()
+    tek("sotuv stornosidan keyin farq yo'q", await farqlar(), [])
+
+    print("8) ikki kalit")
+    async with local_session() as db:
+        admin = (await db.execute(select(User).limit(1))).scalar_one()
+        await set_setting(db, OMBOR_IKKI_KALIT, "1", admin.id)
+        d = await save_draft(
+            db,
+            DocIn(
+                kind="kirim",
+                doc_date=date.today(),
+                head={"supplier": "Ikki kalit", "rate": "12 800"},
+                lines=[DocLineIn(item_id=aid, name="x", qty=D(1), price=D(2))],
+            ),
+            admin.id,
+        )
+        try:
+            await confirm(db, d, admin.id)
+            tek("yozgan odam tasdiqlay olmaydi", False, True)
+        except DocError as e:
+            tek("yozgan odam tasdiqlay olmaydi", "ikki kalit" in str(e), True)
+        await confirm(db, d, None)  # boshqa xodim
+        tek("boshqasi tasdiqladi", d.status, "confirmed")
+        await set_setting(db, OMBOR_IKKI_KALIT, "0", admin.id)
+        await db.commit()
+    tek("oxirida farq yo'q", await farqlar(), [])
+
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")
+
+
+async def kirim(db, item_id: int, qty: int) -> StockDoc:  # type: ignore[no-untyped-def]
+    d = await save_draft(
+        db,
+        DocIn(
+            kind="kirim",
+            doc_date=date.today(),
+            head={"supplier": "Storno sinov", "rate": "12 800"},
+            lines=[DocLineIn(item_id=item_id, name="x", qty=D(qty), price=D(2))],
+        ),
+        None,
+    )
+    await confirm(db, d, None)
+    return d
 
 
 asyncio.run(main())

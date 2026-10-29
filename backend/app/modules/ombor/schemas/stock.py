@@ -129,6 +129,10 @@ class InventoryCount(BaseModel):
     qty: Annotated[Decimal, Field(ge=0, le=10**9)]
 
 
+class StornoIn(BaseModel):
+    sabab: Text200
+
+
 class InventoryIn(BaseModel):
     """Inventarizatsiya: sanalgan pozitsiyalar — farqi qoldiqqa yoziladi, `INV` hujjati tasdiqlangan holda."""
 

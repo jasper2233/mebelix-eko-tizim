@@ -59,6 +59,8 @@ REZERV_MUDDAT_KUN = "rezerv_muddat_kun"
 ENG_KAM_AVANS_FOIZ = "eng_kam_avans_foiz"
 #: 1 — rezervi yechilmagan (va limit/direktor ruxsatisiz) buyurtma ishlab chiqarishga o'tmaydi; 0 — o'chiq
 REZERV_DARVOZA = "rezerv_darvoza"
+#: 1 — ombor hujjatini yozgan xodim uni o'zi tasdiqlay olmaydi (ikki kalit, EKO 2.4); 0 — o'chiq
+OMBOR_IKKI_KALIT = "ombor_ikki_kalit"
 
 #: Butun son sozlamalar va ularning ruxsat etilgan oralig'i — `PUT /settings/{key}` tashqarisini rad etadi.
 INT_RANGES: dict[str, tuple[int, int]] = {
@@ -74,6 +76,7 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     REZERV_MUDDAT_KUN: (1, 60),
     ENG_KAM_AVANS_FOIZ: (0, 100),
     REZERV_DARVOZA: (0, 1),
+    OMBOR_IKKI_KALIT: (0, 1),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -91,6 +94,7 @@ DEFAULTS: dict[str, str] = {
     REZERV_MUDDAT_KUN: "3",
     ENG_KAM_AVANS_FOIZ: "50",
     REZERV_DARVOZA: "1",
+    OMBOR_IKKI_KALIT: "0",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

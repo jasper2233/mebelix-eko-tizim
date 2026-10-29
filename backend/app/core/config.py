@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 20
     #: Bo'sh = rol jadvalidan (`_STATEMENT_TIMEOUT_MS`); son berilsa — aynan shu (0 = cheklovsiz)
     DB_STATEMENT_TIMEOUT_MS: int | None = None
+    #: Qatorni qulfni ko'pi bilan shuncha kutadi, keyin «tizim band» (503) — qotib qolmaydi (EKO 2.4). 0 = cheklovsiz
+    DB_LOCK_TIMEOUT_MS: int = 5000
+    #: Ochiq qolib ketgan tranzaksiyani baza o'zi uzadi va qulflarni bo'shatadi (EKO 2.4). 0 = cheklovsiz
+    DB_IDLE_TX_TIMEOUT_MS: int = 60000
 
     # === Process role (EKO TIZIM TZ §2.2) ===
     API_ROLE: ProcessRole = ProcessRole.ALL

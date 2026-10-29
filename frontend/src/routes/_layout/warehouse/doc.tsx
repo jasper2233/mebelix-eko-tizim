@@ -47,9 +47,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { isTracked } from "@/components/Warehouse/BirlikPanel"
 import { GotoSearch } from "@/components/Warehouse/GotoSearch"
 import { SexTabs } from "@/components/Warehouse/SexTabs"
 import { Shartnoma, type ShartnomaRow } from "@/components/Warehouse/Shartnoma"
+import { StornoButton } from "@/components/Warehouse/StornoButton"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
@@ -206,7 +208,8 @@ function DocPage() {
   if (id != null) {
     if (docQ.isError) return <QueryError onRetry={() => docQ.refetch()} />
     if (!docQ.data || !catalog) return <Skeleton className="h-96 w-full" />
-    if (docQ.data.status === "confirmed") return <ReadOnlyDoc doc={docQ.data} />
+    // Tasdiqlangan va storno qilingan (EKO 2.4) hujjat — faqat ko'rish; tahrir faqat qoralamada
+    if (docQ.data.status !== "draft") return <ReadOnlyDoc doc={docQ.data} />
     return (
       <Editor
         key={`d${docQ.data.id}`}
@@ -1314,18 +1317,36 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
       </Link>
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="text-xl font-bold">
-          {isK
-            ? "Kirim listi"
-            : isSx
-              ? "Sexga kirim listi"
-              : "Sotuv listi (chiqim)"}
+          {doc.kind === "storno"
+            ? "Storno hujjati"
+            : isK
+              ? "Kirim listi"
+              : isSx
+                ? "Sexga kirim listi"
+                : "Sotuv listi (chiqim)"}
         </h1>
         <span className="num text-sm text-muted-foreground">{doc.no}</span>
-        <span className="rounded bg-emerald-600 px-1.5 text-xs font-semibold text-white uppercase">
-          Tasdiqlangan
-        </span>
+        {doc.status === "storno" ? (
+          // EKO 2.4: tasdiqlangan hujjat o'chirilmaydi — teskari STORNO hujjati bilan bekor qilinadi
+          <span className="rounded bg-red-600 px-1.5 text-xs font-semibold text-white uppercase">
+            Storno qilingan · {h.storno}
+          </span>
+        ) : (
+          <span className="rounded bg-emerald-600 px-1.5 text-xs font-semibold text-white uppercase">
+            Tasdiqlangan
+          </span>
+        )}
+        {doc.kind === "storno" && (
+          <span className="text-sm">
+            asl hujjat: <b>{h.asl}</b> · sabab: {h.sabab}
+          </span>
+        )}
+        {doc.status === "confirmed" &&
+          ["kirim", "chiqim", "sex"].includes(doc.kind) && (
+            <StornoButton docId={doc.id} no={doc.no} />
+          )}
         <span className="text-sm text-muted-foreground">{doc.doc_date}</span>
-        {isK && (
+        {isK && doc.status === "confirmed" && doc.lines.some(isTracked) && (
           // Kirimda list/rulon barkod oladi (EKO TZ §4.4) — yorliqlar shu hujjat bo'yicha
           <Button variant="outline" asChild>
             <Link to="/warehouse/yorliq" search={{ doc: doc.id }}>

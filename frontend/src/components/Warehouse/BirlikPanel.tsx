@@ -17,8 +17,10 @@ import { fmtQty, num, parseNum } from "@/lib/warehouse"
 import { handleError } from "@/utils"
 
 //: Backend `services/birlik.py: tracked` bilan bir xil
-export const isTracked = (r: Pick<CatalogRow, "catalog" | "unit">) =>
-  r.catalog === "M" || (r.catalog !== "X" && r.unit === "metr")
+export const isTracked = (r: {
+  catalog?: CatalogRow["catalog"] | null
+  unit?: CatalogRow["unit"]
+}) => r.catalog === "M" || (r.catalog !== "X" && r.unit === "metr")
 
 export function BirlikPanel({
   item,

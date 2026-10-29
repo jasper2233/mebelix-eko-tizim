@@ -17,9 +17,16 @@ DATABASE_URL = f"{settings.POSTGRES_ASYNC_PREFIX}{settings.POSTGRES_URI}"
 # `statement_timeout` ulanish ochilganda o'rnatiladi (asyncpg `server_settings`): sex jarayonida
 # qotib qolgan so'rov 3 s da uziladi va pulni band qilib turmaydi. Alembic o'z engine'ini
 # quradi (`migrations/env.py`) — migratsiyalarga bu cheklov tegmaydi.
-_connect_args: dict[str, dict[str, str]] = {}
+# `lock_timeout` va `idle_in_transaction_session_timeout` (EKO 2.4, prototip qoidasi): qulf kutish
+# cheklangan — navbat qotib qolmaydi; osilib qolgan tranzaksiya qulflarni abadiy ushlab turmaydi.
+_server_settings: dict[str, str] = {}
 if settings.STATEMENT_TIMEOUT_MS > 0:
-    _connect_args["server_settings"] = {"statement_timeout": str(settings.STATEMENT_TIMEOUT_MS)}
+    _server_settings["statement_timeout"] = str(settings.STATEMENT_TIMEOUT_MS)
+if settings.DB_LOCK_TIMEOUT_MS > 0:
+    _server_settings["lock_timeout"] = str(settings.DB_LOCK_TIMEOUT_MS)
+if settings.DB_IDLE_TX_TIMEOUT_MS > 0:
+    _server_settings["idle_in_transaction_session_timeout"] = str(settings.DB_IDLE_TX_TIMEOUT_MS)
+_connect_args: dict[str, dict[str, str]] = {"server_settings": _server_settings} if _server_settings else {}
 
 
 def _engine(url: str, pool_size: int, max_overflow: int) -> AsyncEngine:

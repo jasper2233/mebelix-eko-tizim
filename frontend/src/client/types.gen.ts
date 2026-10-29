@@ -6343,6 +6343,16 @@ export type StockReport = {
 };
 
 /**
+ * StornoIn
+ */
+export type StornoIn = {
+    /**
+     * Sabab
+     */
+    sabab: string;
+};
+
+/**
  * SurveyModule
  *
  * O'lchov varag'i B bo'limi: yasaladigan moduldan bitta qator.
@@ -10708,6 +10718,36 @@ export type ConfirmStockDocResponses = {
 };
 
 export type ConfirmStockDocResponse = ConfirmStockDocResponses[keyof ConfirmStockDocResponses];
+
+export type StornoStockDocData = {
+    body: StornoIn;
+    path: {
+        /**
+         * Doc Id
+         */
+        doc_id: number;
+    };
+    query?: never;
+    url: '/api/v1/stock/docs/{doc_id}/storno';
+};
+
+export type StornoStockDocErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StornoStockDocError = StornoStockDocErrors[keyof StornoStockDocErrors];
+
+export type StornoStockDocResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocRead;
+};
+
+export type StornoStockDocResponse = StornoStockDocResponses[keyof StornoStockDocResponses];
 
 export type ConfirmStockInventoryData = {
     body: InventoryIn;

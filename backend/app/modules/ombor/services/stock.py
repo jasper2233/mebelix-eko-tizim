@@ -21,9 +21,16 @@ from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockL
 from app.modules.ombor.schemas.stock import DocIn
 from app.modules.ombor.services import birlik, rezerv
 from app.modules.ombor.services.warehouse import abc_classes, get_pricing, reprice
+from app.services.settings_service import OMBOR_IKKI_KALIT, get_setting
 
-PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
-KIND_NAME = {"kirim": "Kirim", "chiqim": "Chiqim (sotuv)", "sex": "Sexga kirim", "inv": "Inventarizatsiya"}
+PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV", "storno": "STR"}
+KIND_NAME = {
+    "kirim": "Kirim",
+    "chiqim": "Chiqim (sotuv)",
+    "sex": "Sexga kirim",
+    "inv": "Inventarizatsiya",
+    "storno": "Storno",
+}
 
 
 class DocError(Exception):
@@ -227,6 +234,9 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     """Qoralamani tasdiqlaydi: tekshiradi, qoldiq/partiya/harakat yozadi, qulflaydi. Xato — `DocError`."""
     if doc.status != "draft":
         raise DocError([f"{doc.no} allaqachon tasdiqlangan"])
+    if await get_setting(db, OMBOR_IKKI_KALIT) == "1" and user_id is not None and user_id == doc.created_by_id:
+        # Ikki kalit (EKO 2.4, prototip qoidasi): hujjatni yozgan odam o'zi tasdiqlamaydi
+        raise DocError([f"{doc.no}: ikki kalit qoidasi — qoralamani saqlang, uni boshqa xodim tasdiqlaydi"])
     is_k = doc.kind == "kirim"
     head = doc.head
     cfg = await get_pricing(db)

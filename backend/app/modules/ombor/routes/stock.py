@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query, Request
 from sqlalchemy import func, select
 
-from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
+from app.api.deps import DirectorUser, SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.config import TASHKENT_TZ
 from app.crud import log_action
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
@@ -24,8 +24,10 @@ from app.modules.ombor.schemas.stock import (
     MoveRead,
     SexLogRow,
     StockReport,
+    StornoIn,
 )
 from app.modules.ombor.services.stock import KIND_NAME, DocError, confirm, inventory, open_lots, report, save_draft
+from app.modules.ombor.services.storno import storno
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -36,6 +38,8 @@ def _who(doc: StockDoc) -> str:
         parts = [h.get("supplier"), h.get("invoice"), f"qabul: {h['receiver']}" if h.get("receiver") else None]
     elif doc.kind == "sex":
         parts = [h.get("taker"), h.get("equip"), h.get("order"), f"berdi: {h['giver']}" if h.get("giver") else None]
+    elif doc.kind == "storno":
+        parts = [f"bekor: {h['asl']}" if h.get("asl") else None, h.get("sabab")]
     elif doc.kind == "inv":
         parts = [f"guruh {h['group']}" if h.get("group") else "Ombor", h.get("note")]
     else:
@@ -152,6 +156,34 @@ async def confirm_stock_doc(db: SessionDep, current_user: WarehouseUser, body: D
     )
     await db.commit()
     return await _read(db, doc)
+
+
+@router.post("/docs/{doc_id}/storno", response_model=DocRead, operation_id="storno_stock_doc")
+async def storno_stock_doc(
+    db: SessionDep, current_user: DirectorUser, doc_id: int, body: StornoIn, request: Request
+) -> DocRead:
+    """Tasdiqlangan hujjatni bekor qiladi — teskari STORNO hujjati bilan (o'chirish va tahrir yo'q).
+    Faqat direktor: bu moliyaviy tuzatish."""
+    doc = await db.get(StockDoc, doc_id, with_for_update=True)
+    if doc is None or doc.is_deleted:
+        raise HTTPException(status_code=404, detail="Hujjat topilmadi")
+    try:
+        st = await storno(db, doc, current_user.id, body.sabab)
+    except DocError as e:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    log_action(
+        db,
+        module="stock",
+        action="storno",
+        user_id=current_user.id,
+        entity_type="stock_doc",
+        entity_id=doc.id,
+        message=f"{doc.no} storno qilindi → {st.no} · {body.sabab}"[:500],
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return await _read(db, st)
 
 
 @router.post("/inventory", response_model=DocRead, operation_id="confirm_stock_inventory")

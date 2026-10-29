@@ -43,6 +43,7 @@ const KIND: Record<string, string> = {
   chiqim: "Chiqim (sotuv)",
   sex: "Sexga kirim",
   inv: "Inventarizatsiya",
+  storno: "Storno",
 }
 
 function DocsPage() {
@@ -94,7 +95,7 @@ function DocsPage() {
 
   const rows = data ?? []
   const drafts = rows.filter((d) => d.status === "draft")
-  const done = rows.filter((d) => d.status === "confirmed")
+  const done = rows.filter((d) => d.status !== "draft")
   const open = (d: DocRow) =>
     navigate({
       to: "/warehouse/doc",
@@ -163,6 +164,10 @@ function DocsPage() {
                   ) : (
                     "Qoralama"
                   )
+                ) : d.status === "storno" ? (
+                  <span className="rounded bg-red-600 px-1.5 text-xs font-semibold text-white">
+                    Storno qilingan
+                  </span>
                 ) : (
                   <span className="rounded bg-emerald-600 px-1.5 text-xs font-semibold text-white">
                     Tasdiqlangan

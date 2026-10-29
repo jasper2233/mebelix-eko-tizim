@@ -26,7 +26,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.2b Rezerv (interfeys) | tayyor, brauzerda sinalgan | pastda |
 | 2.3a Barkodlar, sexga berish, sexdagi rulonlar | tayyor, brauzerda sinalgan | pastda |
 | 2.3b Sexdan so'rov, rulon tugadi (terminal), qoldiq bo'laklari | tayyor, lokal sinalgan | pastda |
-| 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno) | navbatda | |
+| 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
 
@@ -166,4 +166,33 @@ tablodan so'raydi **yoki** omborchi oldindan yetkazadi (ikkalasi ham).
 - Rezerv qayta qurilganda direktor ruxsati saqlanadi (to'lov haqida, material ro'yxati haqida emas).
 - TMO (tayyor mahsulot) jismoniy hisobi MES da allaqachon bor (`/tmo`); uning QIYMAT hisobi
   (tugallanmagan ishlab chiqarish → tayyor mahsulot) Moliya bosqichiga (5) o'tkazildi.
+
+### 2.4 — mustahkamlik (mebel-erp-prototip qoidalari)
+
+Foydalanuvchi talabi (2026-10-29): `mebel-erp-prototip.zip` dagi ishonchlilik darajasi. Kod ko'chirilmadi —
+qoidalari olindi:
+
+- **Baza cheklovlari** (`e24a0c1b7f31`): `catalog_item.quantity >= 0`, `stock_lot 0 <= qty_left <= qty`,
+  `material_birlik 0 <= qoldiq <= hajm`, `rezerv_line` miqdorlari `>= 0`. `NOT VALID` qo'shilib keyin
+  tekshiriladi — prodda eski buzuq qator bo'lsa deploy yiqilmaydi, WARNING beradi.
+- **O'zgarmas jurnal**: `stock_movement` va `audit_log` — UPDATE/DELETE trigger bilan taqiqlangan
+  (`eko_jurnal_ozgarmaydi`). Xato faqat teskari yozuv bilan tuzatiladi.
+- **Jurnal = qoldiq**: boshlang'ich qoldiqlar `boshlangich` harakatlari bilan jurnalga o'tkazildi; pozitsiya
+  yaratish va `ombor_seed` endi harakat yozadi. `python -m app.commands.ombor_solishtirish` va worker cron
+  (har kecha 02:30 Toshkent): qoldiq = jurnal, partiyalar = qoldiq, barkodlar ≤ qoldiq, berilgan = sarf.
+  Farq bo'lsa chiqish kodi 1 / ERROR logi; hech narsani o'zi tuzatmaydi.
+- **Storno** (`services/storno.py`, `POST /stock/docs/{id}/storno`, faqat direktor, sabab majburiy):
+  `STR-…` hujjati teskari harakatlar bilan; asl hujjat `storno` holatida. Kirim — faqat partiyasi tegilmagan,
+  barkodlari omborda butun va material band bo'lmasa. Inventarizatsiya storno qilinmaydi.
+- **Ikki kalit** (`ombor_ikki_kalit`, sukut 0; «Tizim sozlamalari → Ombor va rezerv qoidalari»): hujjatni
+  yozgan xodim uni o'zi tasdiqlay olmaydi.
+- **Parallel ishlash**: hujjat raqami `pg_advisory_xact_lock` bilan (parallel sinov bir xil raqam
+  berilishini topdi), raqam son sifatida solishtiriladi; `lock_timeout` 5 s va
+  `idle_in_transaction_session_timeout` 60 s (`DB_LOCK_TIMEOUT_MS`, `DB_IDLE_TX_TIMEOUT_MS`); qulf/deadlock —
+  503 «Tizim hozir band» + `Retry-After`, baza qoidasi buzilishi — 409 (500 emas).
+- Orakl `mustahkamlik_oracle.py` 28/28: jurnalni o'zgartirish rad, manfiy rad, 10 parallel sotuv (qoldiq 5) —
+  aniq 5 tasi, bitta barkodni ikki joyda skan — bittasi, storno, ikki kalit, buzilgan qoldiq ushlanadi.
+
+Ochiq (keyingi bosqichlar): MXIK va shtrix-kod katalogda (Soliq, 6), kompaniya → filial → ombor tuzilmasi,
+idempotent inbox/outbox (MX Kroy integratsiyasi, 3), so'rovni avtomatik qayta urinish (hozir 503 + qayta bosish).
 
