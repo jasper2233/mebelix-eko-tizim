@@ -1300,6 +1300,18 @@ export type CatalogItemRead = {
      * Ishlab Barkod
      */
     ishlab_barkod?: string | null;
+    /**
+     * Mxik
+     */
+    mxik?: string | null;
+    /**
+     * Birlik Kod
+     */
+    birlik_kod?: string | null;
+    /**
+     * Qqs Turi
+     */
+    qqs_turi?: string;
 };
 
 /**
@@ -3298,6 +3310,144 @@ export type EndpointStat = {
 };
 
 /**
+ * EsfBuyurtmaIn
+ */
+export type EsfBuyurtmaIn = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+};
+
+/**
+ * EsfHujjatIn
+ */
+export type EsfHujjatIn = {
+    /**
+     * Stock Doc Id
+     */
+    stock_doc_id: number;
+    /**
+     * Client Id
+     */
+    client_id: number;
+};
+
+/**
+ * EsfRead
+ */
+export type EsfRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Raqam
+     */
+    raqam: string;
+    /**
+     * Order Id
+     */
+    order_id: number | null;
+    /**
+     * Order Number
+     */
+    order_number?: string | null;
+    /**
+     * Stock Doc Id
+     */
+    stock_doc_id: number | null;
+    /**
+     * Stock Doc No
+     */
+    stock_doc_no?: string | null;
+    /**
+     * Client Id
+     */
+    client_id: number | null;
+    /**
+     * Kontragent
+     */
+    kontragent: string;
+    /**
+     * Kontragent Stir
+     */
+    kontragent_stir: string;
+    /**
+     * Rekvizit
+     */
+    rekvizit: {
+        [key: string]: unknown;
+    };
+    /**
+     * Qatorlar
+     */
+    qatorlar: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Rejim
+     */
+    rejim: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Qqs
+     */
+    qqs: string;
+    /**
+     * Jami
+     */
+    jami: string;
+    /**
+     * Operator
+     */
+    operator: string;
+    /**
+     * Operator Id
+     */
+    operator_id: string | null;
+    /**
+     * Xato
+     */
+    xato: string;
+    /**
+     * Urinish
+     */
+    urinish: number;
+    /**
+     * Yuborilgan At
+     */
+    yuborilgan_at: string | null;
+    /**
+     * Javob At
+     */
+    javob_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * FileKind
  */
 export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis' | 'kroy_paket' | 'stanok';
@@ -3719,6 +3869,20 @@ export type ItemHistory = {
      * Next Cost
      */
     next_cost: string | null;
+};
+
+/**
+ * JavobIn
+ */
+export type JavobIn = {
+    /**
+     * Qabul
+     */
+    qabul: boolean;
+    /**
+     * Sabab
+     */
+    sabab?: string;
 };
 
 /**
@@ -4154,6 +4318,25 @@ export type KirimIn = {
 };
 
 /**
+ * Kitob
+ */
+export type Kitob = {
+    oy: OySoliqRead;
+    /**
+     * Sotuv
+     */
+    sotuv: Array<EsfRead>;
+    /**
+     * Xarid
+     */
+    xarid: Array<EsfRead>;
+    /**
+     * Esfsiz Qqs
+     */
+    esfsiz_qqs: string;
+};
+
+/**
  * KodIn
  */
 export type KodIn = {
@@ -4161,6 +4344,64 @@ export type KodIn = {
      * Kod
      */
     kod: string;
+};
+
+/**
+ * KorxonaIO
+ */
+export type KorxonaIo = {
+    /**
+     * Nomi
+     */
+    nomi?: string;
+    /**
+     * Stir
+     */
+    stir?: string;
+    /**
+     * Manzil
+     */
+    manzil?: string;
+    /**
+     * Bank
+     */
+    bank?: string;
+    /**
+     * Mfo
+     */
+    mfo?: string;
+    /**
+     * Hisob Raqam
+     */
+    hisob_raqam?: string;
+    /**
+     * Direktor
+     */
+    direktor?: string;
+    /**
+     * Buxgalter
+     */
+    buxgalter?: string;
+    /**
+     * Qqs Kod
+     */
+    qqs_kod?: string;
+    /**
+     * Esf Operator
+     */
+    esf_operator?: 'sinov';
+    /**
+     * Buyurtma Nomi
+     */
+    buyurtma_nomi?: string;
+    /**
+     * Buyurtma Mxik
+     */
+    buyurtma_mxik?: string;
+    /**
+     * Buyurtma Birlik
+     */
+    buyurtma_birlik?: string;
 };
 
 /**
@@ -5195,6 +5436,44 @@ export type Message = {
 };
 
 /**
+ * MijozIO
+ */
+export type MijozIo = {
+    /**
+     * Yuridik
+     */
+    yuridik?: boolean;
+    /**
+     * Nomi
+     */
+    nomi?: string;
+    /**
+     * Stir
+     */
+    stir?: string;
+    /**
+     * Jshshir
+     */
+    jshshir?: string;
+    /**
+     * Bank
+     */
+    bank?: string;
+    /**
+     * Mfo
+     */
+    mfo?: string;
+    /**
+     * Hisob Raqam
+     */
+    hisob_raqam?: string;
+    /**
+     * Qqs Kod
+     */
+    qqs_kod?: string;
+};
+
+/**
  * MijozShartIn
  */
 export type MijozShartIn = {
@@ -5307,6 +5586,24 @@ export type MoveRead = {
 };
 
 /**
+ * MxikIn
+ */
+export type MxikIn = {
+    /**
+     * Mxik
+     */
+    mxik?: string;
+    /**
+     * Birlik Kod
+     */
+    birlik_kod?: string;
+    /**
+     * Qqs Turi
+     */
+    qqs_turi?: 'standart' | 'nol' | 'ozod';
+};
+
+/**
  * NavbatRow
  *
  * To'lov navbati: summasi bor, to'liq to'lanmagan buyurtmalar (kassir chapdan tanlaydi).
@@ -5356,6 +5653,46 @@ export type NavbatRow = {
      * Holat
      */
     holat: string;
+};
+
+/**
+ * Nomzod
+ *
+ * ESF yozilmagan, ESF ga tegishli sotuv: yetkazilgan buyurtma yoki ombor sotuvi.
+ */
+export type Nomzod = {
+    /**
+     * Tur
+     */
+    tur: 'buyurtma' | 'hujjat';
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Client Id
+     */
+    client_id: number | null;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Tayyor
+     */
+    tayyor: boolean;
 };
 
 /**
@@ -5849,6 +6186,60 @@ export type OyOqim = {
 };
 
 /**
+ * OySoliqRead
+ */
+export type OySoliqRead = {
+    /**
+     * Oy
+     */
+    oy: string;
+    /**
+     * Rejim
+     */
+    rejim: string | null;
+    /**
+     * Qqs Foiz
+     */
+    qqs_foiz: string;
+    /**
+     * Aylanma Foiz
+     */
+    aylanma_foiz: string;
+    /**
+     * Aylanma
+     */
+    aylanma: string;
+    /**
+     * Buyurtma
+     */
+    buyurtma: string;
+    /**
+     * Dokon
+     */
+    dokon: string;
+    /**
+     * Sotuv Qqs
+     */
+    sotuv_qqs: string;
+    /**
+     * Xarid Qqs
+     */
+    xarid_qqs: string;
+    /**
+     * Tolanadigan Qqs
+     */
+    tolanadigan_qqs: string;
+    /**
+     * Aylanma Soliq
+     */
+    aylanma_soliq: string;
+    /**
+     * Jami Soliq
+     */
+    jami_soliq: string;
+};
+
+/**
  * PachkaItemRow
  *
  * Qadoq ichidagi bitta nusxa.
@@ -6039,6 +6430,14 @@ export type PnL = {
      */
     sotuv: string;
     /**
+     * Sotuv Qqs
+     */
+    sotuv_qqs?: string;
+    /**
+     * Sof Tushum
+     */
+    sof_tushum?: string;
+    /**
      * Tannarx Buyurtma
      */
     tannarx_buyurtma: string;
@@ -6062,6 +6461,10 @@ export type PnL = {
      * Kassa Farqi
      */
     kassa_farqi: string;
+    /**
+     * Aylanma Soliq
+     */
+    aylanma_soliq?: string;
     /**
      * Xarajat Jami
      */
@@ -6766,6 +7169,54 @@ export type RejaRead = {
 };
 
 /**
+ * RejimIn
+ */
+export type RejimIn = {
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+    /**
+     * Rejim
+     */
+    rejim: 'qqs' | 'aylanma';
+    /**
+     * Qqs Foiz
+     */
+    qqs_foiz: number | string;
+    /**
+     * Aylanma Foiz
+     */
+    aylanma_foiz: number | string;
+};
+
+/**
+ * RejimRead
+ */
+export type RejimRead = {
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+    /**
+     * Rejim
+     */
+    rejim: 'qqs' | 'aylanma';
+    /**
+     * Qqs Foiz
+     */
+    qqs_foiz: string;
+    /**
+     * Aylanma Foiz
+     */
+    aylanma_foiz: string;
+    /**
+     * Id
+     */
+    id: number;
+};
+
+/**
  * ReportAbcRow
  *
  * ABC sinfi: nechta pozitsiya va qoldiq qiymatining qancha qismi.
@@ -7286,6 +7737,38 @@ export type ShortageRead = {
      * Buyurtmalar
      */
     buyurtmalar: number;
+};
+
+/**
+ * SinovKiruvchiIn
+ *
+ * Lokal sinov operatori: yetkazib beruvchi yuborgan ESF (QQS bilan jami).
+ */
+export type SinovKiruvchiIn = {
+    /**
+     * Sotuvchi Nomi
+     */
+    sotuvchi_nomi: string;
+    /**
+     * Sotuvchi Stir
+     */
+    sotuvchi_stir: string;
+    /**
+     * Raqam
+     */
+    raqam: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Jami
+     */
+    jami: number | string;
+    /**
+     * Qqs Foiz
+     */
+    qqs_foiz?: number | string;
 };
 
 /**
@@ -14026,6 +14509,529 @@ export type MoliyaDavrOchishTasdiqResponses = {
 };
 
 export type MoliyaDavrOchishTasdiqResponse = MoliyaDavrOchishTasdiqResponses[keyof MoliyaDavrOchishTasdiqResponses];
+
+export type SoliqKorxonaData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/korxona';
+};
+
+export type SoliqKorxonaResponses = {
+    /**
+     * Successful Response
+     */
+    200: KorxonaIo;
+};
+
+export type SoliqKorxonaResponse = SoliqKorxonaResponses[keyof SoliqKorxonaResponses];
+
+export type SoliqKorxonaSaqlaData = {
+    body: KorxonaIo;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/korxona';
+};
+
+export type SoliqKorxonaSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqKorxonaSaqlaError = SoliqKorxonaSaqlaErrors[keyof SoliqKorxonaSaqlaErrors];
+
+export type SoliqKorxonaSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: KorxonaIo;
+};
+
+export type SoliqKorxonaSaqlaResponse = SoliqKorxonaSaqlaResponses[keyof SoliqKorxonaSaqlaResponses];
+
+export type SoliqRejimlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/rejimlar';
+};
+
+export type SoliqRejimlarResponses = {
+    /**
+     * Response Soliq Rejimlar
+     *
+     * Successful Response
+     */
+    200: Array<RejimRead>;
+};
+
+export type SoliqRejimlarResponse = SoliqRejimlarResponses[keyof SoliqRejimlarResponses];
+
+export type SoliqRejimQoshData = {
+    body: RejimIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/rejimlar';
+};
+
+export type SoliqRejimQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqRejimQoshError = SoliqRejimQoshErrors[keyof SoliqRejimQoshErrors];
+
+export type SoliqRejimQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: RejimRead;
+};
+
+export type SoliqRejimQoshResponse = SoliqRejimQoshResponses[keyof SoliqRejimQoshResponses];
+
+export type SoliqMijozData = {
+    body?: never;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/mijoz/{client_id}';
+};
+
+export type SoliqMijozErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqMijozError = SoliqMijozErrors[keyof SoliqMijozErrors];
+
+export type SoliqMijozResponses = {
+    /**
+     * Successful Response
+     */
+    200: MijozIo;
+};
+
+export type SoliqMijozResponse = SoliqMijozResponses[keyof SoliqMijozResponses];
+
+export type SoliqMijozSaqlaData = {
+    body: MijozIo;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/mijoz/{client_id}';
+};
+
+export type SoliqMijozSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqMijozSaqlaError = SoliqMijozSaqlaErrors[keyof SoliqMijozSaqlaErrors];
+
+export type SoliqMijozSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: MijozIo;
+};
+
+export type SoliqMijozSaqlaResponse = SoliqMijozSaqlaResponses[keyof SoliqMijozSaqlaResponses];
+
+export type SoliqMxikSaqlaData = {
+    body: MxikIn;
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/katalog/{item_id}';
+};
+
+export type SoliqMxikSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqMxikSaqlaError = SoliqMxikSaqlaErrors[keyof SoliqMxikSaqlaErrors];
+
+export type SoliqMxikSaqlaResponses = {
+    /**
+     * Response Soliq Mxik Saqla
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: boolean;
+    };
+};
+
+export type SoliqMxikSaqlaResponse = SoliqMxikSaqlaResponses[keyof SoliqMxikSaqlaResponses];
+
+export type SoliqEsflarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Tur
+         */
+        tur?: string;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/soliq/esf';
+};
+
+export type SoliqEsflarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsflarError = SoliqEsflarErrors[keyof SoliqEsflarErrors];
+
+export type SoliqEsflarResponses = {
+    /**
+     * Response Soliq Esflar
+     *
+     * Successful Response
+     */
+    200: Array<EsfRead>;
+};
+
+export type SoliqEsflarResponse = SoliqEsflarResponses[keyof SoliqEsflarResponses];
+
+export type SoliqNomzodlarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Kun
+         */
+        kun?: number;
+    };
+    url: '/api/v1/soliq/nomzodlar';
+};
+
+export type SoliqNomzodlarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqNomzodlarError = SoliqNomzodlarErrors[keyof SoliqNomzodlarErrors];
+
+export type SoliqNomzodlarResponses = {
+    /**
+     * Response Soliq Nomzodlar
+     *
+     * Successful Response
+     */
+    200: Array<Nomzod>;
+};
+
+export type SoliqNomzodlarResponse = SoliqNomzodlarResponses[keyof SoliqNomzodlarResponses];
+
+export type SoliqEsfBuyurtmaData = {
+    body: EsfBuyurtmaIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/esf/buyurtma';
+};
+
+export type SoliqEsfBuyurtmaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsfBuyurtmaError = SoliqEsfBuyurtmaErrors[keyof SoliqEsfBuyurtmaErrors];
+
+export type SoliqEsfBuyurtmaResponses = {
+    /**
+     * Successful Response
+     */
+    200: EsfRead;
+};
+
+export type SoliqEsfBuyurtmaResponse = SoliqEsfBuyurtmaResponses[keyof SoliqEsfBuyurtmaResponses];
+
+export type SoliqEsfHujjatData = {
+    body: EsfHujjatIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/esf/hujjat';
+};
+
+export type SoliqEsfHujjatErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsfHujjatError = SoliqEsfHujjatErrors[keyof SoliqEsfHujjatErrors];
+
+export type SoliqEsfHujjatResponses = {
+    /**
+     * Successful Response
+     */
+    200: EsfRead;
+};
+
+export type SoliqEsfHujjatResponse = SoliqEsfHujjatResponses[keyof SoliqEsfHujjatResponses];
+
+export type SoliqEsfYuborData = {
+    body?: never;
+    path: {
+        /**
+         * Esf Id
+         */
+        esf_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/esf/{esf_id}/yuborish';
+};
+
+export type SoliqEsfYuborErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsfYuborError = SoliqEsfYuborErrors[keyof SoliqEsfYuborErrors];
+
+export type SoliqEsfYuborResponses = {
+    /**
+     * Successful Response
+     */
+    200: EsfRead;
+};
+
+export type SoliqEsfYuborResponse = SoliqEsfYuborResponses[keyof SoliqEsfYuborResponses];
+
+export type SoliqEsfBekorData = {
+    body?: never;
+    path: {
+        /**
+         * Esf Id
+         */
+        esf_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/esf/{esf_id}/bekor';
+};
+
+export type SoliqEsfBekorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsfBekorError = SoliqEsfBekorErrors[keyof SoliqEsfBekorErrors];
+
+export type SoliqEsfBekorResponses = {
+    /**
+     * Successful Response
+     */
+    200: EsfRead;
+};
+
+export type SoliqEsfBekorResponse = SoliqEsfBekorResponses[keyof SoliqEsfBekorResponses];
+
+export type SoliqEsfJavobData = {
+    body: JavobIn;
+    path: {
+        /**
+         * Esf Id
+         */
+        esf_id: number;
+    };
+    query?: never;
+    url: '/api/v1/soliq/esf/{esf_id}/javob';
+};
+
+export type SoliqEsfJavobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqEsfJavobError = SoliqEsfJavobErrors[keyof SoliqEsfJavobErrors];
+
+export type SoliqEsfJavobResponses = {
+    /**
+     * Successful Response
+     */
+    200: EsfRead;
+};
+
+export type SoliqEsfJavobResponse = SoliqEsfJavobResponses[keyof SoliqEsfJavobResponses];
+
+export type SoliqIshlovData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/ishlov';
+};
+
+export type SoliqIshlovResponses = {
+    /**
+     * Response Soliq Ishlov
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: number;
+    };
+};
+
+export type SoliqIshlovResponse = SoliqIshlovResponses[keyof SoliqIshlovResponses];
+
+export type SoliqSinovKiruvchiData = {
+    body: SinovKiruvchiIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/soliq/sinov/kiruvchi';
+};
+
+export type SoliqSinovKiruvchiErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqSinovKiruvchiError = SoliqSinovKiruvchiErrors[keyof SoliqSinovKiruvchiErrors];
+
+export type SoliqSinovKiruvchiResponses = {
+    /**
+     * Response Soliq Sinov Kiruvchi
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type SoliqSinovKiruvchiResponse = SoliqSinovKiruvchiResponses[keyof SoliqSinovKiruvchiResponses];
+
+export type SoliqOyData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Oy
+         */
+        oy?: string | null;
+    };
+    url: '/api/v1/soliq/oy';
+};
+
+export type SoliqOyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqOyError = SoliqOyErrors[keyof SoliqOyErrors];
+
+export type SoliqOyResponses = {
+    /**
+     * Successful Response
+     */
+    200: OySoliqRead;
+};
+
+export type SoliqOyResponse = SoliqOyResponses[keyof SoliqOyResponses];
+
+export type SoliqKitobData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Oy
+         */
+        oy?: string | null;
+    };
+    url: '/api/v1/soliq/kitob';
+};
+
+export type SoliqKitobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqKitobError = SoliqKitobErrors[keyof SoliqKitobErrors];
+
+export type SoliqKitobResponses = {
+    /**
+     * Successful Response
+     */
+    200: Kitob;
+};
+
+export type SoliqKitobResponse = SoliqKitobResponses[keyof SoliqKitobResponses];
+
+export type SoliqKitobCsvData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Oy
+         */
+        oy: string;
+    };
+    url: '/api/v1/soliq/kitob.csv';
+};
+
+export type SoliqKitobCsvErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SoliqKitobCsvError = SoliqKitobCsvErrors[keyof SoliqKitobCsvErrors];
+
+export type SoliqKitobCsvResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type KroyHolatData = {
     body?: never;

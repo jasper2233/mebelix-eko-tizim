@@ -19,6 +19,7 @@ import {
   Layers,
   LayoutDashboard,
   MonitorCog,
+  Receipt,
   Ruler,
   ScanLine,
   ScrollText,
@@ -103,6 +104,13 @@ export const NAV_ITEMS: (Item & {
     path: "/moliya",
     show: isMoliya,
     modul: "moliya",
+  },
+  {
+    icon: Receipt,
+    title: "Soliq",
+    path: "/soliq",
+    show: isMoliya,
+    modul: "soliq",
   },
   {
     icon: ClipboardList,

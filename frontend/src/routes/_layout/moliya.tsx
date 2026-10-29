@@ -283,6 +283,9 @@ function PnlJadval({
     sotuv_buyurtma: string
     sotuv_ombor: string
     sotuv: string
+    sotuv_qqs?: string
+    sof_tushum?: string
+    aylanma_soliq?: string
     tannarx: string
     yalpi: string
     xarajatlar: Qator[]
@@ -303,9 +306,17 @@ function PnlJadval({
         {qator("Sotuv — buyurtmalar", p.sotuv_buyurtma)}
         {qator("Sotuv — do'kon (ombor chiqimi)", p.sotuv_ombor)}
         {qator("Sotuv jami", p.sotuv, "font-semibold")}
+        {num(p.sotuv_qqs) !== 0 && (
+          <>
+            {qator("Sotuvdagi QQS (byudjetga)", -num(p.sotuv_qqs))}
+            {qator("Sof tushum", p.sof_tushum ?? 0, "font-semibold")}
+          </>
+        )}
         {qator("Tannarx (FIFO)", -num(p.tannarx))}
         {qator("Yalpi foyda", p.yalpi, "font-semibold")}
         {p.xarajatlar.map((x) => qator(`   ${x.nom}`, -num(x.summa)))}
+        {num(p.aylanma_soliq) !== 0 &&
+          qator("   Aylanmadan soliq", -num(p.aylanma_soliq))}
         {num(p.kassa_farqi) !== 0 &&
           qator("   Kassa kamomadi (smena farqi)", -num(p.kassa_farqi))}
         {qator("Xarajatlar jami", -num(p.xarajat_jami))}

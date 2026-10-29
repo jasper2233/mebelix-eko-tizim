@@ -90,6 +90,10 @@ class CatalogItemRead(BaseModel):
     tracked: bool
     birlik_hajm: Decimal | None = None
     ishlab_barkod: str | None = None
+    #: Soliq (EKO 6): MXIK, o'lchov birligi kodi, QQS turi
+    mxik: str | None = None
+    birlik_kod: str | None = None
+    qqs_turi: str = "standart"
 
 
 class CatalogRow(BaseModel):

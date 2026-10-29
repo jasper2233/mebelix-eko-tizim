@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AgentLatestReleaseData, AgentLatestReleaseResponses, ApplyKalibSessionData, ApplyKalibSessionErrors, ApplyKalibSessionResponses, ApproveOrderRezervData, ApproveOrderRezervErrors, ApproveOrderRezervResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BerishQaytarData, BerishQaytarErrors, BerishQaytarResponses, BerishSkanData, BerishSkanErrors, BerishSkanResponses, BirlikOmborgaData, BirlikOmborgaErrors, BirlikOmborgaResponses, BirlikTugadiData, BirlikTugadiErrors, BirlikTugadiResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, BulkUpdateCatalogItemsData, BulkUpdateCatalogItemsErrors, BulkUpdateCatalogItemsResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, CancelWasteItemLabelData, CancelWasteItemLabelErrors, CancelWasteItemLabelResponses, ChiqitBolakData, ChiqitBolakErrors, ChiqitBolakResponses, CloseMaterialSorovData, CloseMaterialSorovErrors, CloseMaterialSorovResponses, CloseOrderShareData, CloseOrderShareErrors, CloseOrderShareResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, ConfirmStockDocData, ConfirmStockDocErrors, ConfirmStockDocResponses, ConfirmStockInventoryData, ConfirmStockInventoryErrors, ConfirmStockInventoryResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateCatalogItemData, CreateCatalogItemErrors, CreateCatalogItemResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateDowntimeReasonData, CreateDowntimeReasonErrors, CreateDowntimeReasonResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateMaterialSorovData, CreateMaterialSorovErrors, CreateMaterialSorovResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateTerminalDeviceData, CreateTerminalDeviceErrors, CreateTerminalDeviceResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteCatalogItemsData, DeleteCatalogItemsErrors, DeleteCatalogItemsResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteOrderBazisData, DeleteOrderBazisErrors, DeleteOrderBazisResponses, DeleteOrderData, DeleteOrderErrors, DeleteOrderResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockDocData, DeleteStockDocErrors, DeleteStockDocResponses, DeleteTerminalDeviceData, DeleteTerminalDeviceErrors, DeleteTerminalDeviceResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DownloadAgentExeData, DownloadAgentExeResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndKalibSessionData, EndKalibSessionErrors, EndKalibSessionResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, ExcludeKalibPointData, ExcludeKalibPointErrors, ExcludeKalibPointResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, ImportCatalogItemsData, ImportCatalogItemsErrors, ImportCatalogItemsResponses, KassaChiqimData, KassaChiqimErrors, KassaChiqimResponses, KassaHolatData, KassaHolatResponses, KassaKirimData, KassaKirimErrors, KassaKirimResponses, KassaNavbatData, KassaNavbatErrors, KassaNavbatResponses, KassaOrderlarData, KassaOrderlarErrors, KassaOrderlarResponses, KassaOtkazmaData, KassaOtkazmaErrors, KassaOtkazmaResponses, KassaSmenalarData, KassaSmenalarErrors, KassaSmenalarResponses, KassaSmenaOchData, KassaSmenaOchErrors, KassaSmenaOchResponses, KassaSmenaYopData, KassaSmenaYopErrors, KassaSmenaYopResponses, KassaStornoData, KassaStornoErrors, KassaStornoResponses, KassaTurkumlarData, KassaTurkumlarResponses, KroyHolatData, KroyHolatResponses, KroyIntakeCancelData, KroyIntakeCancelErrors, KroyIntakeCancelResponses, KroyIntakeData, KroyIntakeErrors, KroyIntakeResponses, KroyOchishData, KroyOchishErrors, KroyOchishResponses, KroyOlishData, KroyOlishErrors, KroyOlishResponses, KroyPackagePushData, KroyPackagePushErrors, KroyPackagePushResponses, KroyRemnantsData, KroyRemnantsErrors, KroyRemnantsResponses, KroyReservationsData, KroyReservationsErrors, KroyReservationsResponses, KroyWebhookData, KroyWebhookErrors, KroyWebhookResponses, ListBerishOrdersData, ListBerishOrdersResponses, ListBirliklarData, ListBirliklarErrors, ListBirliklarResponses, ListBolaklarData, ListBolaklarErrors, ListBolaklarResponses, ListMaterialSorovlarData, ListMaterialSorovlarResponses, LockWithDowntimeReasonData, LockWithDowntimeReasonErrors, LockWithDowntimeReasonResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MapProjectMaterialData, MapProjectMaterialErrors, MapProjectMaterialResponses, MarkDefectData, MarkDefectErrors, MarkDefectResponses, MoliyaAktData, MoliyaAktErrors, MoliyaAktResponses, MoliyaBalansData, MoliyaBalansResponses, MoliyaBoshData, MoliyaBoshResponses, MoliyaByudjetData, MoliyaByudjetErrors, MoliyaByudjetResponses, MoliyaDavrlarData, MoliyaDavrlarResponses, MoliyaDavrOchishSorovData, MoliyaDavrOchishSorovErrors, MoliyaDavrOchishSorovResponses, MoliyaDavrOchishTasdiqData, MoliyaDavrOchishTasdiqErrors, MoliyaDavrOchishTasdiqResponses, MoliyaDavrYopData, MoliyaDavrYopErrors, MoliyaDavrYopResponses, MoliyaDebitorlarData, MoliyaDebitorlarResponses, MoliyaHisoblarData, MoliyaHisoblarResponses, MoliyaHisobSaqlaData, MoliyaHisobSaqlaErrors, MoliyaHisobSaqlaResponses, MoliyaJurnalCsvData, MoliyaJurnalCsvErrors, MoliyaJurnalCsvResponses, MoliyaKalendarData, MoliyaKalendarErrors, MoliyaKalendarResponses, MoliyaKreditorlarData, MoliyaKreditorlarResponses, MoliyaMijozShartData, MoliyaMijozShartErrors, MoliyaMijozShartResponses, MoliyaModdalarData, MoliyaModdalarResponses, MoliyaModdaQoshData, MoliyaModdaQoshErrors, MoliyaModdaQoshResponses, MoliyaModdaSaqlaData, MoliyaModdaSaqlaErrors, MoliyaModdaSaqlaResponses, MoliyaPnlData, MoliyaPnlErrors, MoliyaPnlResponses, MoliyaPulOqimiData, MoliyaPulOqimiErrors, MoliyaPulOqimiResponses, MoliyaRejalarData, MoliyaRejalarResponses, MoliyaRejaQoshData, MoliyaRejaQoshErrors, MoliyaRejaQoshResponses, MoliyaRejaSaqlaData, MoliyaRejaSaqlaErrors, MoliyaRejaSaqlaResponses, MoliyaSozlamalarData, MoliyaSozlamalarResponses, MoliyaSozlamalarSaqlaData, MoliyaSozlamalarSaqlaErrors, MoliyaSozlamalarSaqlaResponses, OpenOrderShareData, OpenOrderShareErrors, OpenOrderShareResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PairTerminalDeviceData, PairTerminalDeviceErrors, PairTerminalDeviceResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, PrintWasteItemLabelData, PrintWasteItemLabelErrors, PrintWasteItemLabelResponses, PushAndonEventsData, PushAndonEventsErrors, PushAndonEventsResponses, PushBridgeLogsData, PushBridgeLogsErrors, PushBridgeLogsResponses, QabulBolakData, QabulBolakErrors, QabulBolakResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadAuditSummaryData, ReadAuditSummaryErrors, ReadAuditSummaryResponses, ReadBerishVaraqaData, ReadBerishVaraqaErrors, ReadBerishVaraqaResponses, ReadBirlikData, ReadBirlikErrors, ReadBirlikResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadBridgeLogsData, ReadBridgeLogsErrors, ReadBridgeLogsResponses, ReadCatalogAllData, ReadCatalogAllResponses, ReadCatalogGroupsData, ReadCatalogGroupsResponses, ReadCatalogItemsData, ReadCatalogItemsErrors, ReadCatalogItemsResponses, ReadCbRateData, ReadCbRateResponses, ReadClientData, ReadClientDetailData, ReadClientDetailErrors, ReadClientDetailResponses, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadDefectReasonsData, ReadDefectReasonsResponses, ReadDefectsData, ReadDefectsErrors, ReadDefectsResponses, ReadDowntimeReasonsData, ReadDowntimeReasonsResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadIdealCycleData, ReadIdealCycleKromkaData, ReadIdealCycleKromkaResponses, ReadIdealCycleResponses, ReadIdealCycleRoverData, ReadIdealCycleRoverResponses, ReadIdleLimitData, ReadIdleLimitResponses, ReadKalibSessionData, ReadKalibSessionErrors, ReadKalibSessionResponses, ReadKalibSessionsData, ReadKalibSessionsResponses, ReadKromkaCalibrationData, ReadKromkaCalibrationResponses, ReadKromkaMeasurementFeedData, ReadKromkaMeasurementFeedResponses, ReadKromkaMeasurementsData, ReadKromkaMeasurementsResponses, ReadMachineActivityData, ReadMachineActivityErrors, ReadMachineActivityResponses, ReadMachinesData, ReadMachinesOverviewData, ReadMachinesOverviewResponses, ReadMachinesResponses, ReadOeeStartData, ReadOeeStartResponses, ReadOrderBazisData, ReadOrderBazisErrors, ReadOrderBazisModelData, ReadOrderBazisModelErrors, ReadOrderBazisModelResponses, ReadOrderBazisResponses, ReadOrderBazisThumbData, ReadOrderBazisThumbErrors, ReadOrderBazisThumbResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrderRezervData, ReadOrderRezervErrors, ReadOrderRezervResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPendingDefectCountData, ReadPendingDefectCountResponses, ReadPendingDowntimesData, ReadPendingDowntimesResponses, ReadPostsData, ReadPostsResponses, ReadPublicModelData, ReadPublicModelErrors, ReadPublicModelResponses, ReadPublicOrderData, ReadPublicOrderErrors, ReadPublicOrderResponses, ReadPublicThumbData, ReadPublicThumbErrors, ReadPublicThumbResponses, ReadSexMaterialData, ReadSexMaterialErrors, ReadSexMaterialResponses, ReadStockDocData, ReadStockDocErrors, ReadStockDocResponses, ReadStockDocsData, ReadStockDocsErrors, ReadStockDocsResponses, ReadStockItemHistoryData, ReadStockItemHistoryErrors, ReadStockItemHistoryResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockReportData, ReadStockReportErrors, ReadStockReportResponses, ReadStockSexLogData, ReadStockSexLogErrors, ReadStockSexLogResponses, ReadSupplyNeedsData, ReadSupplyNeedsResponses, ReadSystemPerfData, ReadSystemPerfEndpointData, ReadSystemPerfEndpointErrors, ReadSystemPerfEndpointResponses, ReadSystemPerfErrors, ReadSystemPerfResponses, ReadSystemSettingsData, ReadSystemSettingsResponses, ReadSystemStatusData, ReadSystemStatusResponses, ReadTabloMachineData, ReadTabloMachineErrors, ReadTabloMachineResponses, ReadTabloMachinesData, ReadTabloMachinesResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalDefectReasonsData, ReadTerminalDefectReasonsResponses, ReadTerminalDevicesData, ReadTerminalDevicesResponses, ReadTerminalDowntimeReasonsData, ReadTerminalDowntimeReasonsResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUserModullarData, ReadUserModullarResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadWarehousePricingData, ReadWarehousePricingResponses, ReadWorkScheduleData, ReadWorkScheduleResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RebuildOrderRezervData, RebuildOrderRezervErrors, RebuildOrderRezervResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RegenerateTerminalDeviceCodeData, RegenerateTerminalDeviceCodeErrors, RegenerateTerminalDeviceCodeResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReopenPachkaData, ReopenPachkaErrors, ReopenPachkaResponses, ReportDashboardData, ReportDashboardResponses, ReportMachineTimeData, ReportMachineTimeErrors, ReportMachineTimeResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResetSystemDbStatsData, ResetSystemDbStatsResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, ReviewDefectData, ReviewDefectErrors, ReviewDefectResponses, RollbackKalApplyData, RollbackKalApplyErrors, RollbackKalApplyResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, SaveStockDocData, SaveStockDocErrors, SaveStockDocResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, SetDowntimeReasonData, SetDowntimeReasonErrors, SetDowntimeReasonResponses, SetKalibEtalonData, SetKalibEtalonErrors, SetKalibEtalonResponses, SexRulonTugadiData, SexRulonTugadiErrors, SexRulonTugadiResponses, StartKalibSessionData, StartKalibSessionErrors, StartKalibSessionResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, StornoStockDocData, StornoStockDocErrors, StornoStockDocResponses, TouchUserActivityData, TouchUserActivityResponses, TraceInstancesData, TraceInstancesErrors, TraceInstancesResponses, UnmarkDefectData, UnmarkDefectErrors, UnmarkDefectResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateCatalogItemData, UpdateCatalogItemErrors, UpdateCatalogItemResponses, UpdateClientCreditData, UpdateClientCreditErrors, UpdateClientCreditResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateDefectReasonsData, UpdateDefectReasonsErrors, UpdateDefectReasonsResponses, UpdateDowntimeReasonData, UpdateDowntimeReasonErrors, UpdateDowntimeReasonResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateIdealCycleData, UpdateIdealCycleErrors, UpdateIdealCycleKromkaData, UpdateIdealCycleKromkaErrors, UpdateIdealCycleKromkaResponses, UpdateIdealCycleResponses, UpdateIdealCycleRoverData, UpdateIdealCycleRoverErrors, UpdateIdealCycleRoverResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOeeStartData, UpdateOeeStartErrors, UpdateOeeStartResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateSystemSettingData, UpdateSystemSettingErrors, UpdateSystemSettingResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UpdateWarehousePricingData, UpdateWarehousePricingErrors, UpdateWarehousePricingResponses, UpdateWorkScheduleData, UpdateWorkScheduleErrors, UpdateWorkScheduleResponses, UploadOrderBazisData, UploadOrderBazisErrors, UploadOrderBazisResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses, YorliqBirlikData, YorliqBirlikErrors, YorliqBirlikResponses } from './types.gen';
+import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AgentLatestReleaseData, AgentLatestReleaseResponses, ApplyKalibSessionData, ApplyKalibSessionErrors, ApplyKalibSessionResponses, ApproveOrderRezervData, ApproveOrderRezervErrors, ApproveOrderRezervResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BerishQaytarData, BerishQaytarErrors, BerishQaytarResponses, BerishSkanData, BerishSkanErrors, BerishSkanResponses, BirlikOmborgaData, BirlikOmborgaErrors, BirlikOmborgaResponses, BirlikTugadiData, BirlikTugadiErrors, BirlikTugadiResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, BulkUpdateCatalogItemsData, BulkUpdateCatalogItemsErrors, BulkUpdateCatalogItemsResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, CancelWasteItemLabelData, CancelWasteItemLabelErrors, CancelWasteItemLabelResponses, ChiqitBolakData, ChiqitBolakErrors, ChiqitBolakResponses, CloseMaterialSorovData, CloseMaterialSorovErrors, CloseMaterialSorovResponses, CloseOrderShareData, CloseOrderShareErrors, CloseOrderShareResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, ConfirmStockDocData, ConfirmStockDocErrors, ConfirmStockDocResponses, ConfirmStockInventoryData, ConfirmStockInventoryErrors, ConfirmStockInventoryResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateCatalogItemData, CreateCatalogItemErrors, CreateCatalogItemResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateDowntimeReasonData, CreateDowntimeReasonErrors, CreateDowntimeReasonResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateMaterialSorovData, CreateMaterialSorovErrors, CreateMaterialSorovResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateTerminalDeviceData, CreateTerminalDeviceErrors, CreateTerminalDeviceResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteCatalogItemsData, DeleteCatalogItemsErrors, DeleteCatalogItemsResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteOrderBazisData, DeleteOrderBazisErrors, DeleteOrderBazisResponses, DeleteOrderData, DeleteOrderErrors, DeleteOrderResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockDocData, DeleteStockDocErrors, DeleteStockDocResponses, DeleteTerminalDeviceData, DeleteTerminalDeviceErrors, DeleteTerminalDeviceResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DownloadAgentExeData, DownloadAgentExeResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndKalibSessionData, EndKalibSessionErrors, EndKalibSessionResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, ExcludeKalibPointData, ExcludeKalibPointErrors, ExcludeKalibPointResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, ImportCatalogItemsData, ImportCatalogItemsErrors, ImportCatalogItemsResponses, KassaChiqimData, KassaChiqimErrors, KassaChiqimResponses, KassaHolatData, KassaHolatResponses, KassaKirimData, KassaKirimErrors, KassaKirimResponses, KassaNavbatData, KassaNavbatErrors, KassaNavbatResponses, KassaOrderlarData, KassaOrderlarErrors, KassaOrderlarResponses, KassaOtkazmaData, KassaOtkazmaErrors, KassaOtkazmaResponses, KassaSmenalarData, KassaSmenalarErrors, KassaSmenalarResponses, KassaSmenaOchData, KassaSmenaOchErrors, KassaSmenaOchResponses, KassaSmenaYopData, KassaSmenaYopErrors, KassaSmenaYopResponses, KassaStornoData, KassaStornoErrors, KassaStornoResponses, KassaTurkumlarData, KassaTurkumlarResponses, KroyHolatData, KroyHolatResponses, KroyIntakeCancelData, KroyIntakeCancelErrors, KroyIntakeCancelResponses, KroyIntakeData, KroyIntakeErrors, KroyIntakeResponses, KroyOchishData, KroyOchishErrors, KroyOchishResponses, KroyOlishData, KroyOlishErrors, KroyOlishResponses, KroyPackagePushData, KroyPackagePushErrors, KroyPackagePushResponses, KroyRemnantsData, KroyRemnantsErrors, KroyRemnantsResponses, KroyReservationsData, KroyReservationsErrors, KroyReservationsResponses, KroyWebhookData, KroyWebhookErrors, KroyWebhookResponses, ListBerishOrdersData, ListBerishOrdersResponses, ListBirliklarData, ListBirliklarErrors, ListBirliklarResponses, ListBolaklarData, ListBolaklarErrors, ListBolaklarResponses, ListMaterialSorovlarData, ListMaterialSorovlarResponses, LockWithDowntimeReasonData, LockWithDowntimeReasonErrors, LockWithDowntimeReasonResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MapProjectMaterialData, MapProjectMaterialErrors, MapProjectMaterialResponses, MarkDefectData, MarkDefectErrors, MarkDefectResponses, MoliyaAktData, MoliyaAktErrors, MoliyaAktResponses, MoliyaBalansData, MoliyaBalansResponses, MoliyaBoshData, MoliyaBoshResponses, MoliyaByudjetData, MoliyaByudjetErrors, MoliyaByudjetResponses, MoliyaDavrlarData, MoliyaDavrlarResponses, MoliyaDavrOchishSorovData, MoliyaDavrOchishSorovErrors, MoliyaDavrOchishSorovResponses, MoliyaDavrOchishTasdiqData, MoliyaDavrOchishTasdiqErrors, MoliyaDavrOchishTasdiqResponses, MoliyaDavrYopData, MoliyaDavrYopErrors, MoliyaDavrYopResponses, MoliyaDebitorlarData, MoliyaDebitorlarResponses, MoliyaHisoblarData, MoliyaHisoblarResponses, MoliyaHisobSaqlaData, MoliyaHisobSaqlaErrors, MoliyaHisobSaqlaResponses, MoliyaJurnalCsvData, MoliyaJurnalCsvErrors, MoliyaJurnalCsvResponses, MoliyaKalendarData, MoliyaKalendarErrors, MoliyaKalendarResponses, MoliyaKreditorlarData, MoliyaKreditorlarResponses, MoliyaMijozShartData, MoliyaMijozShartErrors, MoliyaMijozShartResponses, MoliyaModdalarData, MoliyaModdalarResponses, MoliyaModdaQoshData, MoliyaModdaQoshErrors, MoliyaModdaQoshResponses, MoliyaModdaSaqlaData, MoliyaModdaSaqlaErrors, MoliyaModdaSaqlaResponses, MoliyaPnlData, MoliyaPnlErrors, MoliyaPnlResponses, MoliyaPulOqimiData, MoliyaPulOqimiErrors, MoliyaPulOqimiResponses, MoliyaRejalarData, MoliyaRejalarResponses, MoliyaRejaQoshData, MoliyaRejaQoshErrors, MoliyaRejaQoshResponses, MoliyaRejaSaqlaData, MoliyaRejaSaqlaErrors, MoliyaRejaSaqlaResponses, MoliyaSozlamalarData, MoliyaSozlamalarResponses, MoliyaSozlamalarSaqlaData, MoliyaSozlamalarSaqlaErrors, MoliyaSozlamalarSaqlaResponses, OpenOrderShareData, OpenOrderShareErrors, OpenOrderShareResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PairTerminalDeviceData, PairTerminalDeviceErrors, PairTerminalDeviceResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, PrintWasteItemLabelData, PrintWasteItemLabelErrors, PrintWasteItemLabelResponses, PushAndonEventsData, PushAndonEventsErrors, PushAndonEventsResponses, PushBridgeLogsData, PushBridgeLogsErrors, PushBridgeLogsResponses, QabulBolakData, QabulBolakErrors, QabulBolakResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadAuditSummaryData, ReadAuditSummaryErrors, ReadAuditSummaryResponses, ReadBerishVaraqaData, ReadBerishVaraqaErrors, ReadBerishVaraqaResponses, ReadBirlikData, ReadBirlikErrors, ReadBirlikResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadBridgeLogsData, ReadBridgeLogsErrors, ReadBridgeLogsResponses, ReadCatalogAllData, ReadCatalogAllResponses, ReadCatalogGroupsData, ReadCatalogGroupsResponses, ReadCatalogItemsData, ReadCatalogItemsErrors, ReadCatalogItemsResponses, ReadCbRateData, ReadCbRateResponses, ReadClientData, ReadClientDetailData, ReadClientDetailErrors, ReadClientDetailResponses, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadDefectReasonsData, ReadDefectReasonsResponses, ReadDefectsData, ReadDefectsErrors, ReadDefectsResponses, ReadDowntimeReasonsData, ReadDowntimeReasonsResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadIdealCycleData, ReadIdealCycleKromkaData, ReadIdealCycleKromkaResponses, ReadIdealCycleResponses, ReadIdealCycleRoverData, ReadIdealCycleRoverResponses, ReadIdleLimitData, ReadIdleLimitResponses, ReadKalibSessionData, ReadKalibSessionErrors, ReadKalibSessionResponses, ReadKalibSessionsData, ReadKalibSessionsResponses, ReadKromkaCalibrationData, ReadKromkaCalibrationResponses, ReadKromkaMeasurementFeedData, ReadKromkaMeasurementFeedResponses, ReadKromkaMeasurementsData, ReadKromkaMeasurementsResponses, ReadMachineActivityData, ReadMachineActivityErrors, ReadMachineActivityResponses, ReadMachinesData, ReadMachinesOverviewData, ReadMachinesOverviewResponses, ReadMachinesResponses, ReadOeeStartData, ReadOeeStartResponses, ReadOrderBazisData, ReadOrderBazisErrors, ReadOrderBazisModelData, ReadOrderBazisModelErrors, ReadOrderBazisModelResponses, ReadOrderBazisResponses, ReadOrderBazisThumbData, ReadOrderBazisThumbErrors, ReadOrderBazisThumbResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrderRezervData, ReadOrderRezervErrors, ReadOrderRezervResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPendingDefectCountData, ReadPendingDefectCountResponses, ReadPendingDowntimesData, ReadPendingDowntimesResponses, ReadPostsData, ReadPostsResponses, ReadPublicModelData, ReadPublicModelErrors, ReadPublicModelResponses, ReadPublicOrderData, ReadPublicOrderErrors, ReadPublicOrderResponses, ReadPublicThumbData, ReadPublicThumbErrors, ReadPublicThumbResponses, ReadSexMaterialData, ReadSexMaterialErrors, ReadSexMaterialResponses, ReadStockDocData, ReadStockDocErrors, ReadStockDocResponses, ReadStockDocsData, ReadStockDocsErrors, ReadStockDocsResponses, ReadStockItemHistoryData, ReadStockItemHistoryErrors, ReadStockItemHistoryResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockReportData, ReadStockReportErrors, ReadStockReportResponses, ReadStockSexLogData, ReadStockSexLogErrors, ReadStockSexLogResponses, ReadSupplyNeedsData, ReadSupplyNeedsResponses, ReadSystemPerfData, ReadSystemPerfEndpointData, ReadSystemPerfEndpointErrors, ReadSystemPerfEndpointResponses, ReadSystemPerfErrors, ReadSystemPerfResponses, ReadSystemSettingsData, ReadSystemSettingsResponses, ReadSystemStatusData, ReadSystemStatusResponses, ReadTabloMachineData, ReadTabloMachineErrors, ReadTabloMachineResponses, ReadTabloMachinesData, ReadTabloMachinesResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalDefectReasonsData, ReadTerminalDefectReasonsResponses, ReadTerminalDevicesData, ReadTerminalDevicesResponses, ReadTerminalDowntimeReasonsData, ReadTerminalDowntimeReasonsResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUserModullarData, ReadUserModullarResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadWarehousePricingData, ReadWarehousePricingResponses, ReadWorkScheduleData, ReadWorkScheduleResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RebuildOrderRezervData, RebuildOrderRezervErrors, RebuildOrderRezervResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RegenerateTerminalDeviceCodeData, RegenerateTerminalDeviceCodeErrors, RegenerateTerminalDeviceCodeResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReopenPachkaData, ReopenPachkaErrors, ReopenPachkaResponses, ReportDashboardData, ReportDashboardResponses, ReportMachineTimeData, ReportMachineTimeErrors, ReportMachineTimeResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResetSystemDbStatsData, ResetSystemDbStatsResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, ReviewDefectData, ReviewDefectErrors, ReviewDefectResponses, RollbackKalApplyData, RollbackKalApplyErrors, RollbackKalApplyResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, SaveStockDocData, SaveStockDocErrors, SaveStockDocResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, SetDowntimeReasonData, SetDowntimeReasonErrors, SetDowntimeReasonResponses, SetKalibEtalonData, SetKalibEtalonErrors, SetKalibEtalonResponses, SexRulonTugadiData, SexRulonTugadiErrors, SexRulonTugadiResponses, SoliqEsfBekorData, SoliqEsfBekorErrors, SoliqEsfBekorResponses, SoliqEsfBuyurtmaData, SoliqEsfBuyurtmaErrors, SoliqEsfBuyurtmaResponses, SoliqEsfHujjatData, SoliqEsfHujjatErrors, SoliqEsfHujjatResponses, SoliqEsfJavobData, SoliqEsfJavobErrors, SoliqEsfJavobResponses, SoliqEsflarData, SoliqEsflarErrors, SoliqEsflarResponses, SoliqEsfYuborData, SoliqEsfYuborErrors, SoliqEsfYuborResponses, SoliqIshlovData, SoliqIshlovResponses, SoliqKitobCsvData, SoliqKitobCsvErrors, SoliqKitobCsvResponses, SoliqKitobData, SoliqKitobErrors, SoliqKitobResponses, SoliqKorxonaData, SoliqKorxonaResponses, SoliqKorxonaSaqlaData, SoliqKorxonaSaqlaErrors, SoliqKorxonaSaqlaResponses, SoliqMijozData, SoliqMijozErrors, SoliqMijozResponses, SoliqMijozSaqlaData, SoliqMijozSaqlaErrors, SoliqMijozSaqlaResponses, SoliqMxikSaqlaData, SoliqMxikSaqlaErrors, SoliqMxikSaqlaResponses, SoliqNomzodlarData, SoliqNomzodlarErrors, SoliqNomzodlarResponses, SoliqOyData, SoliqOyErrors, SoliqOyResponses, SoliqRejimlarData, SoliqRejimlarResponses, SoliqRejimQoshData, SoliqRejimQoshErrors, SoliqRejimQoshResponses, SoliqSinovKiruvchiData, SoliqSinovKiruvchiErrors, SoliqSinovKiruvchiResponses, StartKalibSessionData, StartKalibSessionErrors, StartKalibSessionResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, StornoStockDocData, StornoStockDocErrors, StornoStockDocResponses, TouchUserActivityData, TouchUserActivityResponses, TraceInstancesData, TraceInstancesErrors, TraceInstancesResponses, UnmarkDefectData, UnmarkDefectErrors, UnmarkDefectResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateCatalogItemData, UpdateCatalogItemErrors, UpdateCatalogItemResponses, UpdateClientCreditData, UpdateClientCreditErrors, UpdateClientCreditResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateDefectReasonsData, UpdateDefectReasonsErrors, UpdateDefectReasonsResponses, UpdateDowntimeReasonData, UpdateDowntimeReasonErrors, UpdateDowntimeReasonResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateIdealCycleData, UpdateIdealCycleErrors, UpdateIdealCycleKromkaData, UpdateIdealCycleKromkaErrors, UpdateIdealCycleKromkaResponses, UpdateIdealCycleResponses, UpdateIdealCycleRoverData, UpdateIdealCycleRoverErrors, UpdateIdealCycleRoverResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOeeStartData, UpdateOeeStartErrors, UpdateOeeStartResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateSystemSettingData, UpdateSystemSettingErrors, UpdateSystemSettingResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UpdateWarehousePricingData, UpdateWarehousePricingErrors, UpdateWarehousePricingResponses, UpdateWorkScheduleData, UpdateWorkScheduleErrors, UpdateWorkScheduleResponses, UploadOrderBazisData, UploadOrderBazisErrors, UploadOrderBazisResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses, YorliqBirlikData, YorliqBirlikErrors, YorliqBirlikResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -2817,6 +2817,282 @@ export class MoliyaService {
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/moliya/davrlar/{oy}/ochish-tasdiq',
+            ...options
+        });
+    }
+}
+
+export class SoliqService {
+    /**
+     * Soliq Korxona
+     */
+    public static soliqKorxona<ThrowOnError extends boolean = true>(options?: Options<SoliqKorxonaData, ThrowOnError>): RequestResult<SoliqKorxonaResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqKorxonaResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/korxona',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Korxona Saqla
+     */
+    public static soliqKorxonaSaqla<ThrowOnError extends boolean = true>(options: Options<SoliqKorxonaSaqlaData, ThrowOnError>): RequestResult<SoliqKorxonaSaqlaResponses, SoliqKorxonaSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<SoliqKorxonaSaqlaResponses, SoliqKorxonaSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/korxona',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Rejimlar
+     */
+    public static soliqRejimlar<ThrowOnError extends boolean = true>(options?: Options<SoliqRejimlarData, ThrowOnError>): RequestResult<SoliqRejimlarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqRejimlarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/rejimlar',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Rejim Qosh
+     *
+     * Rejim/stavka shu sanadan (tarix). Masalan yil boshidan QQS to'lovchiga o'tish.
+     */
+    public static soliqRejimQosh<ThrowOnError extends boolean = true>(options: Options<SoliqRejimQoshData, ThrowOnError>): RequestResult<SoliqRejimQoshResponses, SoliqRejimQoshErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqRejimQoshResponses, SoliqRejimQoshErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/rejimlar',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Mijoz
+     */
+    public static soliqMijoz<ThrowOnError extends boolean = true>(options: Options<SoliqMijozData, ThrowOnError>): RequestResult<SoliqMijozResponses, SoliqMijozErrors, ThrowOnError> {
+        return (options.client ?? client).get<SoliqMijozResponses, SoliqMijozErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/mijoz/{client_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Mijoz Saqla
+     */
+    public static soliqMijozSaqla<ThrowOnError extends boolean = true>(options: Options<SoliqMijozSaqlaData, ThrowOnError>): RequestResult<SoliqMijozSaqlaResponses, SoliqMijozSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<SoliqMijozSaqlaResponses, SoliqMijozSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/mijoz/{client_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Mxik Saqla
+     */
+    public static soliqMxikSaqla<ThrowOnError extends boolean = true>(options: Options<SoliqMxikSaqlaData, ThrowOnError>): RequestResult<SoliqMxikSaqlaResponses, SoliqMxikSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<SoliqMxikSaqlaResponses, SoliqMxikSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/katalog/{item_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Esflar
+     */
+    public static soliqEsflar<ThrowOnError extends boolean = true>(options?: Options<SoliqEsflarData, ThrowOnError>): RequestResult<SoliqEsflarResponses, SoliqEsflarErrors, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqEsflarResponses, SoliqEsflarErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Nomzodlar
+     *
+     * ESF yozilmagan sotuvlar: so'nggi `kun` kundagi yetkazilgan buyurtmalar va ombor sotuv hujjatlari.
+     */
+    public static soliqNomzodlar<ThrowOnError extends boolean = true>(options?: Options<SoliqNomzodlarData, ThrowOnError>): RequestResult<SoliqNomzodlarResponses, SoliqNomzodlarErrors, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqNomzodlarResponses, SoliqNomzodlarErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/nomzodlar',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Esf Buyurtma
+     */
+    public static soliqEsfBuyurtma<ThrowOnError extends boolean = true>(options: Options<SoliqEsfBuyurtmaData, ThrowOnError>): RequestResult<SoliqEsfBuyurtmaResponses, SoliqEsfBuyurtmaErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqEsfBuyurtmaResponses, SoliqEsfBuyurtmaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf/buyurtma',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Esf Hujjat
+     */
+    public static soliqEsfHujjat<ThrowOnError extends boolean = true>(options: Options<SoliqEsfHujjatData, ThrowOnError>): RequestResult<SoliqEsfHujjatResponses, SoliqEsfHujjatErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqEsfHujjatResponses, SoliqEsfHujjatErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf/hujjat',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Esf Yubor
+     *
+     * Navbatga qo'yadi — fon ishi operatorga yuboradi (operator ishlamasa qayta uradi).
+     */
+    public static soliqEsfYubor<ThrowOnError extends boolean = true>(options: Options<SoliqEsfYuborData, ThrowOnError>): RequestResult<SoliqEsfYuborResponses, SoliqEsfYuborErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqEsfYuborResponses, SoliqEsfYuborErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf/{esf_id}/yuborish',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Esf Bekor
+     */
+    public static soliqEsfBekor<ThrowOnError extends boolean = true>(options: Options<SoliqEsfBekorData, ThrowOnError>): RequestResult<SoliqEsfBekorResponses, SoliqEsfBekorErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqEsfBekorResponses, SoliqEsfBekorErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf/{esf_id}/bekor',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Esf Javob
+     *
+     * Kiruvchi ESF: qabul yoki rad (sabab bilan).
+     */
+    public static soliqEsfJavob<ThrowOnError extends boolean = true>(options: Options<SoliqEsfJavobData, ThrowOnError>): RequestResult<SoliqEsfJavobResponses, SoliqEsfJavobErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqEsfJavobResponses, SoliqEsfJavobErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/esf/{esf_id}/javob',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Ishlov
+     *
+     * Navbatni hozir ishlatish (fon ishi har daqiqada ham ishlaydi).
+     */
+    public static soliqIshlov<ThrowOnError extends boolean = true>(options?: Options<SoliqIshlovData, ThrowOnError>): RequestResult<SoliqIshlovResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).post<SoliqIshlovResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/ishlov',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Sinov Kiruvchi
+     *
+     * FAQAT lokal sinov operatori: yetkazib beruvchi bizga ESF yuborganini taqlid qiladi.
+     */
+    public static soliqSinovKiruvchi<ThrowOnError extends boolean = true>(options: Options<SoliqSinovKiruvchiData, ThrowOnError>): RequestResult<SoliqSinovKiruvchiResponses, SoliqSinovKiruvchiErrors, ThrowOnError> {
+        return (options.client ?? client).post<SoliqSinovKiruvchiResponses, SoliqSinovKiruvchiErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/sinov/kiruvchi',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Soliq Oy
+     */
+    public static soliqOy<ThrowOnError extends boolean = true>(options?: Options<SoliqOyData, ThrowOnError>): RequestResult<SoliqOyResponses, SoliqOyErrors, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqOyResponses, SoliqOyErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/oy',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Kitob
+     *
+     * QQS kitobi: sotuv va xarid kitobi (qabul qilingan ESF lar) + ESF siz sotuvdagi QQS.
+     */
+    public static soliqKitob<ThrowOnError extends boolean = true>(options?: Options<SoliqKitobData, ThrowOnError>): RequestResult<SoliqKitobResponses, SoliqKitobErrors, ThrowOnError> {
+        return (options?.client ?? client).get<SoliqKitobResponses, SoliqKitobErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/kitob',
+            ...options
+        });
+    }
+    
+    /**
+     * Soliq Kitob Csv
+     */
+    public static soliqKitobCsv<ThrowOnError extends boolean = true>(options: Options<SoliqKitobCsvData, ThrowOnError>): RequestResult<SoliqKitobCsvResponses, SoliqKitobCsvErrors, ThrowOnError> {
+        return (options.client ?? client).get<SoliqKitobCsvResponses, SoliqKitobCsvErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/soliq/kitob.csv',
             ...options
         });
     }

@@ -26,6 +26,7 @@ import { Route as LayoutMoliyaRouteImport } from './routes/_layout/moliya'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
+import { Route as LayoutSoliqRouteImport } from './routes/_layout/soliq'
 import { Route as LayoutSotuvRouteImport } from './routes/_layout/sotuv'
 import { Route as LayoutSystemHealthRouteImport } from './routes/_layout/system-health'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
@@ -131,6 +132,11 @@ const LayoutReportsRoute = LayoutReportsRouteImport.update({
 const LayoutSettingsRoute = LayoutSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutSoliqRoute = LayoutSoliqRouteImport.update({
+  id: '/soliq',
+  path: '/soliq',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutSotuvRoute = LayoutSotuvRouteImport.update({
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/soliq': typeof LayoutSoliqRoute
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
@@ -301,6 +308,7 @@ export interface FileRoutesByTo {
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
+  '/soliq': typeof LayoutSoliqRoute
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
@@ -343,6 +351,7 @@ export interface FileRoutesById {
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
+  '/_layout/soliq': typeof LayoutSoliqRoute
   '/_layout/sotuv': typeof LayoutSotuvRoute
   '/_layout/system-health': typeof LayoutSystemHealthRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/soliq'
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
@@ -425,6 +435,7 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/soliq'
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
+    | '/_layout/soliq'
     | '/_layout/sotuv'
     | '/_layout/system-health'
     | '/_layout/system-settings'
@@ -619,6 +631,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof LayoutSettingsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/soliq': {
+      id: '/_layout/soliq'
+      path: '/soliq'
+      fullPath: '/soliq'
+      preLoaderRoute: typeof LayoutSoliqRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/sotuv': {
@@ -790,6 +809,7 @@ interface LayoutRouteChildren {
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
+  LayoutSoliqRoute: typeof LayoutSoliqRoute
   LayoutSotuvRoute: typeof LayoutSotuvRoute
   LayoutSystemHealthRoute: typeof LayoutSystemHealthRoute
   LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
@@ -826,6 +846,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,
+  LayoutSoliqRoute: LayoutSoliqRoute,
   LayoutSotuvRoute: LayoutSotuvRoute,
   LayoutSystemHealthRoute: LayoutSystemHealthRoute,
   LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,

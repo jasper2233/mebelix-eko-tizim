@@ -38,7 +38,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 5b Moliya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 6.0 Tarif darvozasi (obuna): ombor/kassa/moliya/kroy/soliq yo'llari `require_module`, menyu tarifdan | tayyor | pastda |
 | 6a Soliq (backend): rejim tarixi (QQS / aylanma), rekvizitlar, MXIK, ESF + navbat + sinov operatori, QQS kitobi, P&L | tayyor, lokal sinalgan | pastda |
-| 6b Soliq (ekran) | navbatda | |
+| 6b Soliq (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -415,4 +415,16 @@ ko'rsatmaydi. Har obunachining bazasi alohida, shuning uchun soliq rejimi, rekvi
 
 Ochiq: haqiqiy ESF operatori (Didox / Faktura.uz va h.k.) — API kaliti, hujjat formati va E-IMZO imzosi kerak;
 fiskal chek (S5); xarid QQS i tannarxdan ayirilmaydi (kirim narxi QQS bilan); stavkalarni buxgalter tasdiqlaydi.
+
+### 6b — Soliq ekrani `/soliq`
+
+Bo'limlar (`?b=`): ESF — sotuv (ESF yozilmagan yetkazilgan buyurtma va ombor sotuvlari; rekvizit yo'q bo'lsa avval
+mijoz rekvizitlari oynasi, keyin ESF; ombor sotuvida xaridor mijoz tanlanadi; ESF varag'i — hisob-faktura shakli,
+chop etiladi; yuborish, bekor, «navbatni hozir yuborish»), Kiruvchi ESF (operatordan olish, ombor kirimi bilan
+bog'lanish, qabul / rad sabab bilan; sinov operatorida «yetkazib beruvchi ESF yuboradi» formasi), Soliq va QQS kitobi
+(oy: aylanma, sotuv/xarid QQS, to'lanadigan yoki keyingi oyga o'tadigan ortiqcha xarid QQS, aylanma soliq; sotuv va
+xarid kitobi, CSV, A4), Sozlamalar (rejim tarixi, korxona rekvizitlari, buyurtma MXIK i, katalogda MXIK / birlik /
+QQS turi). Tepada doim «ESF operatori: lokal SINOV — soliq tizimiga hech narsa yuborilmaydi». Sidebar «Soliq» —
+direktor va moliyachi, tarifida `soliq` bo'lsa. Moliya P&L jadvalida «Sotuvdagi QQS», «Sof tushum» va «Aylanmadan
+soliq» qatorlari.
 
