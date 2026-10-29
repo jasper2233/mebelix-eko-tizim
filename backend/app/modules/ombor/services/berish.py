@@ -21,14 +21,14 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
 from app.modules.ombor.models import CatalogItem, MaterialBirlik, Rezerv, RezervLine, StockMovement
 from app.modules.ombor.models.birlik import OMBOR, SEX, TUGADI
 from app.modules.ombor.services import birlik, rezerv
-from app.modules.ombor.services.stock import consume, fmt
+from app.modules.ombor.services.stock import _so_m, add_lot, consume, fmt
 
 
 class BerishError(Exception):
@@ -299,3 +299,95 @@ async def omborga_qaytar(db: AsyncSession, barkod: str) -> MaterialBirlik:
     unit.sexga_at = None
     await db.flush()
     return unit
+
+
+async def _sarf_tannarxi(db: AsyncSession, order: Order, item: CatalogItem) -> Decimal:
+    """Buyurtmaga shu pozitsiya bo'yicha sarfning o'rtacha birlik tannarxi — qaytgan material shu narxda kiradi."""
+    row = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(StockMovement.amount), 0), func.coalesce(func.sum(-StockMovement.qty), 0)
+            ).where(StockMovement.order_id == order.id, StockMovement.item_id == item.id, StockMovement.kind == "sarf")
+        )
+    ).one()
+    summa, miqdor = Decimal(row[0]), Decimal(row[1])
+    return (summa / miqdor) if miqdor > 0 else (item.purchase_price or Decimal(0))
+
+
+async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, user_id: int | None) -> Natija:
+    """Ortiqcha berilgan materialni sexdan omborga QAYTARISH (EKO 3f): kroy berilgandan keyin o'zgargan —
+    `berilgan > kerak`. Faqat ortiqcha miqdorgacha. List — o'z barkodi bilan omborga qaytadi; rulon — metri
+    rulon qoldig'iga qo'shiladi (sexda qoladi); furnitura — katalog kodi + son. Qoldiq `qaytish` harakati bilan,
+    sarfdagi o'rtacha tannarxda yangi partiya bo'lib kiradi."""
+    rez = (
+        await db.execute(
+            select(Rezerv)
+            .where(Rezerv.order_id == order.id, Rezerv.holat != rezerv.BEKOR, Rezerv.is_deleted == False)  # noqa: E712
+            .order_by(Rezerv.id.desc())
+            .limit(1)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if rez is None:
+        raise BerishError(f"{order.number}: rezerv yo'q.")
+    unit = await birlik.find(db, kod, lock=True)
+    item = await db.get(CatalogItem, unit.item_id, with_for_update=True) if unit else await find_item(db, kod)
+    if item is None:
+        raise BerishError(f"{kod}: na barkod, na katalog kodi topildi.")
+    line = (
+        await db.execute(
+            select(RezervLine)
+            .where(
+                RezervLine.rezerv_id == rez.id,
+                RezervLine.item_id == item.id,
+                RezervLine.berilgan_qty > RezervLine.kerak_qty,
+                RezervLine.is_deleted == False,  # noqa: E712
+            )
+            .order_by((RezervLine.berilgan_qty - RezervLine.kerak_qty).desc())
+            .limit(1)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if line is None:
+        raise BerishError(f"«{item.name}»: bu buyurtmada ortiqcha berilgan yo'q.")
+    ortiq = line.berilgan_qty - line.kerak_qty
+    if unit is not None and not birlik.is_roll(item):
+        if unit.joy != TUGADI or unit.order_id != order.id:
+            raise BerishError(f"{unit.barkod}: bu list shu buyurtmaga berilmagan.")
+        q = unit.hajm
+    else:
+        if qty is None or qty <= 0:
+            raise BerishError("Qaytayotgan miqdorni kiriting.")
+        q = qty
+    if q > ortiq:
+        raise BerishError(f"«{item.name}»: ortiqcha {fmt(ortiq)} {item.unit or ''}, {fmt(q)} qaytarilmoqda.")
+    if unit is not None:
+        if birlik.is_roll(item):
+            if unit.qoldiq + q > unit.hajm:
+                raise BerishError(f"{unit.barkod}: rulonga {fmt(unit.hajm - unit.qoldiq)} m dan ko'p qaytmaydi.")
+            unit.qoldiq += q
+            unit.joy = SEX if unit.joy == TUGADI else unit.joy
+        else:
+            unit.qoldiq, unit.joy = unit.hajm, OMBOR
+    narx = _so_m(await _sarf_tannarxi(db, order, item))
+    add_lot(db, item, q, narx, datetime.now(UTC).date(), f"Qaytish {order.number}"[:30])
+    item.quantity += q
+    line.berilgan_qty -= q
+    line.qoplangan_qty = max(line.qoplangan_qty - q, line.berilgan_qty)
+    db.add(
+        StockMovement(
+            item_id=item.id,
+            kind="qaytish",
+            qty=q,
+            balance=item.quantity,
+            amount=_so_m(q * narx),
+            note=f"Qaytish · {order.number}" + (f" · {unit.barkod}" if unit else ""),
+            user_id=user_id,
+            order_id=order.id,
+            birlik_id=unit.id if unit else None,
+        )
+    )
+    await db.flush()
+    return Natija(
+        xabar=f"«{item.name}» — {fmt(q)} {item.unit or ''} omborga qaytdi (ortiqcha qoldi: {fmt(ortiq - q)}).", sarf=-q
+    )

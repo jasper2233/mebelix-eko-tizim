@@ -215,6 +215,31 @@ async def berish_skan(
     return SkanNatija(xabar=natija.xabar, ogohlantirish=natija.ogohlantirish, varaqa=await _varaqa(db, order))
 
 
+@router.post("/berish/{order_id}/qaytar", response_model=SkanNatija, operation_id="berish_qaytar")
+async def berish_qaytar(
+    db: SessionDep, current_user: WarehouseUser, order_id: int, body: SkanIn, request: Request
+) -> SkanNatija:
+    """Ortiqcha berilgan materialni sexdan omborga qaytarish (kroy berilgandan keyin o'zgargan)."""
+    order = await _order(db, order_id)
+    try:
+        natija = await berish.qaytar(db, order, body.kod.strip(), body.qty, current_user.id)
+    except berish.BerishError as e:
+        await db.rollback()
+        raise _bad(str(e)) from e
+    log_action(
+        db,
+        module="ombor",
+        action="qaytish",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=natija.xabar[:500],
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return SkanNatija(xabar=natija.xabar, ogohlantirish=[], varaqa=await _varaqa(db, order))
+
+
 @router.get("/birlik/{barkod}", response_model=BirlikRead, operation_id="read_birlik")
 async def read_birlik(db: SessionDep, _: WarehouseReadUser, barkod: str) -> BirlikRead:
     u = await birlik.find(db, barkod)

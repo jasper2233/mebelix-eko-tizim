@@ -4,7 +4,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { BellRing, CheckCircle2, ScanLine, TriangleAlert } from "lucide-react"
+import {
+  BellRing,
+  CheckCircle2,
+  ScanLine,
+  TriangleAlert,
+  Undo2,
+} from "lucide-react"
 import { useRef, useState } from "react"
 
 import {
@@ -16,6 +22,7 @@ import {
 import { EmptyRow } from "@/components/Common/EmptyRow"
 import { PageHeader } from "@/components/Common/PageHeader"
 import { QueryError } from "@/components/Common/QueryError"
+import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
@@ -220,19 +227,25 @@ function Varaqa({ orderId }: { orderId: number }) {
   const [kod, setKod] = useState("")
   const [soni, setSoni] = useState("")
   const [xabar, setXabar] = useState<Xabar | null>(null)
+  // Qaytarish rejimi (EKO 3f): kroy berilgandan keyin o'zgargan — ortiqchasi sexdan omborga skan bilan qaytadi
+  const [qaytarish, setQaytarish] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const skan = useMutation({
-    mutationFn: async () =>
-      (
-        await OmborService.berishSkan({
-          path: { order_id: orderId },
-          body: {
-            kod: kod.trim(),
-            qty: parseNum(soni) ? String(parseNum(soni)) : null,
-          },
-        })
-      ).data,
+    mutationFn: async () => {
+      const opts = {
+        path: { order_id: orderId },
+        body: {
+          kod: kod.trim(),
+          qty: parseNum(soni) ? String(parseNum(soni)) : null,
+        },
+      }
+      return (
+        qaytarish
+          ? await OmborService.berishQaytar(opts)
+          : await OmborService.berishSkan(opts)
+      ).data
+    },
     onSuccess: (res) => {
       queryClient.setQueryData<BerishRead>(key, res.varaqa)
       queryClient.invalidateQueries({
@@ -253,6 +266,9 @@ function Varaqa({ orderId }: { orderId: number }) {
 
   if (isError) return <QueryError onRetry={refetch} />
   if (isLoading || !data) return <Skeleton className="h-60" />
+  const ortiqchaBor = data.lines.some(
+    (l) => l.item_id != null && num(l.berilgan) > num(l.kerak),
+  )
 
   return (
     <section className={cn(cardSurface, "flex flex-col gap-3 p-4")}>
@@ -270,36 +286,58 @@ function Varaqa({ orderId }: { orderId: number }) {
           <span>Material berilmaydi: {data.tosiq}</span>
         </div>
       )}
-      {canGive && !data.tosiq && data.holat !== "sarflandi" && (
-        <form
-          className="flex flex-wrap items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (kod.trim()) skan.mutate()
-          }}
-        >
-          <ScanLine className="size-5 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            autoFocus
-            className="max-w-sm font-mono"
-            placeholder="Yorliqni skanerlang (EK…) yoki furnitura kodi"
-            value={kod}
-            onChange={(e) => setKod(e.target.value)}
-          />
-          <Input
-            className="num w-24 text-right"
-            inputMode="decimal"
-            placeholder="soni"
-            title="Faqat furnitura uchun: nechta"
-            value={soni}
-            onChange={(e) => setSoni(e.target.value.replace(/[^0-9.,]/g, ""))}
-          />
-          <LoadingButton type="submit" loading={skan.isPending}>
-            Berish
-          </LoadingButton>
-        </form>
+      {canGive && ortiqchaBor && (
+        <div className="flex items-center gap-2 text-sm">
+          <Button
+            size="sm"
+            variant={qaytarish ? "default" : "outline"}
+            onClick={() => {
+              setQaytarish(!qaytarish)
+              setXabar(null)
+            }}
+          >
+            <Undo2 className="size-4" />
+            {qaytarish ? "Qaytarish rejimi yoqilgan" : "Ortiqchani qaytarish"}
+          </Button>
+          {qaytarish && (
+            <span className="text-amber-800">
+              List — yorlig'ini skanerlang; rulon — yorlig'i va metr; furnitura
+              — kodi va soni
+            </span>
+          )}
+        </div>
       )}
+      {canGive &&
+        (qaytarish || (!data.tosiq && data.holat !== "sarflandi")) && (
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (kod.trim()) skan.mutate()
+            }}
+          >
+            <ScanLine className="size-5 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              autoFocus
+              className="max-w-sm font-mono"
+              placeholder="Yorliqni skanerlang (EK…) yoki furnitura kodi"
+              value={kod}
+              onChange={(e) => setKod(e.target.value)}
+            />
+            <Input
+              className="num w-24 text-right"
+              inputMode="decimal"
+              placeholder="soni"
+              title="Faqat furnitura uchun: nechta"
+              value={soni}
+              onChange={(e) => setSoni(e.target.value.replace(/[^0-9.,]/g, ""))}
+            />
+            <LoadingButton type="submit" loading={skan.isPending}>
+              {qaytarish ? "Qaytarish" : "Berish"}
+            </LoadingButton>
+          </form>
+        )}
       {xabar && (
         <div
           className={cn(

@@ -31,7 +31,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3c MX Kroy: kroy paketi qabul (K2) | tayyor, MX klon bilan sinalgan | pastda |
 | 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, outbox | tayyor, MX klon bilan sinalgan | pastda |
 | 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i | tayyor, MX klon bilan sinalgan | pastda |
-| 3f Ortiqcha berilgan materialni sexdan qaytarish | navbatda | |
+| 3f Ortiqcha berilgan materialni sexdan qaytarish | tayyor, brauzerda sinalgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -301,4 +301,14 @@ paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES 
 - MX da topilgan va klonda tuzatilgan: paket `remnants[]` faqat «деловой» belgisiga qarardi, MES ga kirim esa foiz
   qoidasi bilan ketardi — foiz bilan olib qolingan bo'lak paketda yo'q, yorlig'i chiqmasdi. Endi ikkalasi bitta
   qoida (`remnant_rules.classify`); MX testlari 167/167.
+
+### 3f — ortiqcha berilgan materialni qaytarish
+
+- Kroy material berilgandan keyin o'zgarsa `berilgan > kerak` (3c). «Material berish» → «Ortiqchani qaytarish»
+  rejimi (`POST /ombor/berish/{id}/qaytar`): list — o'z barkodi (shu buyurtmaga berilgan bo'lsa) omborga qaytadi;
+  rulon — barkod + metr, rulon qoldig'iga qo'shiladi (sig'imidan oshmaydi); furnitura — kod + son. Faqat ortiqcha
+  miqdorgacha. Qoldiq `qaytish` harakati bilan, shu buyurtma sarfining o'rtacha tannarxida yangi partiya bo'lib
+  kiradi; rezerv `berilgan` kamayadi. Kechki solishtirish: berilgan = sarf − qaytish.
+- Orakl `berish_oracle` 60/60 (15-bosqich); brauzerda: akril listi va 10 m kromka qaytdi, rulon sig'imidan
+  oshirish rad etildi; solishtirish farqsiz.
 

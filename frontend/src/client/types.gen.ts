@@ -11167,6 +11167,36 @@ export type BerishSkanResponses = {
 
 export type BerishSkanResponse = BerishSkanResponses[keyof BerishSkanResponses];
 
+export type BerishQaytarData = {
+    body: SkanIn;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/berish/{order_id}/qaytar';
+};
+
+export type BerishQaytarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BerishQaytarError = BerishQaytarErrors[keyof BerishQaytarErrors];
+
+export type BerishQaytarResponses = {
+    /**
+     * Successful Response
+     */
+    200: SkanNatija;
+};
+
+export type BerishQaytarResponse = BerishQaytarResponses[keyof BerishQaytarResponses];
+
 export type ReadBirlikData = {
     body?: never;
     path: {

@@ -20,6 +20,8 @@ Pozitsiyalar: A (list, `M`), K (kromka, metr, rulon 100 m), C (furnitura, dona �
        o'z buyurtmasiga — rad; boshqasiga — ishlatildi; ishlatilganini chiqitga — rad; noma'lum yorliq — rad.
    14) kroy o'zgardi (material berilgandan keyin): K 20 berilgan, yangi kroyga 5 kerak — berilgani 20 qoladi
        (ortig'i sexda); list yangi kroyda yo'q — «kerak 0, berilgan 1» qatori; solishtirishda sarf farqi yo'q.
+   15) ortiqchani qaytarish: list o'z barkodi bilan omborga (takror — rad); kromka ortig'idan ko'p — rad;
+       10 m sexdagi rulonga qaytadi; qoldiq va berilgan to'g'ri, solishtirish (sarf − qaytish) farqsiz.
 Yurgizish (lokal sinov bazasi, katalog yuklangan, prod EMAS):
     cd backend && uv run python ../scripts/oracles/berish_oracle.py
 """
@@ -281,6 +283,22 @@ async def main() -> None:
             f for f in await solishtirish.solishtir(db) if f.tur == "sarf" and f.kalit.startswith(f"buyurtma {o2.id} ")
         ]
         tek("solishtirish: o2 sarf farqi yo'q", sarf_farq, [])
+
+        print("15) ortiqchani qaytarish")
+        qa = a.quantity
+        await berish.qaytar(db, o2, yangi[0].barkod, None, None)
+        tek("list omborga qaytdi", (yangi[0].joy, a.quantity), ("ombor", qa + 1))
+        tek("list qatori berilgan 0", (await line(db, o2.id, a.id)).berilgan_qty, D(0))
+        await rad(
+            "o'sha listni yana qaytarish", berish.qaytar(db, o2, yangi[0].barkod, None, None), "ortiqcha berilgan yo'q"
+        )
+        await rad("kromka ortig'idan ko'p", berish.qaytar(db, o2, uk[1].barkod, D(20), None), "ortiqcha 15")
+        qk, rk = k.quantity, uk[1].qoldiq
+        await berish.qaytar(db, o2, uk[1].barkod, D(10), None)
+        tek("rulonga +10, qoldiq +10", (uk[1].qoldiq - rk, k.quantity - qk), (D(10), D(10)))
+        tek("K berilgan 10", (await line(db, o2.id, k.id)).berilgan_qty, D(10))
+        sarf_farq = [f for f in await solishtirish.solishtir(db) if f.tur == "sarf"]
+        tek("solishtirish farqsiz", sarf_farq, [])
 
         await db.rollback()  # sinov ma'lumoti bazada qolmaydi
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")

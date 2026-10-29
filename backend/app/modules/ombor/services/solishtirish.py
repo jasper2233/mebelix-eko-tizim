@@ -4,7 +4,7 @@ Tekshiriladi:
 1. Qoldiq = jurnal: `catalog_item.quantity` = shu pozitsiya harakatlari yig'indisi.
 2. Partiyalar: pozitsiyada partiya bo'lsa — qolgan partiyalar yig'indisi = qoldiq (FIFO tannarxi to'g'ri).
 3. Barkodli birliklar (ombor + sex) yig'indisi qoldiqdan oshmaydi.
-4. Buyurtmaga berilgan (rezerv `berilgan_qty`) = shu buyurtmaning sarf harakatlari.
+4. Buyurtmaga berilgan (rezerv `berilgan_qty`) = shu buyurtmaning sarf harakatlari − qaytganlari.
 5. Manfiy qiymatlar (baza cheklovi «tasdiqlanmagan» qolgan eski qatorlar).
 
 Hech narsani tuzatmaydi — faqat aytadi. Farq bo'lsa sababi topilib, teskari harakat bilan tuzatiladi.
@@ -90,7 +90,7 @@ async def solishtir(db: AsyncSession) -> list[Farq]:
     )
     sarf = (
         select(StockMovement.order_id, StockMovement.item_id, (-func.sum(StockMovement.qty)).label("s"))
-        .where(StockMovement.kind == "sarf", StockMovement.order_id.is_not(None))
+        .where(StockMovement.kind.in_(("sarf", "qaytish")), StockMovement.order_id.is_not(None))
         .group_by(StockMovement.order_id, StockMovement.item_id)
         .subquery()
     )
