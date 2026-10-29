@@ -40,7 +40,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 6a Soliq (backend): rejim tarixi (QQS / aylanma), rekvizitlar, MXIK, ESF + navbat + sinov operatori, QQS kitobi, P&L | tayyor, lokal sinalgan | pastda |
 | 6b Soliq (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 7a Buxgalteriya (backend): schyotlar rejasi, avtomatik provodkalar, aylanma-saldo, nazorat | tayyor, lokal sinalgan | pastda |
-| 7b Buxgalteriya (ekran) | navbatda | |
+| 7b Buxgalteriya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -451,4 +451,18 @@ buxgalter to'ldiradi/tasdiqlaydi), `bux_qoida` (kalit → schyot: `hisob:naqd` 5
 
 Ochiq: xarid QQS i (4410) tannarxdan ajratilmaydi; ish haqi va asosiy vositalar — hozircha qo'lda provodka;
 schyot nomlari va qoidalarni buxgalter tasdiqlaydi; hisoblash hajm o'sganda faqat ochiq oylar bo'yicha qilinadi.
+
+### 7b — Buxgalteriya ekrani `/buxgalteriya`
+
+Bo'limlar: Aylanma-saldo (davr, 4010/6010 kengaytirilgan, «Balans: debet = kredit», CSV, A4; schyot bosilsa
+kartochka), Schyot kartochkasi (qarshi schyotga o'tish, oraliq saldo; bir kunda boshlang'ich qoldiq birinchi),
+Provodkalar (jurnal, «faqat qo'lda», qo'lda provodka va uning stornosi — ikki kalit), Nazorat (buxgalteriya ↔ kassa,
+ombor, Moliya; 1 so'mdan kam farq — «yaxlitlash», sariq), Schyotlar va qoidalar (qoida tahriri qayta tasniflaydi).
+
+Nazorat demo bazada ikki narsani topdi va tuzatildi:
+- **Kod xatosi (5a dan beri):** storno qilingan ombor hujjatining asl holati `storno` — Moliya va buxgalteriya faqat
+  `confirmed` ni o'qirdi: kreditorlikdan storno bir tomonlama ayirilardi, storno harakati 9430 ga tushardi.
+  Endi `confirmed` va `storno` ikkalasi o'qiladi; `moliya_oracle` ga regressiya tekshiruvi qo'shildi.
+- **Demo ma'lumot:** 5-bosqich demosidagi `KIR-DEMO-1` harakatsiz yozilgan edi — partiya va harakat qo'shildi.
+Birinchi noto'g'ri tasnif keyingi sinxronda tuzatish provodkasi bilan qaytarildi (jurnal o'chirilmaydi — bu tarix).
 

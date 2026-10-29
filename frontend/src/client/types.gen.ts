@@ -4164,6 +4164,32 @@ export type KalibStart = {
 };
 
 /**
+ * Kartochka
+ */
+export type Kartochka = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Boshlangich
+     */
+    boshlangich: string;
+    /**
+     * Yozuvlar
+     */
+    yozuvlar: Array<YozuvRead>;
+    /**
+     * Yakuniy
+     */
+    yakuniy: string;
+};
+
+/**
  * KassaOrderRead
  */
 export type KassaOrderRead = {
@@ -5656,6 +5682,32 @@ export type NavbatRow = {
 };
 
 /**
+ * NazoratRead
+ */
+export type NazoratRead = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Buxgalteriya
+     */
+    buxgalteriya: string;
+    /**
+     * Manba
+     */
+    manba: string;
+    /**
+     * Farq
+     */
+    farq: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+};
+
+/**
  * Nomzod
  *
  * ESF yozilmagan, ESF ga tegishli sotuv: yetkazilgan buyurtma yoki ombor sotuvi.
@@ -6985,6 +7037,20 @@ export type Qator = {
 };
 
 /**
+ * QoidaIO
+ */
+export type QoidaIo = {
+    /**
+     * Kalit
+     */
+    kalit: string;
+    /**
+     * Schyot
+     */
+    schyot: string;
+};
+
+/**
  * QrOrderRef
  *
  * QR qaysi aktiv buyurtmaga tegishli (/terminal/qr/{qr}/order) — terminal o'sha sahifani ochadi.
@@ -7459,6 +7525,48 @@ export type RouteCell = {
 export type RouteSource = 'auto' | 'manual';
 
 /**
+ * SaldoRead
+ */
+export type SaldoRead = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Bosh D
+     */
+    bosh_d: string;
+    /**
+     * Bosh K
+     */
+    bosh_k: string;
+    /**
+     * Ayl D
+     */
+    ayl_d: string;
+    /**
+     * Ayl K
+     */
+    ayl_k: string;
+    /**
+     * Yak D
+     */
+    yak_d: string;
+    /**
+     * Yak K
+     */
+    yak_k: string;
+};
+
+/**
  * ScanHistoryItem
  */
 export type ScanHistoryItem = {
@@ -7538,6 +7646,50 @@ export type ScanResult = {
      * Order Completed
      */
     order_completed?: boolean;
+};
+
+/**
+ * SchyotIn
+ */
+export type SchyotIn = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Faol
+     */
+    faol?: boolean;
+};
+
+/**
+ * SchyotRead
+ */
+export type SchyotRead = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Faol
+     */
+    faol: boolean;
 };
 
 /**
@@ -7769,6 +7921,20 @@ export type SinovKiruvchiIn = {
      * Qqs Foiz
      */
     qqs_foiz?: number | string;
+};
+
+/**
+ * SinxronRead
+ */
+export type SinxronRead = {
+    /**
+     * Yozildi
+     */
+    yozildi: number;
+    /**
+     * Tuzatish
+     */
+    tuzatish: number;
 };
 
 /**
@@ -9596,6 +9762,92 @@ export type YorliqIn = {
      * Ishlab Kod
      */
     ishlab_kod?: string | null;
+};
+
+/**
+ * YozuvIn
+ */
+export type YozuvIn = {
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Debet
+     */
+    debet: string;
+    /**
+     * Kredit
+     */
+    kredit: string;
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Kontragent
+     */
+    kontragent?: string;
+};
+
+/**
+ * YozuvRead
+ */
+export type YozuvRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Debet
+     */
+    debet: string;
+    /**
+     * Kredit
+     */
+    kredit: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Guruh
+     */
+    guruh: string | null;
+    /**
+     * Client Id
+     */
+    client_id: number | null;
+    /**
+     * Kontragent
+     */
+    kontragent: string;
+    /**
+     * Storno Of Id
+     */
+    storno_of_id: number | null;
+};
+
+/**
+ * StornoIn
+ */
+export type AppModulesBuxgalteriyaRoutesStornoIn = {
+    /**
+     * Sabab
+     */
+    sabab: string;
 };
 
 /**
@@ -15032,6 +15284,328 @@ export type SoliqKitobCsvResponses = {
      */
     200: unknown;
 };
+
+export type BuxSinxronData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/sinxron';
+};
+
+export type BuxSinxronResponses = {
+    /**
+     * Successful Response
+     */
+    200: SinxronRead;
+};
+
+export type BuxSinxronResponse = BuxSinxronResponses[keyof BuxSinxronResponses];
+
+export type BuxSchyotlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/schyotlar';
+};
+
+export type BuxSchyotlarResponses = {
+    /**
+     * Response Bux Schyotlar
+     *
+     * Successful Response
+     */
+    200: Array<SchyotRead>;
+};
+
+export type BuxSchyotlarResponse = BuxSchyotlarResponses[keyof BuxSchyotlarResponses];
+
+export type BuxSchyotSaqlaData = {
+    body: SchyotIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/schyotlar';
+};
+
+export type BuxSchyotSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxSchyotSaqlaError = BuxSchyotSaqlaErrors[keyof BuxSchyotSaqlaErrors];
+
+export type BuxSchyotSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: SchyotRead;
+};
+
+export type BuxSchyotSaqlaResponse = BuxSchyotSaqlaResponses[keyof BuxSchyotSaqlaResponses];
+
+export type BuxQoidalarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/qoidalar';
+};
+
+export type BuxQoidalarResponses = {
+    /**
+     * Response Bux Qoidalar
+     *
+     * Successful Response
+     */
+    200: Array<QoidaIo>;
+};
+
+export type BuxQoidalarResponse = BuxQoidalarResponses[keyof BuxQoidalarResponses];
+
+export type BuxQoidaSaqlaData = {
+    body: QoidaIo;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/qoidalar';
+};
+
+export type BuxQoidaSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxQoidaSaqlaError = BuxQoidaSaqlaErrors[keyof BuxQoidaSaqlaErrors];
+
+export type BuxQoidaSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: QoidaIo;
+};
+
+export type BuxQoidaSaqlaResponse = BuxQoidaSaqlaResponses[keyof BuxQoidaSaqlaResponses];
+
+export type BuxAylanmaSaldoData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+    };
+    url: '/api/v1/bux/aylanma-saldo';
+};
+
+export type BuxAylanmaSaldoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxAylanmaSaldoError = BuxAylanmaSaldoErrors[keyof BuxAylanmaSaldoErrors];
+
+export type BuxAylanmaSaldoResponses = {
+    /**
+     * Response Bux Aylanma Saldo
+     *
+     * Successful Response
+     */
+    200: Array<SaldoRead>;
+};
+
+export type BuxAylanmaSaldoResponse = BuxAylanmaSaldoResponses[keyof BuxAylanmaSaldoResponses];
+
+export type BuxAylanmaSaldoCsvData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Dan
+         */
+        dan: string;
+        /**
+         * Gacha
+         */
+        gacha: string;
+    };
+    url: '/api/v1/bux/aylanma-saldo.csv';
+};
+
+export type BuxAylanmaSaldoCsvErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxAylanmaSaldoCsvError = BuxAylanmaSaldoCsvErrors[keyof BuxAylanmaSaldoCsvErrors];
+
+export type BuxAylanmaSaldoCsvResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type BuxKartochkaData = {
+    body?: never;
+    path: {
+        /**
+         * Kod
+         */
+        kod: string;
+    };
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+    };
+    url: '/api/v1/bux/kartochka/{kod}';
+};
+
+export type BuxKartochkaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxKartochkaError = BuxKartochkaErrors[keyof BuxKartochkaErrors];
+
+export type BuxKartochkaResponses = {
+    /**
+     * Successful Response
+     */
+    200: Kartochka;
+};
+
+export type BuxKartochkaResponse = BuxKartochkaResponses[keyof BuxKartochkaResponses];
+
+export type BuxNazoratData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/nazorat';
+};
+
+export type BuxNazoratResponses = {
+    /**
+     * Response Bux Nazorat
+     *
+     * Successful Response
+     */
+    200: Array<NazoratRead>;
+};
+
+export type BuxNazoratResponse = BuxNazoratResponses[keyof BuxNazoratResponses];
+
+export type BuxYozuvlarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+        /**
+         * Qolda
+         */
+        qolda?: boolean;
+    };
+    url: '/api/v1/bux/yozuvlar';
+};
+
+export type BuxYozuvlarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxYozuvlarError = BuxYozuvlarErrors[keyof BuxYozuvlarErrors];
+
+export type BuxYozuvlarResponses = {
+    /**
+     * Response Bux Yozuvlar
+     *
+     * Successful Response
+     */
+    200: Array<YozuvRead>;
+};
+
+export type BuxYozuvlarResponse = BuxYozuvlarResponses[keyof BuxYozuvlarResponses];
+
+export type BuxYozuvQoshData = {
+    body: YozuvIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/bux/yozuvlar';
+};
+
+export type BuxYozuvQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxYozuvQoshError = BuxYozuvQoshErrors[keyof BuxYozuvQoshErrors];
+
+export type BuxYozuvQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: YozuvRead;
+};
+
+export type BuxYozuvQoshResponse = BuxYozuvQoshResponses[keyof BuxYozuvQoshResponses];
+
+export type BuxYozuvStornoData = {
+    body: AppModulesBuxgalteriyaRoutesStornoIn;
+    path: {
+        /**
+         * Yozuv Id
+         */
+        yozuv_id: number;
+    };
+    query?: never;
+    url: '/api/v1/bux/yozuvlar/{yozuv_id}/storno';
+};
+
+export type BuxYozuvStornoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BuxYozuvStornoError = BuxYozuvStornoErrors[keyof BuxYozuvStornoErrors];
+
+export type BuxYozuvStornoResponses = {
+    /**
+     * Successful Response
+     */
+    200: YozuvRead;
+};
+
+export type BuxYozuvStornoResponse = BuxYozuvStornoResponses[keyof BuxYozuvStornoResponses];
 
 export type KroyHolatData = {
     body?: never;

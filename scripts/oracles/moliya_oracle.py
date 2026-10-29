@@ -104,6 +104,7 @@ async def main() -> None:
         db.add_all([d1, d2])
         await db.flush()
         db.add(doc("MSTR-1", "storno", 0, None, {"asl": d2.no, "asl_id": str(d2.id)}))
+        d2.status = "storno"  # storno servisi asl hujjatni shunday belgilaydi (regressiya: Moliya uni o'qishi kerak)
         db.add(
             doc(
                 "MKIR-1",

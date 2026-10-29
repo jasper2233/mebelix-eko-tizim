@@ -10,6 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 
+#: Qoldiqqa ta'sir qilgan hujjat holatlari: tasdiqlangan va keyin storno qilingan
+BOLGAN = ("confirmed", "storno")
+
 
 @dataclass
 class Hujjat:
@@ -35,7 +38,8 @@ def _sana(v: object) -> date | None:
 
 async def hujjatlar(db: AsyncSession, kind: str, dan: date | None = None, gacha: date | None = None) -> list[Hujjat]:
     """Tasdiqlangan `kirim`/`chiqim` hujjatlari va ularning stornosi (asl summasining teskarisi, storno sanasida)."""
-    q = select(StockDoc).where(StockDoc.status == "confirmed", StockDoc.kind.in_((kind, "storno")))
+    # Storno qilingan asl hujjat holati `storno` bo'ladi — u ham bo'lgan operatsiya (keyin teskari storno qatori)
+    q = select(StockDoc).where(StockDoc.status.in_(BOLGAN), StockDoc.kind.in_((kind, "storno")))
     if dan is not None:
         q = q.where(StockDoc.doc_date >= dan)
     if gacha is not None:
@@ -123,7 +127,7 @@ class Harakat:
 
 async def harakatlar(db: AsyncSession) -> list[Harakat]:
     """Qiymatli harakatlar (`sexga`, `boshlangich` — qiymatsiz, kirmaydi)."""
-    docs = {d.id: d for d in (await db.execute(select(StockDoc).where(StockDoc.status == "confirmed"))).scalars()}
+    docs = {d.id: d for d in (await db.execute(select(StockDoc).where(StockDoc.status.in_(BOLGAN)))).scalars()}
     out = []
     rows = (
         await db.execute(

@@ -17,6 +17,7 @@ import { Route as R3dTokenRouteImport } from './routes/3d.$token'
 import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
 import { Route as LayoutAdminRouteImport } from './routes/_layout/admin'
 import { Route as LayoutAgentsRouteImport } from './routes/_layout/agents'
+import { Route as LayoutBuxgalteriyaRouteImport } from './routes/_layout/buxgalteriya'
 import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
 import { Route as LayoutDefectsRouteImport } from './routes/_layout/defects'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
@@ -87,6 +88,11 @@ const LayoutAdminRoute = LayoutAdminRouteImport.update({
 const LayoutAgentsRoute = LayoutAgentsRouteImport.update({
   id: '/agents',
   path: '/agents',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutBuxgalteriyaRoute = LayoutBuxgalteriyaRouteImport.update({
+  id: '/buxgalteriya',
+  path: '/buxgalteriya',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutClientsRoute = LayoutClientsRouteImport.update({
@@ -259,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/3d/$token': typeof R3dTokenRoute
   '/admin': typeof LayoutAdminRoute
   '/agents': typeof LayoutAgentsRoute
+  '/buxgalteriya': typeof LayoutBuxgalteriyaRoute
   '/clients': typeof LayoutClientsRoute
   '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
@@ -299,6 +306,7 @@ export interface FileRoutesByTo {
   '/3d/$token': typeof R3dTokenRoute
   '/admin': typeof LayoutAdminRoute
   '/agents': typeof LayoutAgentsRoute
+  '/buxgalteriya': typeof LayoutBuxgalteriyaRoute
   '/clients': typeof LayoutClientsRoute
   '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
@@ -342,6 +350,7 @@ export interface FileRoutesById {
   '/3d/$token': typeof R3dTokenRoute
   '/_layout/admin': typeof LayoutAdminRoute
   '/_layout/agents': typeof LayoutAgentsRoute
+  '/_layout/buxgalteriya': typeof LayoutBuxgalteriyaRoute
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/defects': typeof LayoutDefectsRoute
   '/_layout/employees': typeof LayoutEmployeesRoute
@@ -386,6 +395,7 @@ export interface FileRouteTypes {
     | '/3d/$token'
     | '/admin'
     | '/agents'
+    | '/buxgalteriya'
     | '/clients'
     | '/defects'
     | '/employees'
@@ -426,6 +436,7 @@ export interface FileRouteTypes {
     | '/3d/$token'
     | '/admin'
     | '/agents'
+    | '/buxgalteriya'
     | '/clients'
     | '/defects'
     | '/employees'
@@ -468,6 +479,7 @@ export interface FileRouteTypes {
     | '/3d/$token'
     | '/_layout/admin'
     | '/_layout/agents'
+    | '/_layout/buxgalteriya'
     | '/_layout/clients'
     | '/_layout/defects'
     | '/_layout/employees'
@@ -568,6 +580,13 @@ declare module '@tanstack/react-router' {
       path: '/agents'
       fullPath: '/agents'
       preLoaderRoute: typeof LayoutAgentsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/buxgalteriya': {
+      id: '/_layout/buxgalteriya'
+      path: '/buxgalteriya'
+      fullPath: '/buxgalteriya'
+      preLoaderRoute: typeof LayoutBuxgalteriyaRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/clients': {
@@ -800,6 +819,7 @@ declare module '@tanstack/react-router' {
 interface LayoutRouteChildren {
   LayoutAdminRoute: typeof LayoutAdminRoute
   LayoutAgentsRoute: typeof LayoutAgentsRoute
+  LayoutBuxgalteriyaRoute: typeof LayoutBuxgalteriyaRoute
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutDefectsRoute: typeof LayoutDefectsRoute
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
@@ -837,6 +857,7 @@ interface LayoutRouteChildren {
 const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAdminRoute: LayoutAdminRoute,
   LayoutAgentsRoute: LayoutAgentsRoute,
+  LayoutBuxgalteriyaRoute: LayoutBuxgalteriyaRoute,
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutDefectsRoute: LayoutDefectsRoute,
   LayoutEmployeesRoute: LayoutEmployeesRoute,

@@ -5,6 +5,7 @@ import {
   Banknote,
   BarChart3,
   Bolt,
+  BookOpenCheck,
   Boxes,
   ClipboardCheck,
   ClipboardList,
@@ -111,6 +112,13 @@ export const NAV_ITEMS: (Item & {
     path: "/soliq",
     show: isMoliya,
     modul: "soliq",
+  },
+  {
+    icon: BookOpenCheck,
+    title: "Buxgalteriya",
+    path: "/buxgalteriya",
+    show: isMoliya,
+    modul: "buxgalteriya",
   },
   {
     icon: ClipboardList,

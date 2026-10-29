@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import TASHKENT_TZ
@@ -272,7 +272,10 @@ async def sinxron(db: AsyncSession) -> Sinxron:
                 debet=a if farq > 0 else b,
                 kredit=b if farq > 0 else a,
                 summa=abs(farq),
-                izoh=(("Tuzatish: " if tuzatish else "") + (mq.izoh if mq else f"{guruh} bekor"))[:300],
+                izoh=(
+                    ("Tuzatish: " if tuzatish else "")
+                    + (mq.izoh if mq else f"{guruh}: manba o'zgardi — qayta tasniflash")
+                )[:300],
                 guruh=guruh,
                 client_id=cid,
                 kontragent=kontr,
@@ -457,7 +460,12 @@ async def kartochka(db: AsyncSession, kod: str, dan: date, gacha: date) -> tuple
             await db.execute(
                 select(BuxYozuv)
                 .where((BuxYozuv.debet == kod) | (BuxYozuv.kredit == kod), BuxYozuv.sana >= dan, BuxYozuv.sana <= gacha)
-                .order_by(BuxYozuv.sana, BuxYozuv.id)
+                # Bir kun ichida boshlang'ich qoldiq (… — 8710) birinchi: oraliq saldo manfiyga tushib ko'rinmasin
+                .order_by(
+                    BuxYozuv.sana,
+                    case((literal(OCHILISH).in_((BuxYozuv.debet, BuxYozuv.kredit)), 0), else_=1),
+                    BuxYozuv.id,
+                )
             )
         ).scalars()
     )
