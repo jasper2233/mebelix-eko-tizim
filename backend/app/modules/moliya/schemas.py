@@ -265,3 +265,33 @@ class DavrRead(BaseModel):
 
 class DavrSababIn(BaseModel):
     sabab: Annotated[str, Field(min_length=1, max_length=200)]
+
+
+class OchilishIn(BaseModel):
+    """Ochilish qoldig'i qatori (CSV dan ham). Mijoz: `client_id`, yoki telefon (+998…), yoki aniq nomi."""
+
+    tur: Literal["mijoz", "taminotchi"]
+    client_id: int | None = None
+    telefon: Annotated[str, Field(max_length=20)] = ""
+    nomi: Annotated[str, Field(max_length=150)] = ""
+    #: Mijoz bizga qarz / biz ta'minotchiga qarz; manfiy — avans
+    summa: Annotated[Decimal, Field(ge=-(Decimal(10) ** 13), le=Decimal(10) ** 13)]
+    sana: date
+    izoh: Annotated[str, Field(max_length=300)] = ""
+
+
+class OchilishRead(BaseModel):
+    id: int
+    tur: str
+    client_id: int | None
+    kontragent: str
+    summa: Decimal
+    sana: date
+    izoh: str
+    #: Mijozda: shu mijoz ochilish qarzidan to'lanmagani (qatorlar yig'indisi bo'yicha)
+    qolgan: Decimal | None = None
+
+
+class OchilishNatija(BaseModel):
+    yozildi: int
+    qatorlar: list[OchilishRead]

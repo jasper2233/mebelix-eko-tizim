@@ -9,11 +9,11 @@ Buyurtma bo'yicha to'langan summa — `kassa_taqsimot` (bitta order bir necha bu
 mijoz qarzini to'lashda eng eski buyurtmadan yopiladi). Rezerv (EKO TZ §4.3) to'lovni shundan o'qiydi.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -115,8 +115,16 @@ class KassaTaqsimot(BaseModel):
 
     __tablename__ = "kassa_taqsimot"
 
+    __table_args__ = (
+        CheckConstraint("(order_id IS NULL) <> (ochilish_client_id IS NULL)", name="ck_kassa_taqsimot_manzil"),
+    )
+
     kassa_order_id: Mapped[int] = mapped_column(ForeignKey("kassa_order.id"), index=True, kw_only=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    #: Buyurtmaga yoki mijozning ochilish qarziga (tizimga o'tishdagi qarz) — bittasi
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("order.id"), index=True, default=None, kw_only=True)
+    ochilish_client_id: Mapped[int | None] = mapped_column(
+        ForeignKey("client.id"), index=True, default=None, kw_only=True
+    )
     #: Kirim — musbat, buyurtma bo'yicha qaytarish (chiqim) va storno — manfiy
     summa: Mapped[Decimal] = mapped_column(Numeric(16, 2), kw_only=True)
 
@@ -134,3 +142,28 @@ class KassaModda(BaseModel):
     oylik_limit: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
     tartib: Mapped[int] = mapped_column(default=0, kw_only=True)
     faol: Mapped[bool] = mapped_column(default=True, server_default="true", kw_only=True)
+
+
+class KassaOchilish(BaseModel):
+    """Ochilish qoldig'i — tizimga o'tish kunidagi qarz (TZ §11, 7-bosqich «ma'lumot migratsiyasi»).
+
+    `mijoz` — mijoz bizga qarz (manfiy — mijoz oldindan bergan avans); `taminotchi` — biz yetkazib beruvchiga
+    qarz (manfiy — biz bergan avans). Jurnal: tuzatish teskari ishorali yangi qator bilan. Mijozning qarz to'lovi
+    avval shu qarzni yopadi (eng eski qarz)."""
+
+    __tablename__ = "kassa_ochilish"
+    __table_args__ = (
+        CheckConstraint("tur IN ('mijoz', 'taminotchi')", name="ck_kassa_ochilish_tur"),
+        CheckConstraint("summa <> 0", name="ck_kassa_ochilish_summa"),
+        CheckConstraint("tur = 'taminotchi' OR client_id IS NOT NULL", name="ck_kassa_ochilish_mijoz"),
+    )
+
+    tur: Mapped[str] = mapped_column(String(10), kw_only=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), index=True, default=None, kw_only=True)
+    #: Mijoz yoki yetkazib beruvchi nomi (ta'minotchida — kassa to'lovi va ombor kirimi shu nom bilan bog'lanadi)
+    kontragent: Mapped[str] = mapped_column(String(150), kw_only=True)
+    summa: Mapped[Decimal] = mapped_column(Numeric(16, 2), kw_only=True)
+    #: Qarz sanasi (to'lov muddati shundan hisoblanadi)
+    sana: Mapped[date] = mapped_column(Date, kw_only=True)
+    izoh: Mapped[str] = mapped_column(String(300), default="", kw_only=True)
+    yaratgan_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)

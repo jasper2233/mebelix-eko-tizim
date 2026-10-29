@@ -10,7 +10,7 @@ Funksiyalar chaqiruvchining sessiyasida ishlaydi va `commit` qilmaydi. Rad — `
 """
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
@@ -19,7 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client, Order
 from app.models.enums import OrderStatus
-from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSmena, KassaTaqsimot
+from app.modules.kassa.models import (
+    KassaHisob,
+    KassaModda,
+    KassaOchilish,
+    KassaOrder,
+    KassaSmena,
+    KassaTaqsimot,
+)
 from app.modules.ombor import service as ombor
 
 KIRIM_MAQSAD = ("avans", "tolov", "qarz", "sotuv", "boshqa")
@@ -272,7 +279,8 @@ async def kirim(
     if naqd > 0 and sm is None:
         xato.append("Naqd pul uchun avval smenani oching")
     order: Order | None = None
-    taqsim: list[tuple[Order, Decimal]] = []
+    #: (buyurtma, summa); buyurtma None — mijozning ochilish qarzi
+    taqsim: list[tuple[Order | None, Decimal]] = []
     if maqsad in ("avans", "tolov"):
         order = await db.get(Order, order_id, with_for_update=True) if order_id else None
         if order is None or order.is_deleted:
@@ -287,7 +295,10 @@ async def kirim(
         if client_id is None:
             xato.append("Mijozni tanlang")
         else:
-            qarzlar = await mijoz_qarzlari(db, client_id)
+            # Ochilish qarzi (tizimga o'tishdagi) — eng eski, birinchi yopiladi
+            och = await ochilish_qoldigi(db, client_id)
+            qarzlar: list[tuple[Order | None, Decimal]] = [(None, och)] if och > Decimal("0.5") else []
+            qarzlar += await mijoz_qarzlari(db, client_id)
             qarz = sum((q for _, q in qarzlar), Decimal(0))
             if qarz <= Decimal("0.5"):
                 xato.append("Mijozning qarzi yo'q")
@@ -345,13 +356,16 @@ async def kirim(
         while qism > 0 and rest_taqsim:
             bo, x = rest_taqsim[0]
             y = min(x, qism)
-            db.add(KassaTaqsimot(kassa_order_id=o.id, order_id=bo.id, summa=y))
+            if bo is None:
+                db.add(KassaTaqsimot(kassa_order_id=o.id, ochilish_client_id=client_id, summa=y))
+            else:
+                db.add(KassaTaqsimot(kassa_order_id=o.id, order_id=bo.id, summa=y))
             qism -= y
             rest_taqsim[0] = (bo, x - y)
             if rest_taqsim[0][1] <= 0:
                 rest_taqsim.pop(0)
     await db.flush()
-    rezerv = [m for bo, _ in taqsim if (m := await _rezerv_xabar(db, bo))]
+    rezerv = [m for bo, _ in taqsim if bo is not None and (m := await _rezerv_xabar(db, bo))]
     return Natija(
         orderlar=orderlar, qaytim=qaytim, rezerv=rezerv, xabar=f"{orderlar[0].no}: {_som(jami)} so'm qabul qilindi"
     )
@@ -538,8 +552,13 @@ async def storno(db: AsyncSession, kassa_order_id: int, user_id: int | None, sab
         await db.flush()
         orderlar.append(s)
         for t in (await db.execute(select(KassaTaqsimot).where(KassaTaqsimot.kassa_order_id == g.id))).scalars():
-            db.add(KassaTaqsimot(kassa_order_id=s.id, order_id=t.order_id, summa=-t.summa))
-            tegishli.add(t.order_id)
+            db.add(
+                KassaTaqsimot(
+                    kassa_order_id=s.id, order_id=t.order_id, ochilish_client_id=t.ochilish_client_id, summa=-t.summa
+                )
+            )
+            if t.order_id is not None:
+                tegishli.add(t.order_id)
     await db.flush()
     rezerv = []
     for oid in tegishli:
@@ -663,3 +682,86 @@ async def orderlar_davr(
 
 async def ochiq_smenalar(db: AsyncSession) -> list[KassaSmena]:
     return list((await db.execute(select(KassaSmena).where(KassaSmena.yopilgan_at.is_(None)))).scalars())
+
+
+# ───────────────────────── ochilish qoldiqlari (tizimga o'tish) ─────────────────────────
+async def boshlangan(db: AsyncSession) -> bool:
+    """Kassada birinchi order yozilganmi — shundan keyin buyurtmadagi qo'lda avans maydoni yopiladi."""
+    return await db.scalar(select(KassaOrder.id).limit(1)) is not None
+
+
+async def ochilish_qoldigi(db: AsyncSession, client_id: int) -> Decimal:
+    """Mijozning ochilish qarzidan qolgani (qarz − kassadan unga taqsimlangan to'lov)."""
+    jami = await db.scalar(
+        select(func.coalesce(func.sum(KassaOchilish.summa), 0)).where(
+            KassaOchilish.tur == "mijoz", KassaOchilish.client_id == client_id
+        )
+    )
+    tol = await db.scalar(
+        select(func.coalesce(func.sum(KassaTaqsimot.summa), 0)).where(KassaTaqsimot.ochilish_client_id == client_id)
+    )
+    return Decimal(jami or 0) - Decimal(tol or 0)
+
+
+async def ochilishlar(db: AsyncSession) -> list[KassaOchilish]:
+    return list((await db.execute(select(KassaOchilish).order_by(KassaOchilish.sana, KassaOchilish.id))).scalars())
+
+
+async def ochilish_tolangan(db: AsyncSession) -> dict[int, Decimal]:
+    """Mijoz → ochilish qarziga kassadan to'langan."""
+    rows = (
+        await db.execute(
+            select(KassaTaqsimot.ochilish_client_id, func.sum(KassaTaqsimot.summa))
+            .where(KassaTaqsimot.ochilish_client_id.is_not(None))
+            .group_by(KassaTaqsimot.ochilish_client_id)
+        )
+    ).all()
+    return {cid: Decimal(sm) for cid, sm in rows if cid is not None}
+
+
+async def ochilish_qosh(
+    db: AsyncSession,
+    tur: str,
+    summa: Decimal,
+    sana: date,
+    user_id: int | None,
+    *,
+    client_id: int | None = None,
+    kontragent: str = "",
+    izoh: str = "",
+) -> KassaOchilish:
+    """Ochilish qoldig'i qatori. Kamaytirish — manfiy qator (jurnal); to'langanidan pastga tushmaydi."""
+    xato = []
+    if tur not in ("mijoz", "taminotchi"):
+        xato.append("Tur: mijoz yoki taminotchi")
+    if summa == 0:
+        xato.append("Summa 0 bo'lmasin")
+    if tur == "mijoz":
+        cl = await db.get(Client, client_id) if client_id else None
+        if cl is None:
+            xato.append("Mijoz topilmadi")
+        else:
+            kontragent = cl.full_name
+            if (
+                summa < 0
+                and await ochilish_qoldigi(db, cl.id) + summa < 0
+                and await db.scalar(select(KassaTaqsimot.id).where(KassaTaqsimot.ochilish_client_id == cl.id).limit(1))
+            ):
+                xato.append("Kamaytirish mijoz to'lagan qismdan oshib ketadi")
+    kontragent = " ".join(kontragent.split())
+    if not kontragent:
+        xato.append("Yetkazib beruvchi nomini yozing")
+    if xato:
+        raise KassaXato(xato)
+    o = KassaOchilish(
+        tur=tur,
+        client_id=client_id if tur == "mijoz" else None,
+        kontragent=kontragent[:150],
+        summa=summa,
+        sana=sana,
+        izoh=izoh.strip()[:300],
+        yaratgan_id=user_id,
+    )
+    db.add(o)
+    await db.flush()
+    return o

@@ -45,6 +45,7 @@ from app.models.enums import (
     UserRole,
 )
 from app.models.user import User
+from app.modules.kassa import service as kassa
 from app.schemas.reports import (
     AvailabilityReason,
     DashboardMoney,
@@ -1120,22 +1121,27 @@ async def report_dashboard(db: SessionDep, current_user: DashboardUser) -> Dashb
     # --- qoldiq to'lovlar: faqat boshqaruvga ---
     money: DashboardMoney | None = None
     if current_user.is_superuser or current_user.role in _MANAGEMENT:
-        remaining = Order.amount - func.coalesce(Order.advance_payment, 0)
-        mrow = (
+        # To'langan = kassagacha qo'lda avans + kassa orderlari (EKO 4) — ilgari faqat qo'lda avans
+        rows = (
             await db.execute(
-                select(
-                    func.coalesce(func.sum(remaining), 0),
-                    func.count(Order.id),
-                    func.count(Order.id).filter(Order.status == OrderStatus.DELIVERED),
-                ).where(
+                select(Order.id, Order.amount, Order.advance_payment, Order.status).where(
                     Order.is_deleted == False,  # noqa: E712
                     Order.status.not_in((OrderStatus.DRAFT, OrderStatus.CANCELLED)),
                     Order.amount.is_not(None),
-                    remaining > 0,
                 )
             )
-        ).one()
-        money = DashboardMoney(receivable=float(mrow[0]), orders=int(mrow[1]), delivered_unpaid=int(mrow[2]))
+        ).all()
+        paid = await kassa.tolangan(db, [r[0] for r in rows])
+        qol = [
+            (r, (r[1] or 0) - (r[2] or 0) - paid.get(r[0], 0))
+            for r in rows
+            if (r[1] or 0) - (r[2] or 0) - paid.get(r[0], 0) > 0
+        ]
+        money = DashboardMoney(
+            receivable=float(sum(q for _, q in qol)),
+            orders=len(qol),
+            delivered_unpaid=sum(1 for r, _ in qol if r[3] == OrderStatus.DELIVERED),
+        )
 
     return DashboardStats(
         today=DashboardToday(

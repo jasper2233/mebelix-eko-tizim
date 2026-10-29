@@ -279,6 +279,9 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
     by: dict[int, list[tuple[Order, Decimal]]] = defaultdict(list)
     for o, p in await _buyurtmalar(db):
         by[o.client_id].append((o, p))
+    och = await _ochilish_mijoz(db)
+    for cid in och:
+        by.setdefault(cid, [])
     clients = {c.id: c for c in (await db.execute(select(Client).where(Client.id.in_(by)))).scalars()}
     today = bugun()
     out = []
@@ -305,6 +308,17 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
                     avans += -q
             else:
                 avans += p
+        if cid in och:  # tizimga o'tishdagi qarz (eng eski)
+            jami, qol, d = och[cid]
+            sotuv += max(jami, _0)
+            tol += jami - qol
+            if qol > Decimal("0.5"):
+                qarz += qol
+                eng_eski = d if eng_eski is None or d < eng_eski else eng_eski
+                if (today - d).days > muddat:
+                    otgan += qol
+            elif qol < 0:
+                avans += -qol
         if qarz <= 0 and avans <= 0:
             continue
         kun = (today - eng_eski).days if eng_eski else None
@@ -329,6 +343,18 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
     return sorted(out, key=lambda d: (not d.muddati_otgan, -d.qarz))
 
 
+async def _ochilish_mijoz(db: AsyncSession) -> dict[int, tuple[Decimal, Decimal, date]]:
+    """Mijoz → (ochilish qarzi jami, to'lanmagani, eng eski sana)."""
+    tol = await kassa.ochilish_tolangan(db)
+    out: dict[int, tuple[Decimal, Decimal, date]] = {}
+    for r in await kassa.ochilishlar(db):
+        if r.tur != "mijoz" or r.client_id is None:
+            continue
+        jami, _, d = out.get(r.client_id, (_0, _0, r.sana))
+        out[r.client_id] = (jami + r.summa, _0, min(d, r.sana))
+    return {cid: (j, j - tol.get(cid, _0), d) for cid, (j, _, d) in out.items()}
+
+
 async def mijoz_shart_saqla(
     db: AsyncSession, client_id: int, shartnoma_no: str, muddat_kun: int | None, kredit_limit: Decimal | None
 ) -> None:
@@ -351,6 +377,10 @@ async def akt(db: AsyncSession, client_id: int, dan: date, gacha: date) -> Akt:
     if c is None:
         raise MoliyaXato(["Mijoz topilmadi"])
     hodisa: list[tuple[date, int, str, str, Decimal, Decimal]] = []
+    for r in await kassa.ochilishlar(db):
+        if r.tur == "mijoz" and r.client_id == client_id:
+            izoh = "Ochilish qoldig'i" + (f" ({r.izoh})" if r.izoh else "")
+            hodisa.append((r.sana, 0, "OCHILISH", izoh, max(r.summa, _0), max(-r.summa, _0)))
     for o, _ in await _buyurtmalar(db, client_id):
         if o.advance_payment:
             hodisa.append((_mahalliy(o.created_at), 0, o.number, "Kassagacha to'lov", _0, o.advance_payment))
@@ -388,7 +418,12 @@ async def _taminotchilar(db: AsyncSession) -> dict[str, tuple[str, list[ombor.Hu
     """{kalit: (nom, hujjatlar, to'langan)}. To'lov — kassa orderi kontragenti bo'yicha, harf farqsiz."""
     hujjat: dict[str, list[ombor.Hujjat]] = defaultdict(list)
     nom: dict[str, str] = {}
-    for h in await ombor.kirim_hujjatlari(db):
+    ochilish = [
+        ombor.Hujjat(-r.id, "OCHILISH", r.sana, r.kontragent, None, r.summa, _0)
+        for r in await kassa.ochilishlar(db)
+        if r.tur == "taminotchi"
+    ]
+    for h in ochilish + await ombor.kirim_hujjatlari(db):
         k = _key(h.kontragent)
         hujjat[k].append(h)
         nom.setdefault(k, " ".join(h.kontragent.split()))
@@ -477,6 +512,21 @@ async def kalendar(db: AsyncSession, kun: int = 45) -> list[KalendarQator]:
                     manba="mijoz",
                     muddati_otgan=d < today,
                     havola_id=o.client_id,
+                )
+            )
+    for cid, (_, qol, d0) in (await _ochilish_mijoz(db)).items():
+        sh = shart.get(cid)
+        d = d0 + timedelta(days=sh.muddat_kun if sh is not None and sh.muddat_kun is not None else std)
+        if qol > Decimal("0.5") and d <= oxir:
+            out.append(
+                KalendarQator(
+                    sana=d,
+                    tur="kirim",
+                    nom=f"{clients.get(cid, '')} · ochilish qarzi",
+                    summa=qol,
+                    manba="mijoz",
+                    muddati_otgan=d < today,
+                    havola_id=cid,
                 )
             )
     for nom, hj, tol in (await _taminotchilar(db)).values():

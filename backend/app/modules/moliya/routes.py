@@ -3,15 +3,16 @@
 import csv
 import io
 from datetime import date, timedelta
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.crud import log_action
-from app.models import User
+from app.models import Client, User
 from app.models.enums import UserRole
 from app.modules.kassa import service as kassa
 from app.modules.moliya import services as m
@@ -31,6 +32,9 @@ from app.modules.moliya.schemas import (
     MijozShartIn,
     ModdaIn,
     ModdaRead,
+    OchilishIn,
+    OchilishNatija,
+    OchilishRead,
     PnL,
     PulOqimi,
     RejaIn,
@@ -374,3 +378,91 @@ async def moliya_davr_ochish_sorov(
 async def moliya_davr_ochish_tasdiq(db: SessionDep, user: MoliyaUser, oy: str, request: Request) -> DavrRead:
     """Ikki kalit: so'rovni yozgan xodim emas, boshqasi tasdiqlaydi."""
     return await _davr_amal(db, user, request, "tasdiq", oy)
+
+
+# ── ochilish qoldiqlari (tizimga o'tish, TZ §11 7-bosqich) ──
+async def _ochilish_read(db: SessionDep) -> list[OchilishRead]:
+    tol = await kassa.ochilish_tolangan(db)
+    rows = await kassa.ochilishlar(db)
+    jami: dict[int, Decimal] = {}
+    for r in rows:
+        if r.client_id is not None:
+            jami[r.client_id] = jami.get(r.client_id, Decimal(0)) + r.summa
+    return [
+        OchilishRead(
+            id=r.id,
+            tur=r.tur,
+            client_id=r.client_id,
+            kontragent=r.kontragent,
+            summa=r.summa,
+            sana=r.sana,
+            izoh=r.izoh,
+            qolgan=jami[r.client_id] - tol.get(r.client_id, Decimal(0)) if r.client_id is not None else None,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/ochilish", response_model=list[OchilishRead], operation_id="moliya_ochilish")
+async def moliya_ochilish(db: SessionDep, _: MoliyaUser) -> list[OchilishRead]:
+    return await _ochilish_read(db)
+
+
+async def _mijoz_top(db: SessionDep, q: OchilishIn) -> int | None:
+    if q.client_id is not None:
+        return q.client_id
+    if q.telefon.strip():
+        tel = "".join(ch for ch in q.telefon if ch.isdigit())
+        tel = "+998" + tel[-9:] if len(tel) >= 9 else tel
+        jonli = Client.is_deleted.is_(False)
+        found = (await db.execute(select(Client.id).where(Client.phone == tel, jonli))).scalars().all()
+        return found[0] if len(found) == 1 else None
+    if q.nomi.strip():
+        found = (
+            (
+                await db.execute(
+                    select(Client.id).where(
+                        func.lower(Client.full_name) == " ".join(q.nomi.split()).lower(),
+                        Client.is_deleted == False,  # noqa: E712
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        return found[0] if len(found) == 1 else None
+    return None
+
+
+@router.post("/ochilish", response_model=OchilishNatija, operation_id="moliya_ochilish_qosh")
+async def moliya_ochilish_qosh(
+    db: SessionDep, user: MoliyaUser, body: list[OchilishIn], request: Request
+) -> OchilishNatija:
+    """Ochilish qoldiqlari (bitta yoki CSV dan ko'p). Bitta qator xato bo'lsa — hech biri yozilmaydi.
+    Tuzatish — teskari ishorali yangi qator (jurnal)."""
+    if not body or len(body) > 5000:
+        raise HTTPException(status_code=422, detail="1 dan 5000 tagacha qator")
+    xatolar = []
+    for i, q in enumerate(body, 1):
+        try:
+            cid = await _mijoz_top(db, q) if q.tur == "mijoz" else None
+            if q.tur == "mijoz" and cid is None:
+                raise kassa.KassaXato([f"mijoz topilmadi yoki bir nechta ({q.telefon or q.nomi or q.client_id})"])
+            await kassa.ochilish_qosh(
+                db, q.tur, q.summa, q.sana, user.id, client_id=cid, kontragent=q.nomi, izoh=q.izoh
+            )
+        except kassa.KassaXato as e:
+            xatolar.append(f"{i}-qator: {' · '.join(e.xatolar)}")
+    if xatolar:
+        await db.rollback()
+        raise HTTPException(status_code=422, detail=" | ".join(xatolar[:20]) + (" | …" if len(xatolar) > 20 else ""))
+    log_action(
+        db,
+        module="moliya",
+        action="ochilish",
+        user_id=user.id,
+        message=f"{len(body)} qator, jami {sum((q.summa for q in body), Decimal(0))}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return OchilishNatija(yozildi=len(body), qatorlar=await _ochilish_read(db))

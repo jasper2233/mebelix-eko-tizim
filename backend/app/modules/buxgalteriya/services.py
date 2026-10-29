@@ -114,6 +114,12 @@ async def _kassa(db: AsyncSession, q: dict[str, str], today: date) -> list[Maqsa
             out.append(Maqsad(g, d, "4010", H, s, izoh, o.client_id, kontr))
         else:
             out.append(Maqsad(g, d, q.get(chiqim.get(o.maqsad, "chiqim:boshqa"), "9430"), H, s, izoh))
+    for r in await kassa.ochilishlar(db):
+        izoh = f"Ochilish qoldig'i · {r.kontragent}" + (f" · {r.izoh}" if r.izoh else "")
+        if r.tur == "mijoz":
+            out.append(Maqsad(f"och:{r.id}", r.sana, "4010", OCHILISH, r.summa, izoh, r.client_id, _nom(r.kontragent)))
+        else:
+            out.append(Maqsad(f"och:{r.id}", r.sana, OCHILISH, "6010", r.summa, izoh, None, _nom(r.kontragent)))
     for guruh, leg in otk.items():
         if leg["ga"] and leg["dan"]:
             out.append(Maqsad(f"otk:{guruh}", leg["sana"], leg["ga"], leg["dan"], leg["summa"], f"O'tkazma {guruh}"))

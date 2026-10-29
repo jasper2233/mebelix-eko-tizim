@@ -41,6 +41,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 6b Soliq (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 7a Buxgalteriya (backend): schyotlar rejasi, avtomatik provodkalar, aylanma-saldo, nazorat | tayyor, lokal sinalgan | pastda |
 | 7b Buxgalteriya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
+| 8a Ishga tushirish (backend): ochilish qoldiqlari, qo'lda avans qulfi, tayyorlik tekshiruvi | tayyor, lokal sinalgan | pastda |
+| 8b Ishga tushirish (ekran) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -465,4 +467,21 @@ Nazorat demo bazada ikki narsani topdi va tuzatildi:
   Endi `confirmed` va `storno` ikkalasi o'qiladi; `moliya_oracle` ga regressiya tekshiruvi qo'shildi.
 - **Demo ma'lumot:** 5-bosqich demosidagi `KIR-DEMO-1` harakatsiz yozilgan edi — partiya va harakat qo'shildi.
 Birinchi noto'g'ri tasnif keyingi sinxronda tuzatish provodkasi bilan qaytarildi (jurnal o'chirilmaydi — bu tarix).
+
+### 8a — Ishga tushirish (backend; TZ §11, 7-bosqich)
+
+Tashqi xizmatlarsiz (haqiqiy ESF operatori, E-IMZO, fiskal chek — keyin ulanadi; adapter va navbat tayyor).
+- **Qo'lda avans qulfi**: kassada birinchi order yozilgach buyurtmadagi `advance_payment` yaratib/o'zgartirib
+  bo'lmaydi (403 «avans endi Kassa orqali») — ilgari ikkalasi qo'shilib pul ikki marta sanalishi mumkin edi.
+- **Boshqaruv paneli** «qoldiq to'lovlar»: endi kassa to'lovlarini ham ayiradi (ilgari faqat qo'lda avans).
+- **Ochilish qoldiqlari** `kassa_ochilish` (jurnal): mijoz qarzi / avansi, ta'minotchiga qarz / avans, sanasi bilan.
+  `POST /moliya/ochilish` — bitta yoki CSV dan ko'p qator (mijoz: id, telefon yoki aniq nomi); bitta qator xato
+  bo'lsa hech biri yozilmaydi. Tuzatish — teskari ishorali qator; to'langan qismdan pastga kamaytirilmaydi.
+  Mijozning «Qarzni to'lash»i avval ochilish qarzini yopadi (`kassa_taqsimot.ochilish_client_id`), storno qaytaradi;
+  kassa navbatida «Ochilish qarzi» qatori. Moliya debitor/kalendar/akt, kreditor (eng eski «hujjat»), rezerv kredit
+  limiti va buxgalteriya (4010–8710, 8710–6010) uni ko'radi.
+- **Tayyorlik** `GET /tayyorlik`: kassir bor, karta/bank boshlang'ichi, birinchi smena, ikki kalit uchun ≥ 2 moliya
+  xodimi, ochilish qoldiqlari, korxona rekvizitlari, soliq rejimi, ESF operatori (sinov — ogohlantirish), MXIK
+  qamrovi, inventarizatsiya, buxgalteriya nazorati. Tarifda yo'q modul tekshirilmaydi.
+- Orakl `ishga_tushirish_oracle.py` 16/16 (yo'l funksiyasi commit qiladi — har safar toza baza).
 

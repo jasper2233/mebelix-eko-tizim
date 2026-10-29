@@ -352,7 +352,9 @@ async def client_debt(db: AsyncSession, client_id: int) -> Decimal:
     """Mijozning ochiq qarzi: bekor qilinmagan buyurtmalar bo'yicha `summa − to'langan` (kassa + kassagacha)."""
     from app.modules.kassa import service as kassa
 
-    return sum((q for _, q in await kassa.mijoz_qarzlari(db, client_id)), Decimal(0))
+    qarz = sum((q for _, q in await kassa.mijoz_qarzlari(db, client_id)), Decimal(0))
+    # Tizimga o'tishdagi (ochilish) qarz ham qarz
+    return qarz + max(await kassa.ochilish_qoldigi(db, client_id), Decimal(0))
 
 
 async def holati(db: AsyncSession, order: Order) -> tuple[Decimal, Decimal, bool] | None:

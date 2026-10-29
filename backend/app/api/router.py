@@ -29,6 +29,7 @@ from app.api.routes.scans import router as scans_router
 from app.api.routes.settings import router as settings_router
 from app.api.routes.system import router as system_router
 from app.api.routes.tablo import router as tablo_router
+from app.api.routes.tayyorlik import router as tayyorlik_router
 from app.api.routes.terminal import router as terminal_router
 from app.api.routes.terminal_devices import router as terminal_devices_router
 from app.api.routes.tmo import router as tmo_router
@@ -79,6 +80,7 @@ v1_router.include_router(kassa_router, dependencies=_modul("kassa"))  # kassa (E
 v1_router.include_router(moliya_router, dependencies=_modul("moliya"))  # moliya (EKO TZ §8)
 v1_router.include_router(soliq_router, dependencies=_modul("soliq"))  # soliq (EKO TZ §9)
 v1_router.include_router(bux_router, dependencies=_modul("buxgalteriya"))  # buxgalteriya (EKO 7)
+v1_router.include_router(tayyorlik_router, dependencies=_protected)  # ishga tayyorlik (EKO 8)
 v1_router.include_router(integ_user_router, dependencies=_modul("kroy"))  # «Kroy» tugmasi, SSO (K1, K6)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)

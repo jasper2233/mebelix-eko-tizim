@@ -185,6 +185,31 @@ async def kassa_navbat(db: SessionDep, _: KassaUser, q: Annotated[str, Query(max
     rows = (await db.execute(stmt)).all()
     paid = await k.tolangan(db, [o.id for o, _ in rows])
     out = []
+    # Ochilish qarzi (tizimga o'tishdagi) — «Qarzni to'lash» bilan yopiladi; order_id manfiy = mijoz id
+    tol0 = await k.ochilish_tolangan(db)
+    jami0: dict[int, Decimal] = {}
+    for r in await k.ochilishlar(db):
+        if r.tur == "mijoz" and r.client_id is not None:
+            jami0[r.client_id] = jami0.get(r.client_id, Decimal(0)) + r.summa
+    for c in (await db.execute(select(Client).where(Client.id.in_(jami0)))).scalars():
+        qol0 = jami0[c.id] - tol0.get(c.id, Decimal(0))
+        t = q.strip().lower()
+        if qol0 > Decimal("0.5") and (not t or t in c.full_name.lower() or t in (c.phone or "")):
+            out.append(
+                NavbatRow(
+                    order_id=-c.id,
+                    order_number="Ochilish qarzi",
+                    client_id=c.id,
+                    mijoz=c.full_name,
+                    telefon=c.phone,
+                    summa=jami0[c.id],
+                    tolangan=tol0.get(c.id, Decimal(0)),
+                    qolgan=qol0,
+                    chegara=None,
+                    chegaraga_kerak=None,
+                    holat="ochilish",
+                )
+            )
     for o, c in rows:
         tol = (o.advance_payment or Decimal(0)) + paid.get(o.id, Decimal(0))
         qol = (o.amount or Decimal(0)) - tol

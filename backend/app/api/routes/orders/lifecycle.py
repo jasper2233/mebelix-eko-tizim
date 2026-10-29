@@ -42,6 +42,7 @@ from app.models.enums import (
     OrderStatus,
 )
 from app.models.user import User
+from app.modules.kassa import service as kassa
 from app.modules.ombor import service as ombor
 from app.schemas.common import Message, Paginated
 from app.schemas.orders import (
@@ -86,11 +87,17 @@ async def _order_read_with_client(db: SessionDep, order: Order) -> OrderRead:
     return _order_read(order, client.full_name if client else "")
 
 
+#: EKO 4: kassa ishga tushgach to'lov faqat kassa orderi bilan — qo'lda avans pulni ikki marta sanardi
+AVANS_KASSADA = "Kassa ishga tushgan: avans endi Kassa orqali qabul qilinadi (qo'lda yozilsa pul ikki marta sanaladi)."
+
+
 @router.post("/", response_model=OrderRead, status_code=201, operation_id="create_order")
 async def create_order(db: SessionDep, current_user: ManagerUser, body: OrderCreate, request: Request) -> OrderRead:
     client = await crud_clients.get(db, id=body.client_id)
     if client is None:
         raise NotFoundException("Mijoz topilmadi.")
+    if body.advance_payment and await kassa.boshlangan(db):
+        raise ForbiddenException(AVANS_KASSADA)
 
     # Rollback (expire_on_rollback default True) sessiyadagi HAMMA obyektni expire
     # qiladi, shu sababli retry'dan keyin kerak bo'ladigan qiymatlar oldindan olinadi.
@@ -258,6 +265,12 @@ async def update_order(
             raise ForbiddenException("Mijozni faqat qoralama (DRAFT) holatida almashtirish mumkin.")
         if await crud_clients.get(db, id=update_data["client_id"]) is None:
             raise NotFoundException("Mijoz topilmadi.")
+    if (
+        "advance_payment" in update_data
+        and (update_data["advance_payment"] or 0) != (order.advance_payment or 0)
+        and await kassa.boshlangan(db)
+    ):
+        raise ForbiddenException(AVANS_KASSADA)
     for field, value in update_data.items():
         setattr(order, field, value)
     if {"amount", "advance_payment"} & update_data.keys():

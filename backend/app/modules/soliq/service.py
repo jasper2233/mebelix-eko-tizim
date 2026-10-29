@@ -23,3 +23,9 @@ async def ishlov(db: AsyncSession) -> services.Ishlov:
 async def rejim_boshi(db: AsyncSession) -> date | None:
     """Birinchi soliq rejimi sanasi (rejim yozilmagan bo'lsa None)."""
     return await services.rejim_boshi(db)
+
+
+async def korxona_tayyor(db: AsyncSession) -> bool:
+    """Korxona nomi va STIR i kiritilganmi (ESF va hujjatlar uchun)."""
+    k = await services.korxona(db)
+    return bool(k.nomi.strip()) and len(k.stir) == 9

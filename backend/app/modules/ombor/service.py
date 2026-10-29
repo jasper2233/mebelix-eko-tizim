@@ -146,3 +146,14 @@ async def bux_harakatlar(db: AsyncSession) -> list[Harakat]:
 async def boshlangich_qiymat(db: AsyncSession) -> Decimal:
     """Tizimga o'tishdagi ombor qiymati (buxgalteriyada boshlang'ich qoldiq)."""
     return await moliya_oqish.boshlangich_qiymat(db)
+
+
+# ── Ishga tayyorlik ──
+async def mxik_qamrovi(db: AsyncSession) -> tuple[int, int]:
+    """(qoldig'i bor pozitsiyalar, shundan MXIK i borlari)."""
+    return await moliya_oqish.mxik_qamrovi(db)
+
+
+async def inventarizatsiya_bormi(db: AsyncSession) -> bool:
+    """Tasdiqlangan inventarizatsiya hujjati bormi."""
+    return await moliya_oqish.inventarizatsiya_bormi(db)

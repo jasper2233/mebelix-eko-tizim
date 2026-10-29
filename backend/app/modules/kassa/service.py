@@ -1,6 +1,6 @@
 """kassa moduli ochiq interfeysi — tashqaridan faqat shu fayl import qilinadi."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import select
@@ -70,3 +70,41 @@ async def hisob_sozla(
 async def storno(db: AsyncSession, kassa_order_id: int, user_id: int | None, sabab: str) -> services.Natija:
     """Xato orderni teskari order bilan bekor qilish (ikki kalit)."""
     return await services.storno(db, kassa_order_id, user_id, sabab)
+
+
+# ── Ishga tushirish: ochilish qoldiqlari va qo'lda avans qulfi ──
+KassaOchilish = models.KassaOchilish
+
+
+async def boshlangan(db: AsyncSession) -> bool:
+    """Kassada order yozilganmi (shundan keyin buyurtmadagi qo'lda avans yopiladi)."""
+    return await services.boshlangan(db)
+
+
+async def ochilish_qoldigi(db: AsyncSession, client_id: int) -> Decimal:
+    """Mijozning ochilish qarzidan to'lanmagani (manfiy — avans)."""
+    return await services.ochilish_qoldigi(db, client_id)
+
+
+async def ochilishlar(db: AsyncSession) -> list[models.KassaOchilish]:
+    return await services.ochilishlar(db)
+
+
+async def ochilish_tolangan(db: AsyncSession) -> dict[int, Decimal]:
+    return await services.ochilish_tolangan(db)
+
+
+async def ochilish_qosh(
+    db: AsyncSession,
+    tur: str,
+    summa: Decimal,
+    sana: date,
+    user_id: int | None,
+    *,
+    client_id: int | None = None,
+    kontragent: str = "",
+    izoh: str = "",
+) -> models.KassaOchilish:
+    return await services.ochilish_qosh(
+        db, tur, summa, sana, user_id, client_id=client_id, kontragent=kontragent, izoh=izoh
+    )

@@ -255,3 +255,20 @@ async def soliq_saqla(
     it.mxik, it.birlik_kod, it.qqs_turi = mxik, birlik_kod, qqs_turi
     await db.flush()
     return it
+
+
+async def mxik_qamrovi(db: AsyncSession) -> tuple[int, int]:
+    jami = await db.scalar(select(func.count()).where(CatalogItem.quantity > 0, CatalogItem.is_deleted == False))  # noqa: E712
+    mx = await db.scalar(
+        select(func.count()).where(
+            CatalogItem.quantity > 0,
+            CatalogItem.is_deleted == False,  # noqa: E712
+            CatalogItem.mxik.is_not(None),
+        )
+    )
+    return int(jami or 0), int(mx or 0)
+
+
+async def inventarizatsiya_bormi(db: AsyncSession) -> bool:
+    q = select(StockDoc.id).where(StockDoc.kind == "inv", StockDoc.status.in_(BOLGAN)).limit(1)
+    return await db.scalar(q) is not None
