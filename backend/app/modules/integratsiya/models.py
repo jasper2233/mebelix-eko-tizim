@@ -6,7 +6,7 @@ takrori — `duplicate` (qayta qo'llanmaydi), xuddi shu kalit BOSHQA mazmun bila
 
 from typing import Any
 
-from sqlalchemy import Index, String
+from sqlalchemy import ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,3 +27,17 @@ class IntegInbox(BaseModel):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, kw_only=True)
     #: Qo'llash natijasi (masalan `ochildi:2`) yoki `saqlandi` (hozircha ishlov berilmaydigan tur)
     natija: Mapped[str] = mapped_column(String(200), default="", kw_only=True)
+
+
+class KroyLoyiha(BaseModel):
+    """MES buyurtmasi ↔ MX Kroy loyihasi (K1). «Kroy» tugmasi bosilganda yaratiladi; webhooklar shu orqali
+    buyurtmaga bog'lanadi."""
+
+    __tablename__ = "kroy_loyiha"
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), unique=True, kw_only=True)
+    #: MX loyiha id (`5d797a939170`) va raqami (`1000050`)
+    project_id: Mapped[str] = mapped_column(String(40), unique=True, kw_only=True)
+    number: Mapped[str] = mapped_column(String(40), default="", kw_only=True)
+    #: MX holati: 0 Не заказан, 1 Заказан, 2 Утвержден, 3 Готов (`project.status` webhook)
+    holat: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)

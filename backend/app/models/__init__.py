@@ -1,4 +1,4 @@
-from app.modules.integratsiya.models import IntegInbox
+from app.modules.integratsiya.models import IntegInbox, KroyLoyiha
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 
 from .andon import AndonEvent
@@ -43,6 +43,7 @@ __all__ = [
     "Employee",
     "CatalogItem",
     "IntegInbox",
+    "KroyLoyiha",
     "KromkaKalApply",
     "KromkaKalibSession",
     "KromkaMeasurement",

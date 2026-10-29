@@ -32,6 +32,7 @@ import {
 } from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
+import { KroyButton } from "@/components/Orders/KroyButton"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
 import { RezervPanel } from "@/components/Orders/RezervPanel"
@@ -364,6 +365,7 @@ function OrderDetailPage() {
                   <Play /> Ishlab chiqarishga uzatish
                 </LoadingButton>
               )}
+            <KroyButton orderId={id} />
             <Button asChild variant="outline">
               <Link to="/anketa/$orderId" params={{ orderId }}>
                 <ClipboardPen /> Anketa

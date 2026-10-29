@@ -3779,6 +3779,34 @@ export type KromkaPartRow = {
 };
 
 /**
+ * KroyHolat
+ */
+export type KroyHolat = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+};
+
+/**
+ * KroyOchish
+ */
+export type KroyOchish = {
+    /**
+     * Url
+     */
+    url: string;
+    /**
+     * Project Id
+     */
+    project_id: string;
+    /**
+     * Number
+     */
+    number: string;
+};
+
+/**
  * LagIncident
  *
  * Ishchining event loop'i kech uyg'ongan payt (bitta uzun ish yoki ketma-ket qisqa ishlar): shu vaqt
@@ -11699,6 +11727,52 @@ export type KroyWebhookResponses = {
      */
     200: unknown;
 };
+
+export type KroyHolatData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/integ/kroy/holat';
+};
+
+export type KroyHolatResponses = {
+    /**
+     * Successful Response
+     */
+    200: KroyHolat;
+};
+
+export type KroyHolatResponse = KroyHolatResponses[keyof KroyHolatResponses];
+
+export type KroyOchishData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/orders/{order_id}/ochish';
+};
+
+export type KroyOchishErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyOchishError = KroyOchishErrors[keyof KroyOchishErrors];
+
+export type KroyOchishResponses = {
+    /**
+     * Successful Response
+     */
+    200: KroyOchish;
+};
+
+export type KroyOchishResponse = KroyOchishResponses[keyof KroyOchishResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

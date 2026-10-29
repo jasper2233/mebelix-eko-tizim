@@ -27,7 +27,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.3a Barkodlar, sexga berish, sexdagi rulonlar | tayyor, brauzerda sinalgan | pastda |
 | 2.3b Sexdan so'rov, rulon tugadi (terminal), qoldiq bo'laklari | tayyor, lokal sinalgan | pastda |
 | 3a MX Kroy: qoldiq ombori API (K3), webhook inbox (K4) | tayyor, HTTP bilan sinalgan | pastda |
-| 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | navbatda | |
+| 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | tayyor, MX klon bilan sinalgan | pastda |
 | 3c MX Kroy: kroy paketi qabul (K2), arra «list chiqdi» → MX, katalog sinxroni (K5) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
@@ -219,4 +219,27 @@ MX tomoni tayyor edi (`MebeliX_Kroy/MES_INTEGRATSIYA.md`, `docs/mebelix/MES_QOLD
 - Orakl `kroy_http_oracle.py` 20/20 — ishlab turgan serverga MX so'rovlari aynan o'z shaklida.
 
 Ochiq: MX bo'lagining jismoniy yorlig'i — K2 paketidagi qoldiq (`waste_item`, `ATX-`) bilan bog'lanadi.
+
+### 3b — buyurtma → MX loyiha (K1) va yagona kirish (K6)
+
+- Buyurtma sahifasida «Kroy (MX)» (admin, direktor, texnolog, menejer): `POST /integ/kroy/orders/{id}/ochish`
+  MX `POST /api/mes/orders` ga sarlavha yuboradi (`mes_order_ref` = buyurtma raqami, mijoz, sanalar), `kroy_loyiha`
+  ga bog'laydi va brauzerni `{MX_PUBLIC_URL}/?token=…#/p/{pid}` ga ochadi. Qayta bosish — o'sha loyiha yangilanadi;
+  MX da tasdiqlangan (409) — o'sha loyiha ochiladi. Detallarni kroychi MX da `.project` dan yuklaydi.
+- SSO: MES RS256 bilan imzolaydi (`MX_SSO_PRIVATE_KEY`), MX faqat ochiq kalitni biladi (`MEBELIX_JWT_PUBLIC_KEY`).
+  Kalit jufti: `python -m app.commands.kroy_kalit`. Rollar: admin/direktor → `admin`, texnolog → `texnolog`+`kroychi`,
+  menejer/skladchi → `ko'ruvchi` (MX da faqat o'qish, tahrir 403), sex rollari — ochilmaydi. Sessiya 8 soat
+  (`MX_SSO_TTL_MIN`): kroychi MX da smena davomida ishlaydi — TZ dagi «≤ 15 daq» o'rniga, chunki MX tokenni
+  sessiya sifatida saqlaydi va muddati o'tsa ish uziladi. Server → server — 5 daqiqalik xizmat tokeni.
+- `project.status` webhook → `kroy_loyiha.holat` (0–3).
+- MX da topilgan xato (MX klonida tuzatildi, `D:\EKO TIZIM\mx-kroy` `eko-integratsiya` tarmog'i): `requirements.txt`
+  da `cryptography` yo'q edi — `MEBELIX_JWT_PUBLIC_KEY` bilan HAR qanday RS256 token «Algorithm not supported»;
+  ochiq kalit endi bir qatorda (`
+`) ham qabul qilinadi.
+- Sinov: MX klon (8010, o'z SQLite bazasi) ↔ MES (8005): loyiha yaratildi, SSO bilan 200, tokensiz/soxta 401,
+  ko'ruvchi tahriri 403, `project.created/updated/status` webhooklari inboxda; brauzerda tugma MX ni kirgan holda ochdi.
+
+Ulash (prod): MES `.env` — `MX_URL`, `MX_PUBLIC_URL`, `MX_SSO_PRIVATE_KEY`, `KROY_API_TOKEN`; MX `.env` —
+`MEBELIX_JWT_PUBLIC_KEY`, `MEBELIX_AUTH_REQUIRED=1`, `MES_WEBHOOK_URL={MES}/api/v1/integ/kroy/webhook`,
+`MES_WEBHOOK_TOKEN`=`MES_API_TOKEN`=`KROY_API_TOKEN`; MX sozlamasi «Источник склада: База MES», `{MES}/api/v1/ombor/kroy`.
 

@@ -1,3 +1,5 @@
-"""integratsiya moduli ochiq interfeysi — tashqaridan faqat shu fayl import qilinadi.
+"""integratsiya moduli ochiq interfeysi — tashqaridan faqat shu fayl import qilinadi."""
 
-Funksiyalar tegishli bosqichda qo'shiladi (TZ §11)."""
+from app.modules.integratsiya.kroy import KroyXato, enabled, ochish
+
+__all__ = ["KroyXato", "enabled", "ochish"]

@@ -91,6 +91,17 @@ class Settings(BaseSettings):
     #: MX → MES xizmat tokeni (qoldiq ombori API va webhook). MX serverida `MES_API_TOKEN` /
     #: `MES_WEBHOOK_TOKEN` shu qiymat. Bo'sh — integratsiya o'chiq (503)
     KROY_API_TOKEN: str | None = None
+    #: MX manzili server → server (`http://mx-kroy:8000`). Bo'sh — «Kroy» tugmasi va K1 o'chiq
+    MX_URL: str | None = None
+    #: Brauzer ochadigan MX manzili (proksi ortida, masalan `https://mes.mebelix.uz/kroy`); bo'sh — `MX_URL`
+    MX_PUBLIC_URL: str | None = None
+    #: SSO imzo kaliti — RSA PEM (`python -m app.commands.kroy_kalit` yasaydi; muhitda qator ko'chishi o'rniga `\n`).
+    #: MX da ochiq kaliti: `MEBELIX_JWT_PUBLIC_KEY`
+    MX_SSO_PRIVATE_KEY: SecretStr | None = None
+    #: MX sessiyasi (soat emas, daqiqa): kroychi MX da smena davomida ishlaydi
+    MX_SSO_TTL_MIN: int = 480
+    #: MX `MEBELIX_JWT_AUDIENCE` bilan bir xil (bo'sh — tekshirilmaydi)
+    MX_SSO_AUDIENCE: str | None = None
 
     # === Process role (EKO TIZIM TZ §2.2) ===
     API_ROLE: ProcessRole = ProcessRole.ALL
