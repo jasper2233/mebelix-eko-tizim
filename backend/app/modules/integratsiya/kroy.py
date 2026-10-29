@@ -74,9 +74,7 @@ def sso_token(user: User) -> str:
     return _token(user.username, user.name or user.username, roles, settings.MX_SSO_TTL_MIN * 60)
 
 
-def _request(
-    method: str, path: str, body: dict[str, Any] | None, idempotency_key: str | None = None
-) -> tuple[int, Any]:
+def _request(method: str, path: str, body: Any, idempotency_key: str | None = None) -> tuple[int, Any]:
     assert settings.MX_URL is not None
     headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token('mes', 'MES', ['admin'], 300)}"}
     if idempotency_key:

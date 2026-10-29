@@ -62,10 +62,19 @@ class IntegOutbox(BaseModel):
     method: Mapped[str] = mapped_column(String(8), kw_only=True)
     #: MX API ichidagi yo'l (`/projects/{pid}/operations/{op}/maps/{n}`)
     path: Mapped[str] = mapped_column(String(300), kw_only=True)
-    body: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
+    body: Mapped[Any] = mapped_column(JSONB, default=None, kw_only=True)
     #: `yangi` | `yuborildi` | `rad` (4xx — qayta urinishdan foyda yo'q, navbatni to'sib qo'ymaydi)
     holat: Mapped[str] = mapped_column(String(10), default="yangi", kw_only=True)
     urinish: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
     keyingi_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     yuborilgan_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
     xato: Mapped[str] = mapped_column(String(300), default="", kw_only=True)
+
+
+class KroyKatalog(BaseModel):
+    """MX ga oxirgi yuborilgan katalog holati (pozitsiya xeshi) — K5 faqat o'zgarganini yuboradi."""
+
+    __tablename__ = "kroy_katalog"
+
+    kod: Mapped[str] = mapped_column(String(64), unique=True, kw_only=True)
+    xesh: Mapped[str] = mapped_column(String(64), kw_only=True)

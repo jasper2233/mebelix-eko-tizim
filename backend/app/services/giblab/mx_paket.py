@@ -51,20 +51,8 @@ class MxPaket:
     project_name: str
 
 
-def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
-    head = pkg.get("package") or {}
-    if head.get("format") != FORMAT or head.get("version") != VERSION:
-        raise ParseError(f"Noma'lum paket: {head.get('format')} v{head.get('version')} (kutilgan {FORMAT} v{VERSION}).")
-    src = pkg.get("source") or {}
-    if src.get("mes_order_number") != order_number:
-        raise ParseError(
-            f"Paket {src.get('mes_order_number') or '—'} buyurtmasiniki, bu buyurtma {order_number}. "
-            "MX da loyihaning MES buyurtmasi to'g'ri tanlanganini tekshiring."
-        )
-    mats = {m["ref"]: m for m in pkg.get("materials") or []}
-    edges = {e["ref"]: e for e in pkg.get("edge_bands") or []}
-    warnings = [str(w) for w in pkg.get("warnings") or []]
-
+def _fayllar(pkg: dict[str, Any]) -> list[StanokFayl]:
+    """Stanok fayllari: mazmun base64 da, sha256 tekshiriladi."""
     files: list[StanokFayl] = []
     for f in pkg.get("postprocessor_files") or []:
         if f.get("content_base64") is None:
@@ -85,6 +73,42 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
                 part_keys=list(f.get("part_keys") or []),
             )
         )
+    return files
+
+
+def _atx_belgila(model: dict[str, Any], remnants: list[dict[str, Any]]) -> None:
+    """Arra terminali qoldiq chekini katakdagi `atx` raqami orqali topadi (`CutmapView`: qr `…-{atx}` + sheet_no)."""
+    for r in remnants:
+        if not r.get("id") or int(r.get("sheet_copy") or 1) != 1:
+            continue
+        for mat in model["materials"]:
+            for sh in mat["sheets"]:
+                if sh["no"] != r.get("sheet_no"):
+                    continue
+                for cell in sh["parts"]:
+                    if cell.get("waste") and cell.get("business") and "atx" not in cell:
+                        cw, ch = float(cell["w"]), float(cell["h"])
+                        rl, rw = float(r.get("length") or 0), float(r.get("width") or 0)
+                        if (abs(cw - rl) <= 1 and abs(ch - rw) <= 1) or (abs(cw - rw) <= 1 and abs(ch - rl) <= 1):
+                            cell["atx"] = int(r["n"])
+                            break
+
+
+def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
+    head = pkg.get("package") or {}
+    if head.get("format") != FORMAT or head.get("version") != VERSION:
+        raise ParseError(f"Noma'lum paket: {head.get('format')} v{head.get('version')} (kutilgan {FORMAT} v{VERSION}).")
+    src = pkg.get("source") or {}
+    if src.get("mes_order_number") != order_number:
+        raise ParseError(
+            f"Paket {src.get('mes_order_number') or '—'} buyurtmasiniki, bu buyurtma {order_number}. "
+            "MX da loyihaning MES buyurtmasi to'g'ri tanlanganini tekshiring."
+        )
+    mats = {m["ref"]: m for m in pkg.get("materials") or []}
+    edges = {e["ref"]: e for e in pkg.get("edge_bands") or []}
+    warnings = [str(w) for w in pkg.get("warnings") or []]
+
+    files = _fayllar(pkg)
     cnc_keys = {k for f in files if f.group == "cnc" for k in f.part_keys}
 
     products: dict[str, ParsedProduct] = {}
@@ -186,6 +210,8 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
                 }
             )
         model["materials"].append({"name": str(mat.get("name") or ""), "sheets": sheets})
+
+    _atx_belgila(model, pkg.get("remnants") or [])
 
     waste_items = [
         {

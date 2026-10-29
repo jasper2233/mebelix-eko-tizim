@@ -18,10 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.routes.orders._common import _require_editable
 from app.api.routes.orders.files import load_project
 from app.core.exceptions import ForbiddenException
-from app.models import Order, OrderFile
+from app.models import Order, OrderFile, WasteItem
 from app.models.enums import FileKind, OrderStatus
 from app.modules.integratsiya import kroy
 from app.modules.integratsiya.models import KroyLoyiha
+from app.modules.ombor import service as ombor
 from app.schemas.orders import ProjectUploadResult
 from app.services.giblab.models import ParseError
 from app.services.giblab.mx_paket import MxPaket, parse_package
@@ -40,6 +41,7 @@ async def qabul(
     async def fayllar(root: Path) -> None:
         await _stanok_fayllari(db, order, mp, root)
         await _bogla(db, order, mp)
+        await _yorliqla(db, order, mp)
 
     qayta = order.project_uuid is not None
     return await load_project(
@@ -93,6 +95,26 @@ async def _bogla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
     else:
         link.project_id, link.number = mp.project_id, mp.project_number
     await db.flush()
+
+
+async def _yorliqla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
+    """Paketdagi qoldiqlar (`ATX-…`, arra chek chiqaradi) ↔ MX kirimidagi bo'laklar (ombor) — bir jismoniy bo'lak."""
+    await db.flush()
+    kartalar = {
+        int(sh["no"]): (str(sh["mx_op"]), int(sh["mx_index"]))
+        for mat in mp.cutmap.model.get("materials", [])
+        for sh in mat.get("sheets", [])
+        if sh.get("mx_op") and sh.get("mx_index")
+    }
+    qoldiqlar = [
+        (w.id, w.qr_text, w.sheet_no, float(w.length), float(w.width))
+        for w in (
+            await db.execute(
+                select(WasteItem).where(WasteItem.order_id == order.id, WasteItem.is_deleted == False)  # noqa: E712
+            )
+        ).scalars()
+    ]
+    await ombor.kroy_yorliqla(db, mp.project_id, kartalar, qoldiqlar)
 
 
 async def olish(db: AsyncSession, order: Order) -> dict[str, Any]:

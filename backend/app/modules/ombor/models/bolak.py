@@ -107,3 +107,15 @@ class KroyIntake(BaseModel):
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, kw_only=True)
     #: Ishlatilgan ombor bo'laklari: [{"id": 101, "qty": 1}] — bekor qilinganda qaytariladi
     consumed: Mapped[list[dict[str, int]]] = mapped_column(JSONB, default_factory=list, kw_only=True)
+
+
+class OmborBolakYorliq(BaseModel):
+    """MX bo'lagi ↔ arra chiqargan `ATX-…` yorlig'i (EKO 3e). Bo'lak MX kirimidan (`kroy_intake`) keladi, yorliq esa
+    kroy paketidagi qoldiqdan (`waste_item`) — ikkalasi bir jismoniy bo'lak. Bir qatorda bir necha dona bo'lsa
+    (karta nusxalari) — har donaning o'z yorlig'i. Omborda `ATX` skanerlansa bo'lak shu orqali topiladi."""
+
+    __tablename__ = "ombor_bolak_yorliq"
+
+    bolak_id: Mapped[int] = mapped_column(ForeignKey("ombor_bolak.id"), index=True, kw_only=True)
+    waste_id: Mapped[int] = mapped_column(ForeignKey("waste_item.id"), unique=True, kw_only=True)
+    qr: Mapped[str] = mapped_column(String(120), unique=True, kw_only=True)

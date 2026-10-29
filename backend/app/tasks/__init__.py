@@ -463,9 +463,18 @@ async def kroy_outbox(ctx: dict[str, Any]) -> str:
     return f"yuborildi:{r['yuborildi']} rad:{r['rad']}"
 
 
+async def kroy_katalog(ctx: dict[str, Any]) -> str:
+    """MES katalogining o'zgargan pozitsiyalarini MX ga navbatga qo'yish (EKO 3e, K5)."""
+    async with local_session() as db:
+        n = await integratsiya.katalog_sinxron(db)
+        await db.commit()
+    return f"navbatga:{n}"
+
+
 all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
 sync_downtimes_all = per_tenant_cron(sync_downtimes)
 close_idle_sessions_all = per_tenant_cron(close_idle_sessions)
 expire_reservations_all = per_tenant_cron(expire_reservations)
 ombor_solishtirish_all = per_tenant_cron(ombor_solishtirish)
 kroy_outbox_all = per_tenant_cron(kroy_outbox)
+kroy_katalog_all = per_tenant_cron(kroy_katalog)

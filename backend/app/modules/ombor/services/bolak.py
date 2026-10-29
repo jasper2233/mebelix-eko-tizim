@@ -3,12 +3,12 @@
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order, WasteItem
-from app.modules.ombor.models import MaterialMap, OmborBolak, Rezerv, RezervLine
-from app.modules.ombor.models.bolak import CHIQIT, ISHLATILDI, OMBOR
+from app.modules.ombor.models import MaterialMap, OmborBolak, OmborBolakYorliq, Rezerv, RezervLine
+from app.modules.ombor.models.bolak import CHIQIT, ISHLATILDI, KUTISH, OMBOR
 from app.modules.ombor.services.rezerv import usage_key
 
 
@@ -48,7 +48,12 @@ async def _item_for(db: AsyncSession, w: WasteItem) -> int | None:
 
 
 async def find(db: AsyncSession, kod: str, lock: bool = False) -> OmborBolak | None:
-    q = select(OmborBolak).where(OmborBolak.barkod == kod.strip(), OmborBolak.is_deleted == False)  # noqa: E712
+    """Bo'lak o'z barkodi yoki unga bog'langan `ATX-…` yorlig'i (MX bo'lagi, EKO 3e) bo'yicha."""
+    yorliq = select(OmborBolakYorliq.bolak_id).where(OmborBolakYorliq.qr == kod.strip()).scalar_subquery()
+    q = select(OmborBolak).where(
+        or_(OmborBolak.barkod == kod.strip(), OmborBolak.id == yorliq),
+        OmborBolak.is_deleted == False,  # noqa: E712
+    )
     return (await db.execute(q.with_for_update() if lock else q)).scalar_one_or_none()
 
 
@@ -56,6 +61,8 @@ async def qabul(db: AsyncSession, kod: str, user_id: int | None) -> OmborBolak:
     """`ATX-…` yorlig'i skanerlandi — bo'lak omborga olinadi (ikkinchi skan — o'sha bo'lak)."""
     bor = await find(db, kod)
     if bor is not None:
+        if bor.joy == KUTISH:
+            raise BolakError(f"{kod}: bu bo'lakning listi hali arradan chiqmagan.")
         if bor.joy != OMBOR:
             raise BolakError(f"{bor.barkod}: bu bo'lak allaqachon {bor.joy}.")
         return bor

@@ -1,7 +1,7 @@
 """Ombor jadvallari: katalog (`catalog_item`), hujjatlar, partiyalar, harakatlar (docs/14), rezerv (TZ §4.3)."""
 
 from .birlik import MaterialBirlik
-from .bolak import KroyIntake, OmborBolak
+from .bolak import KroyIntake, OmborBolak, OmborBolakYorliq
 from .catalog import CatalogItem
 from .rezerv import MaterialMap, Rezerv, RezervLine
 from .sorov import MaterialSorov
@@ -14,6 +14,7 @@ __all__ = [
     "MaterialMap",
     "MaterialSorov",
     "OmborBolak",
+    "OmborBolakYorliq",
     "Rezerv",
     "RezervLine",
     "StockDoc",

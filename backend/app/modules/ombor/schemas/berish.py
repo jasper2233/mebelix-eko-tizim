@@ -129,6 +129,8 @@ class BolakRead(BaseModel):
     #: `mes` (ATX yorlig'i) | `mx` (MX Kroy kirimi)
     manba: str
     band_raqam: str | None = None
+    #: MX bo'lagiga bog'langan arra yorliqlari (`ATX-…`) — sexda shu skanerlanadi (EKO 3e)
+    yorliqlar: list[str] = []
     order_id: int | None
     created_at: datetime
 

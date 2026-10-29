@@ -30,7 +30,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | tayyor, MX klon bilan sinalgan | pastda |
 | 3c MX Kroy: kroy paketi qabul (K2) | tayyor, MX klon bilan sinalgan | pastda |
 | 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, outbox | tayyor, MX klon bilan sinalgan | pastda |
-| 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i, ortiqchani qaytarish | navbatda | |
+| 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i | tayyor, MX klon bilan sinalgan | pastda |
+| 3f Ortiqcha berilgan materialni sexdan qaytarish | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -284,4 +285,20 @@ paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES 
 - Sinov (MX klon ↔ MES): MX ning O'Z kodi «MES ombori» rejimida kirim yubordi (`IN-2026-0003`, 3 bo'lak `kutish`);
   2-list 7 nusxasi arra skanidan (`finalize_scan` orqali) o'tgach 2-kartaning bo'lagi `ombor` ga, outbox xabari
   MX da 2-karta `done_count=1`, MX `map.done` qaytardi (inbox: takror qo'llanmadi). `kroy_outbox_oracle.py` 9/9.
+
+### 3e — katalog sinxroni (K5) va MX bo'lagi ↔ ATX yorlig'i
+
+- K5: `ombor/services/mx_katalog.py` MES katalogini MX `CatalogIn` shakliga o'giradi (`M` → `sheet`, `F-KM` → `edge`,
+  guruhlar `folder`, ID = MES kodi; o'lcham `2750x1830x16` → length/width/thickness; narx — sotuv narxi).
+  `integratsiya/katalog.py` faqat O'ZGARGANLARINI (`kroy_katalog` dagi xesh) 500 tadan outbox orqali yuboradi;
+  worker har 10 daqiqada, birinchi to'liq yuborish — `python -m app.commands.kroy_katalog`. Sinov: 2189 yozuv
+  12 s da, qayta ishga tushirish — 0, bitta narx o'zgarsa — faqat o'sha (MX da yangi narx).
+- MX bo'lagi ↔ ATX: paket qabul qilinganda (`paket._yorliqla`) paketdagi qoldiqlar (`waste_item`, `ATX-…`) shu
+  loyihaning MX bo'laklariga `sheet_no → (mx_op, karta)` va o'lcham (±1 mm) bo'yicha `ombor_bolak_yorliq` orqali
+  bog'lanadi (bo'lakda bir necha dona bo'lsa — har donaga yorliq). `ATX` skanerlansa bo'lak shu orqali topiladi;
+  listi kesilmagan bo'lak — «hali arradan chiqmagan». Xarita katagiga `atx` raqami qo'yiladi — arra terminali chek
+  chiqaradi. Bo'laklar sahifasida yorliqlar ko'rinadi.
+- MX da topilgan va klonda tuzatilgan: paket `remnants[]` faqat «деловой» belgisiga qarardi, MES ga kirim esa foiz
+  qoidasi bilan ketardi — foiz bilan olib qolingan bo'lak paketda yo'q, yorlig'i chiqmasdi. Endi ikkalasi bitta
+  qoida (`remnant_rules.classify`); MX testlari 167/167.
 

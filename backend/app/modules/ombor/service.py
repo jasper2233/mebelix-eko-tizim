@@ -4,10 +4,12 @@ Ishlab chiqarish ↔ ombor bog'lanishlari (TZ §5). Hammasi chaqiruvchining sess
 buyurtma amali va ombor oqibati bitta tranzaksiyada.
 """
 
+from typing import Any
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
-from app.modules.ombor.services import kroy, rezerv, solishtirish
+from app.modules.ombor.services import kroy, mx_katalog, rezerv, solishtirish
 from app.modules.ombor.services.kroy_auth import kroy_token
 
 __all__ = ["kroy_token"]
@@ -33,9 +35,24 @@ async def on_order_cancelled(db: AsyncSession, order_id: int) -> None:
     await rezerv.cancel_for_order(db, order_id)
 
 
+async def kroy_yorliqla(
+    db: AsyncSession,
+    mx_loyiha: str,
+    kartalar: dict[int, tuple[str, int]],
+    qoldiqlar: list[tuple[int, str, int, float, float]],
+) -> int:
+    """Kroy paketidagi `ATX` qoldiqlarini MX bo'laklariga bog'laydi (EKO 3e)."""
+    return await kroy.yorliqla(db, mx_loyiha, kartalar, qoldiqlar)
+
+
 async def kroy_map_done(db: AsyncSession, mx_loyiha: str, mx_op: str, karta: int, done: int) -> int:
     """MX `map.done`: karta listi arradan chiqdi — shu kartaning qoldiq bo'laklari ulushi omborga."""
     return await kroy.map_done(db, mx_loyiha, mx_op, karta, done)
+
+
+async def katalog_mx(db: AsyncSession) -> list[dict[str, Any]]:
+    """Katalog MX Kroy shaklida (K5): papkalar va list/kromka pozitsiyalari."""
+    return await mx_katalog.items(db)
 
 
 async def reconcile(db: AsyncSession) -> list[solishtirish.Farq]:

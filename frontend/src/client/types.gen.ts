@@ -647,6 +647,10 @@ export type BolakRead = {
      */
     band_raqam?: string | null;
     /**
+     * Yorliqlar
+     */
+    yorliqlar?: Array<string>;
+    /**
      * Order Id
      */
     order_id: number | null;

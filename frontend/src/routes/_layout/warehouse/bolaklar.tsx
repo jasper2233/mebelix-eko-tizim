@@ -187,6 +187,12 @@ function BolaklarPage() {
                           MX Kroy
                         </span>
                       )}
+                      {b.yorliqlar?.map((q) => (
+                        // Arra chiqargan yorliq — sexda shu skanerlanadi (EKO 3e)
+                        <div key={q} className="font-semibold text-foreground">
+                          {q}
+                        </div>
+                      ))}
                     </TableCell>
                     <TableCell>
                       {b.item_name ?? b.material_nom}

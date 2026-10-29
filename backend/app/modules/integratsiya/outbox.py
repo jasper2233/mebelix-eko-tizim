@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 BACKOFF_MIN = (1, 5, 30, 120, 360)
 
 
-async def navbatga(db: AsyncSession, kalit: str, method: str, path: str, body: dict[str, Any] | None) -> None:
+async def navbatga(db: AsyncSession, kalit: str, method: str, path: str, body: Any) -> None:
     """Xabarni navbatga qo'yadi; shu kalit avval yozilgan bo'lsa — hech narsa (takror xabar yo'q)."""
     await db.execute(
         insert(IntegOutbox)

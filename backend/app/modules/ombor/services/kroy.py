@@ -21,7 +21,7 @@ from sqlalchemy import Integer, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
-from app.modules.ombor.models import CatalogItem, KroyIntake, OmborBolak
+from app.modules.ombor.models import CatalogItem, KroyIntake, OmborBolak, OmborBolakYorliq
 from app.modules.ombor.models.bolak import BEKOR, ISHLATILDI, KUTISH, OMBOR
 
 
@@ -275,6 +275,62 @@ async def cancel(db: AsyncSession, no: str) -> KroyIntake:
     doc.holat = "bekor"
     await db.flush()
     return doc
+
+
+async def yorliqla(
+    db: AsyncSession,
+    mx_loyiha: str,
+    kartalar: dict[int, tuple[str, int]],
+    qoldiqlar: list[tuple[int, str, int, float, float]],
+) -> int:
+    """Paketdagi `ATX` qoldiqlarini (waste_id, qr, sheet_no, uzunlik, eni) shu loyihaning MX bo'laklariga bog'laydi:
+    andoza `sheet_no` → (MX operatsiya, karta) va o'lcham (±1 mm, har ikki yo'nalishda). Har bo'lakka `jami` tagacha
+    yorliq. Qaytaradi: bog'langan yorliqlar soni. Takror chaqirish xavfsiz (bog'langani o'tkaziladi)."""
+    if not qoldiqlar:
+        return 0
+    bolaklar = list(
+        (
+            await db.execute(
+                select(OmborBolak)
+                .where(OmborBolak.mx_loyiha == mx_loyiha, OmborBolak.manba == "mx", OmborBolak.joy.in_((KUTISH, OMBOR)))
+                .order_by(OmborBolak.id)
+            )
+        ).scalars()
+    )
+    bor = dict(
+        (
+            await db.execute(
+                select(OmborBolakYorliq.waste_id, OmborBolakYorliq.bolak_id).where(
+                    OmborBolakYorliq.bolak_id.in_([b.id for b in bolaklar])
+                )
+            )
+        )
+        .tuples()
+        .all()
+    )
+    soni: dict[int, int] = {}
+    for b_id in bor.values():
+        soni[b_id] = soni.get(b_id, 0) + 1
+    n = 0
+    for waste_id, qr, sheet_no, L, W in qoldiqlar:
+        if waste_id in bor or sheet_no not in kartalar:
+            continue
+        op, karta = kartalar[sheet_no]
+        dl, dw = max(L, W), min(L, W)
+        for b in bolaklar:
+            if (
+                b.mx_op == op
+                and b.karta == karta
+                and soni.get(b.id, 0) < b.jami
+                and abs(float(b.uzunlik) - dl) <= 1
+                and abs(float(b.eni) - dw) <= 1
+            ):
+                db.add(OmborBolakYorliq(bolak_id=b.id, waste_id=waste_id, qr=qr))
+                soni[b.id] = soni.get(b.id, 0) + 1
+                n += 1
+                break
+    await db.flush()
+    return n
 
 
 async def map_done(db: AsyncSession, mx_loyiha: str, mx_op: str, karta: int, done_count: int) -> int:

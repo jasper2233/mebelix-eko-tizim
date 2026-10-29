@@ -9,7 +9,7 @@ from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import Client, Order
-from app.modules.ombor.models import CatalogItem, MaterialBirlik, OmborBolak, Rezerv, RezervLine
+from app.modules.ombor.models import CatalogItem, MaterialBirlik, OmborBolak, OmborBolakYorliq, Rezerv, RezervLine
 from app.modules.ombor.models.birlik import OMBOR, SEX
 from app.modules.ombor.schemas.berish import (
     BerishLine,
@@ -348,7 +348,21 @@ async def list_bolaklar(db: SessionDep, _: WarehouseReadUser, joy: str = "ombor"
             .limit(2000)
         )
     ).all()
-    return [BolakRead.model_validate(b).model_copy(update={"item_name": nm, "manba_order": no}) for b, nm, no in rows]
+    yorliq: dict[int, list[str]] = {}
+    for bid, qr in (
+        await db.execute(
+            select(OmborBolakYorliq.bolak_id, OmborBolakYorliq.qr)
+            .where(OmborBolakYorliq.bolak_id.in_([b.id for b, _, _ in rows]))
+            .order_by(OmborBolakYorliq.id)
+        )
+    ).tuples():
+        yorliq.setdefault(bid, []).append(qr)
+    return [
+        BolakRead.model_validate(b).model_copy(
+            update={"item_name": nm, "manba_order": no, "yorliqlar": yorliq.get(b.id, [])}
+        )
+        for b, nm, no in rows
+    ]
 
 
 @router.post("/bolak/qabul", response_model=BolakRead, operation_id="qabul_bolak")
