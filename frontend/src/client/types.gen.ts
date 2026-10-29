@@ -118,6 +118,20 @@ export type AmalNatija = {
 };
 
 /**
+ * AmalRead
+ */
+export type AmalRead = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+};
+
+/**
  * AndonCurrent
  *
  * Stanokning JONLI holati — agent oxirgi hodisa va snapshot'dan o'zi yig'adi.
@@ -179,6 +193,46 @@ export type AndonPushResult = {
      */
     skipped: number;
     kal_set?: KalSet | null;
+};
+
+/**
+ * AsbobIn
+ */
+export type AsbobIn = {
+    /**
+     * Amal
+     */
+    amal: string;
+    /**
+     * Narx
+     */
+    narx: number | string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+};
+
+/**
+ * AsbobRead
+ */
+export type AsbobRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Amal
+     */
+    amal: string;
+    /**
+     * Narx
+     */
+    narx: string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
 };
 
 /**
@@ -8357,6 +8411,64 @@ export type StageAgg = {
 };
 
 /**
+ * StanokNarxIn
+ */
+export type StanokNarxIn = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Soat Narxi
+     */
+    soat_narxi: number | string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+};
+
+/**
+ * StanokNarxRead
+ */
+export type StanokNarxRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Soat Narxi
+     */
+    soat_narxi: string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+};
+
+/**
+ * StanokRead
+ */
+export type StanokRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Post
+     */
+    post: string;
+};
+
+/**
  * StavkaIn
  */
 export type StavkaIn = {
@@ -9129,6 +9241,76 @@ export type TannarxPost = {
      * Birlik
      */
     birlik: string;
+};
+
+/**
+ * TannarxQator
+ */
+export type TannarxQator = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Mijoz
+     */
+    mijoz: string | null;
+    /**
+     * Yetkazilgan
+     */
+    yetkazilgan: string | null;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Material
+     */
+    material: string;
+    /**
+     * Kromka
+     */
+    kromka: string;
+    /**
+     * Kromka Metr
+     */
+    kromka_metr: string;
+    /**
+     * Mehnat
+     */
+    mehnat: string;
+    /**
+     * Mehnat Tasdiqlangan
+     */
+    mehnat_tasdiqlangan: string;
+    /**
+     * Stanok
+     */
+    stanok: string;
+    /**
+     * Stanok Soat
+     */
+    stanok_soat: string;
+    /**
+     * Asbob
+     */
+    asbob: string;
+    /**
+     * Jami
+     */
+    jami: string;
+    /**
+     * Foyda
+     */
+    foyda: string;
+    /**
+     * Kamchilik
+     */
+    kamchilik: Array<string>;
 };
 
 /**
@@ -10036,6 +10218,82 @@ export type WorkShift = {
      * Breaks
      */
     breaks?: Array<WorkBreak>;
+};
+
+/**
+ * YoqotishQator
+ */
+export type YoqotishQator = {
+    /**
+     * Machine Id
+     */
+    machine_id: number;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Soat Narxi
+     */
+    soat_narxi: string | null;
+    /**
+     * Planned S
+     */
+    planned_s: number;
+    /**
+     * Oee Pct
+     */
+    oee_pct: number | null;
+    /**
+     * To Xtash S
+     */
+    to_xtash_s: number;
+    /**
+     * Sekin S
+     */
+    sekin_s: number;
+    /**
+     * Brak S
+     */
+    brak_s: number;
+    /**
+     * To Xtash
+     */
+    to_xtash: string | null;
+    /**
+     * Sekin
+     */
+    sekin: string | null;
+    /**
+     * Brak
+     */
+    brak: string | null;
+    /**
+     * Jami
+     */
+    jami: string | null;
+    /**
+     * Sabablar
+     */
+    sabablar: Array<YoqotishSabab>;
+};
+
+/**
+ * YoqotishSabab
+ */
+export type YoqotishSabab = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Soniya
+     */
+    soniya: number;
+    /**
+     * Pul
+     */
+    pul: string | null;
 };
 
 /**
@@ -15858,6 +16116,204 @@ export type TannarxVedomostBekorResponses = {
 };
 
 export type TannarxVedomostBekorResponse = TannarxVedomostBekorResponses[keyof TannarxVedomostBekorResponses];
+
+export type TannarxStanoklarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/stanoklar';
+};
+
+export type TannarxStanoklarResponses = {
+    /**
+     * Response Tannarx Stanoklar
+     *
+     * Successful Response
+     */
+    200: Array<StanokRead>;
+};
+
+export type TannarxStanoklarResponse = TannarxStanoklarResponses[keyof TannarxStanoklarResponses];
+
+export type TannarxStanokNarxlariData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/stanok-narxlari';
+};
+
+export type TannarxStanokNarxlariResponses = {
+    /**
+     * Response Tannarx Stanok Narxlari
+     *
+     * Successful Response
+     */
+    200: Array<StanokNarxRead>;
+};
+
+export type TannarxStanokNarxlariResponse = TannarxStanokNarxlariResponses[keyof TannarxStanokNarxlariResponses];
+
+export type TannarxStanokNarxQoshData = {
+    body: StanokNarxIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/stanok-narxlari';
+};
+
+export type TannarxStanokNarxQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxStanokNarxQoshError = TannarxStanokNarxQoshErrors[keyof TannarxStanokNarxQoshErrors];
+
+export type TannarxStanokNarxQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: StanokNarxRead;
+};
+
+export type TannarxStanokNarxQoshResponse = TannarxStanokNarxQoshResponses[keyof TannarxStanokNarxQoshResponses];
+
+export type TannarxAsbobAmallarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/asbob/amallar';
+};
+
+export type TannarxAsbobAmallarResponses = {
+    /**
+     * Response Tannarx Asbob Amallar
+     *
+     * Successful Response
+     */
+    200: Array<AmalRead>;
+};
+
+export type TannarxAsbobAmallarResponse = TannarxAsbobAmallarResponses[keyof TannarxAsbobAmallarResponses];
+
+export type TannarxAsbobData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/asbob';
+};
+
+export type TannarxAsbobResponses = {
+    /**
+     * Response Tannarx Asbob
+     *
+     * Successful Response
+     */
+    200: Array<AsbobRead>;
+};
+
+export type TannarxAsbobResponse = TannarxAsbobResponses[keyof TannarxAsbobResponses];
+
+export type TannarxAsbobQoshData = {
+    body: AsbobIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/asbob';
+};
+
+export type TannarxAsbobQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxAsbobQoshError = TannarxAsbobQoshErrors[keyof TannarxAsbobQoshErrors];
+
+export type TannarxAsbobQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: AsbobRead;
+};
+
+export type TannarxAsbobQoshResponse = TannarxAsbobQoshResponses[keyof TannarxAsbobQoshResponses];
+
+export type TannarxBuyurtmalarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+        /**
+         * Order Id
+         */
+        order_id?: number | null;
+    };
+    url: '/api/v1/tannarx/buyurtmalar';
+};
+
+export type TannarxBuyurtmalarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxBuyurtmalarError = TannarxBuyurtmalarErrors[keyof TannarxBuyurtmalarErrors];
+
+export type TannarxBuyurtmalarResponses = {
+    /**
+     * Response Tannarx Buyurtmalar
+     *
+     * Successful Response
+     */
+    200: Array<TannarxQator>;
+};
+
+export type TannarxBuyurtmalarResponse = TannarxBuyurtmalarResponses[keyof TannarxBuyurtmalarResponses];
+
+export type TannarxOeeYoqotishData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Dan
+         */
+        dan: string;
+        /**
+         * Gacha
+         */
+        gacha: string;
+    };
+    url: '/api/v1/tannarx/oee-yoqotish';
+};
+
+export type TannarxOeeYoqotishErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxOeeYoqotishError = TannarxOeeYoqotishErrors[keyof TannarxOeeYoqotishErrors];
+
+export type TannarxOeeYoqotishResponses = {
+    /**
+     * Response Tannarx Oee Yoqotish
+     *
+     * Successful Response
+     */
+    200: Array<YoqotishQator>;
+};
+
+export type TannarxOeeYoqotishResponse = TannarxOeeYoqotishResponses[keyof TannarxOeeYoqotishResponses];
 
 export type BuxSinxronData = {
     body?: never;

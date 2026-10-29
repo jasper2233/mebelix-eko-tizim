@@ -74,3 +74,41 @@ class IshHaqiQator(BaseModel):
     hajm: Mapped[Decimal] = mapped_column(Numeric(14, 3), kw_only=True)
     skanlar: Mapped[int] = mapped_column(kw_only=True)
     summa: Mapped[Decimal] = mapped_column(Numeric(16, 2), kw_only=True)
+
+
+class StanokNarx(BaseModel):
+    """Stanok soatining narxi (amortizatsiya + elektr + xizmat), `amal_boshi` dan. Buyurtmaning boshqaruv
+    tannarxiga ideal sikl vaqti bo'yicha, OEE yo'qotishiga — yo'qotilgan vaqt bo'yicha qo'shiladi."""
+
+    __tablename__ = "stanok_narx"
+    __table_args__ = (
+        CheckConstraint("soat_narxi >= 0", name="ck_stanok_narx_soat"),
+        Index("ix_stanok_narx_kalit", "machine_id", "amal_boshi", unique=True),
+    )
+
+    machine_id: Mapped[int] = mapped_column(ForeignKey("machine.id"), kw_only=True)
+    soat_narxi: Mapped[Decimal] = mapped_column(Numeric(14, 2), kw_only=True)
+    amal_boshi: Mapped[date] = mapped_column(Date, kw_only=True)
+    yozgan_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+
+
+class AsbobStavka(BaseModel):
+    """Asbob (tig') eskirishi va sarf normasi bitta amal birligiga, `amal_boshi` dan.
+
+    `amal`: teshik, qirra_teshik, paz, freza (prisadka, `Part.xnc_summary` sanog'i), rover_metr (kontur metri),
+    kromka_metr (yelim, frezer pichog'i), arra_m2 (arra diski). Norma — o'rtacha: masalan sverlo narxi ÷ resursi."""
+
+    __tablename__ = "asbob_stavka"
+    __table_args__ = (
+        CheckConstraint("narx >= 0", name="ck_asbob_stavka_narx"),
+        CheckConstraint(
+            "amal IN ('teshik', 'qirra_teshik', 'paz', 'freza', 'rover_metr', 'kromka_metr', 'arra_m2')",
+            name="ck_asbob_stavka_amal",
+        ),
+        Index("ix_asbob_stavka_kalit", "amal", "amal_boshi", unique=True),
+    )
+
+    amal: Mapped[str] = mapped_column(String(16), kw_only=True)
+    narx: Mapped[Decimal] = mapped_column(Numeric(14, 4), kw_only=True)
+    amal_boshi: Mapped[date] = mapped_column(Date, kw_only=True)
+    yozgan_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)

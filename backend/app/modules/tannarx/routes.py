@@ -9,11 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, client_ip, require_roles
+from app.core.config import TASHKENT_TZ
 from app.crud import log_action
-from app.models import Post, User
+from app.models import Client, Machine, Order, Post, User
 from app.models.enums import UserRole
+from app.modules.tannarx import norma
 from app.modules.tannarx import services as t
-from app.modules.tannarx.models import IshHaqiQator, IshHaqiVedomost, IshStavka
+from app.modules.tannarx.models import AsbobStavka, IshHaqiQator, IshHaqiVedomost, IshStavka, StanokNarx
 
 router = APIRouter(prefix="/tannarx", tags=["tannarx"])
 
@@ -234,3 +236,222 @@ async def tannarx_vedomost_bekor(db: SessionDep, user: TannarxUser, vedomost_id:
         await db.rollback()
         raise _bad(e) from e
     return await _amal(db, user, request, "vedomost_bekor", v)
+
+
+# ───────────────────────── 10b–10d: stanok, asbob, to'liq tannarx, OEE yo'qotishi ─────────────────────────
+class StanokRead(BaseModel):
+    id: int
+    nom: str
+    post: str
+
+
+class StanokNarxRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    machine_id: int
+    soat_narxi: Decimal
+    amal_boshi: date
+
+
+class StanokNarxIn(BaseModel):
+    machine_id: int
+    soat_narxi: Annotated[Decimal, Field(ge=0, le=Decimal(10) ** 9)]
+    amal_boshi: date
+
+
+class AsbobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    amal: str
+    narx: Decimal
+    amal_boshi: date
+
+
+class AsbobIn(BaseModel):
+    amal: str
+    narx: Annotated[Decimal, Field(ge=0, le=Decimal(10) ** 9)]
+    amal_boshi: date
+
+
+class AmalRead(BaseModel):
+    kod: str
+    nom: str
+
+
+class TannarxQator(BaseModel):
+    order_id: int
+    number: str
+    mijoz: str | None
+    yetkazilgan: date | None
+    summa: Decimal
+    material: Decimal
+    kromka: Decimal
+    kromka_metr: Decimal
+    mehnat: Decimal
+    mehnat_tasdiqlangan: Decimal
+    stanok: Decimal
+    stanok_soat: Decimal
+    asbob: Decimal
+    jami: Decimal
+    foyda: Decimal
+    #: Narxi yozilmagan narsalar — summa to'liq emas
+    kamchilik: list[str]
+
+
+class YoqotishSabab(BaseModel):
+    nom: str
+    soniya: int
+    pul: Decimal | None
+
+
+class YoqotishQator(BaseModel):
+    machine_id: int
+    nom: str
+    soat_narxi: Decimal | None
+    planned_s: int
+    oee_pct: float | None
+    to_xtash_s: int
+    sekin_s: int
+    brak_s: int
+    to_xtash: Decimal | None
+    sekin: Decimal | None
+    brak: Decimal | None
+    jami: Decimal | None
+    sabablar: list[YoqotishSabab]
+
+
+@router.get("/stanoklar", response_model=list[StanokRead], operation_id="tannarx_stanoklar")
+async def tannarx_stanoklar(db: SessionDep, _: TannarxUser) -> list[StanokRead]:
+    posts = await _postlar(db)
+    q = select(Machine).where(Machine.is_deleted == False).order_by(Machine.post_id, Machine.name)  # noqa: E712
+    return [
+        StanokRead(id=m.id, nom=m.name, post=posts[m.post_id].name if m.post_id in posts else "—")
+        for m in (await db.execute(q)).scalars()
+    ]
+
+
+@router.get("/stanok-narxlari", response_model=list[StanokNarxRead], operation_id="tannarx_stanok_narxlari")
+async def tannarx_stanok_narxlari(db: SessionDep, _: TannarxUser) -> list[StanokNarxRead]:
+    q = select(StanokNarx).order_by(StanokNarx.machine_id, StanokNarx.amal_boshi.desc())
+    return [StanokNarxRead.model_validate(s) for s in (await db.execute(q)).scalars()]
+
+
+@router.post("/stanok-narxlari", response_model=StanokNarxRead, operation_id="tannarx_stanok_narx_qosh")
+async def tannarx_stanok_narx_qosh(
+    db: SessionDep, user: TannarxUser, body: StanokNarxIn, request: Request
+) -> StanokNarxRead:
+    try:
+        s = await norma.stanok_narx_qosh(db, body.machine_id, body.soat_narxi, body.amal_boshi, user.id)
+    except t.TannarxXato as e:
+        await db.rollback()
+        raise _bad(e) from e
+    log_action(
+        db,
+        module="tannarx",
+        action="stanok_narx",
+        user_id=user.id,
+        message=f"stanok {s.machine_id}: {s.soat_narxi} so'm/soat, {s.amal_boshi} dan",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return StanokNarxRead.model_validate(s)
+
+
+@router.get("/asbob/amallar", response_model=list[AmalRead], operation_id="tannarx_asbob_amallar")
+async def tannarx_asbob_amallar(_: TannarxUser) -> list[AmalRead]:
+    return [AmalRead(kod=k, nom=v) for k, v in norma.AMALLAR.items()]
+
+
+@router.get("/asbob", response_model=list[AsbobRead], operation_id="tannarx_asbob")
+async def tannarx_asbob(db: SessionDep, _: TannarxUser) -> list[AsbobRead]:
+    q = select(AsbobStavka).order_by(AsbobStavka.amal, AsbobStavka.amal_boshi.desc())
+    return [AsbobRead.model_validate(s) for s in (await db.execute(q)).scalars()]
+
+
+@router.post("/asbob", response_model=AsbobRead, operation_id="tannarx_asbob_qosh")
+async def tannarx_asbob_qosh(db: SessionDep, user: TannarxUser, body: AsbobIn, request: Request) -> AsbobRead:
+    try:
+        s = await norma.asbob_stavka_qosh(db, body.amal, body.narx, body.amal_boshi, user.id)
+    except t.TannarxXato as e:
+        await db.rollback()
+        raise _bad(e) from e
+    log_action(
+        db,
+        module="tannarx",
+        action="asbob",
+        user_id=user.id,
+        message=f"{s.amal}: {s.narx} so'm, {s.amal_boshi} dan",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return AsbobRead.model_validate(s)
+
+
+@router.get("/buyurtmalar", response_model=list[TannarxQator], operation_id="tannarx_buyurtmalar")
+async def tannarx_buyurtmalar(
+    db: SessionDep, _: TannarxUser, dan: date | None = None, gacha: date | None = None, order_id: int | None = None
+) -> list[TannarxQator]:
+    """To'liq (boshqaruv) tannarx: davrda yetkazilgan buyurtmalar yoki bitta buyurtma (`order_id`)."""
+    if order_id is not None:
+        o = await db.get(Order, order_id)
+        orders = [o] if o is not None else []
+    elif dan and gacha:
+        orders = await norma.buyurtmalar(db, dan, gacha)
+    else:
+        raise HTTPException(status_code=422, detail="Davr yoki buyurtma tanlang")
+    tn = await norma.buyurtma_tannarxi(db, [o.id for o in orders])
+    mijozlar = select(Client).where(Client.id.in_({o.client_id for o in orders}))
+    mijoz = {c.id: c.full_name for c in (await db.execute(mijozlar)).scalars()}
+    out = []
+    for o in orders:
+        x = tn[o.id]
+        summa = o.amount or Decimal(0)
+        out.append(
+            TannarxQator(
+                order_id=o.id,
+                number=o.number,
+                mijoz=mijoz.get(o.client_id),
+                yetkazilgan=o.delivered_at.astimezone(TASHKENT_TZ).date() if o.delivered_at else None,
+                summa=summa,
+                material=x.material,
+                kromka=x.kromka,
+                kromka_metr=x.kromka_metr,
+                mehnat=x.mehnat,
+                mehnat_tasdiqlangan=x.mehnat_tasdiqlangan,
+                stanok=x.stanok,
+                stanok_soat=x.stanok_soat,
+                asbob=x.asbob,
+                jami=x.jami,
+                foyda=summa - x.jami,
+                kamchilik=sorted(x.kamchilik),
+            )
+        )
+    return out
+
+
+@router.get("/oee-yoqotish", response_model=list[YoqotishQator], operation_id="tannarx_oee_yoqotish")
+async def tannarx_oee_yoqotish(db: SessionDep, _: TannarxUser, dan: date, gacha: date) -> list[YoqotishQator]:
+    """Stanoklar: yo'qotilgan vaqt (to'xtash, sekin ishlash, brak) va uning puli soat narxi bilan."""
+    out = []
+    for y in await norma.oee_yoqotish(db, dan, gacha):
+        qism = [y.pul(y.to_xtash_s), y.pul(y.sekin_s), y.pul(y.brak_s)]
+        out.append(
+            YoqotishQator(
+                machine_id=y.machine_id,
+                nom=y.nom,
+                soat_narxi=y.soat_narxi,
+                planned_s=y.planned_s,
+                oee_pct=y.oee_pct,
+                to_xtash_s=y.to_xtash_s,
+                sekin_s=y.sekin_s,
+                brak_s=y.brak_s,
+                to_xtash=qism[0],
+                sekin=qism[1],
+                brak=qism[2],
+                jami=None if y.soat_narxi is None else sum((q or Decimal(0) for q in qism), Decimal(0)),
+                sabablar=[YoqotishSabab(nom=n, soniya=s, pul=y.pul(s)) for n, s in y.sabablar],
+            )
+        )
+    return out

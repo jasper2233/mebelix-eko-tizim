@@ -529,5 +529,24 @@ mehnat tannarxi yo'q. Endi:
 - API `/tannarx/...` (direktor, moliyachi; tarif — `moliya` moduli), ekran — Moliya → **Ish haqi**.
 - Orakl: `scripts/oracles/tannarx_oracle.py` (19).
 
-Keyingi: 10b stanok soat narxi va asbob (tig') eskirishi `xnc_summary` bo'yicha buyurtma tannarxiga;
-10c kromka metri tannarxda; 10d OEE yo'qotishi pulda.
+
+### 10b–10d — To'liq tannarx, stanok soati, asbob (tig'), kromka, OEE yo'qotishi pulda
+
+Moliya → **Tannarx** (`/tannarx/buyurtmalar`, `/tannarx/oee-yoqotish`, normalar — `stanok_narx`, `asbob_stavka`):
+
+- **To'liq (boshqaruv) tannarx** = material (FIFO sarf) + kromka + mehnat + stanok + asbob; summa, foyda, marja.
+  Narxi yozilmagan stanok/amal — qatorda «narxi yo'q», tannarxi umuman yo'q buyurtmada marja ko'rsatilmaydi.
+- **Kromka** sexga rulonda beriladi (2510) va buyurtma tannarxida yo'q edi: endi rezervdagi kromka
+  `kerak − berilgan` × oxirgi partiya narxi (`ombor.service.kromka_normasi`).
+- **Stanok** — Prisadka/Rover skanlarining IDEAL sikl vaqti (OEE Performance formulasi) × soat narxi. Buyurtmaga
+  faqat ideal vaqt; yo'qotilgan vaqt — OEE yo'qotishida.
+- **Asbob (tig')** — norma × amal: teshik, qirra teshigi, paz, freza (`xnc_summary`), Rover kontur metri, kromka
+  metri, arra m². Brak tasdiqlab bekor qilingan skan ham sanaladi (stanok va asbob baribir ishlagan).
+- **OEE yo'qotishi pulda** — har stanok: to'xtash (reja − ishladi), sekin (ishladi − ideal), brak
+  (ideal × brak/detal) × soat narxi; asosiy rejasiz to'xtash sabablari pulda.
+- Stanok va asbob normasi **buxgalteriyaga yozilmaydi**: haqiqiy puli (asbob xaridi, elektr) allaqachon
+  xarajat/2510 da — normani provodka qilish ikki marta sanash bo'lardi. Narxlar o'tgan sanaga ham yoziladi.
+- Orakllar: `tannarx_oracle.py` (26), `oee_pul_oracle.py` (3, `oee_oracle` ssenariysi ustida).
+
+Ochiq: kromka mashina vaqti (lenta tezligi skanda yo'q — hozir kromka metri normasi bilan), asbob resursini
+haqiqiy almashtirishlardan hisoblash, ikkinchi Prisadka uchun alohida ideal sikl.

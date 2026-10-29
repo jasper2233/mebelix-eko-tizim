@@ -18,6 +18,7 @@ import {
 } from "@/client"
 import { client } from "@/client/client.gen"
 import { IshHaqi } from "@/components/Moliya/IshHaqi"
+import { Tannarx } from "@/components/Moliya/Tannarx"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import {
@@ -53,6 +54,7 @@ const BOLIMLAR = [
   { v: "smenalar", l: "Smenalar" },
   { v: "hisobotlar", l: "Hisobotlar" },
   { v: "ishhaqi", l: "Ish haqi" },
+  { v: "tannarx", l: "Tannarx" },
   { v: "davrlar", l: "Davr yopish" },
   { v: "sozlamalar", l: "Sozlamalar" },
 ] as const
@@ -103,6 +105,7 @@ function MoliyaPage() {
       {b === "smenalar" && <Smenalar />}
       {b === "hisobotlar" && <Hisobotlar />}
       {b === "ishhaqi" && <IshHaqi />}
+      {b === "tannarx" && <Tannarx />}
       {b === "davrlar" && <Davrlar />}
       {b === "sozlamalar" && <Sozlamalar />}
     </div>

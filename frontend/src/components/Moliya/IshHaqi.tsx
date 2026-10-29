@@ -3,105 +3,36 @@
 // tannarxiga qo'shiladi; bu ekran pul bermaydi — to'lov kassadan «Ish haqi (ishbay)» moddasi bilan.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { TriangleAlert } from "lucide-react"
-import { type ReactNode, useState } from "react"
+import { useState } from "react"
 
 import { type HaqQator, TannarxService } from "@/client"
 import { SelectField } from "@/components/Common/SelectField"
 import { Button } from "@/components/ui/button"
-import { cardSurface } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { TableCell, TableRow } from "@/components/ui/table"
 import { formatDate, formatMoney } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { fmtQty, parseNum } from "@/lib/warehouse"
 import { extractErrorMessage } from "@/utils"
+import {
+  Bosh,
+  birlik,
+  bugun,
+  Jadval,
+  Karta,
+  kecha,
+  td,
+  tdNum,
+  Xato,
+} from "./qism"
 
-const BIRLIK: Record<string, string> = {
-  m2: "m²",
-  meter: "metr",
-  piece: "dona",
-}
 const HOLAT: Record<string, string> = {
   qoralama: "qoralama",
   tasdiqlangan: "tasdiqlangan",
   bekor: "bekor qilingan",
 }
-const td = "border-b px-2 py-2"
-const tdNum = "num border-b px-2 py-2 text-right whitespace-nowrap"
-const sana = (d: Date) => d.toLocaleDateString("sv-SE")
-const bugun = () => sana(new Date())
-const kecha = () => {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
-  return sana(d)
-}
-const birlik = (b: string) => BIRLIK[b] ?? b
-
-function Karta({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className={cn(cardSurface, "flex flex-col gap-2 p-4")}>
-      <h2 className="font-semibold">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function Jadval({
-  bosh,
-  ong = [],
-  children,
-}: {
-  bosh: string[]
-  ong?: number[]
-  children: ReactNode
-}) {
-  return (
-    <div className="overflow-x-auto">
-      <Table className="w-full text-sm">
-        <TableHeader>
-          <TableRow className="border-b text-left text-xs text-muted-foreground uppercase">
-            {bosh.map((h, i) => (
-              <TableHead
-                key={h || i}
-                className={cn(
-                  "px-2 py-2 font-medium",
-                  ong.includes(i) && "text-right",
-                )}
-              >
-                {h}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>{children}</TableBody>
-      </Table>
-    </div>
-  )
-}
-
-function Xato({ text }: { text: string }) {
-  if (!text) return null
-  return (
-    <div className="flex items-start gap-2 rounded border border-red-300 bg-red-50 p-2 text-sm text-red-900">
-      <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-      {text}
-    </div>
-  )
-}
-
-const Bosh = ({ text }: { text: string }) => (
-  <p className="p-2 text-sm text-muted-foreground">{text}</p>
-)
 
 export function IshHaqi() {
   const qc = useQueryClient()

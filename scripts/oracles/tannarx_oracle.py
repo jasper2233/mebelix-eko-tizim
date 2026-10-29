@@ -20,11 +20,25 @@ from sqlalchemy import select
 
 from app.core.config import TASHKENT_TZ
 from app.core.db import local_session
-from app.models import Client, Employee, Order, Part, PartInstance, PartRoute, Post, Product, Scan, User, WorkSession
+from app.models import (
+    Client,
+    Employee,
+    Machine,
+    Order,
+    Part,
+    PartInstance,
+    PartRoute,
+    Post,
+    Product,
+    Scan,
+    User,
+    WorkSession,
+)
 from app.models.enums import OrderStatus, PostCode, PostUnit, UserRole
 from app.modules.buxgalteriya import services as b
 from app.modules.kassa import services as k
 from app.modules.moliya import services as moliya
+from app.modules.tannarx import norma
 from app.modules.tannarx import service as tf
 from app.modules.tannarx import services as t
 
@@ -73,7 +87,8 @@ async def main() -> None:
         pris = await post(PostCode.PRISADKA, "Prisadka", PostUnit.PIECE, 7)
         h1 = Employee(full_name="Aliyev Arra", badge_id=uuid4().hex, assigned_post_ids=[])
         h2 = Employee(full_name="Boboyev Kromka", badge_id=uuid4().hex, assigned_post_ids=[])
-        db.add_all([h1, h2])
+        pris_m = Machine(name="Prisadka-T", post_id=pris.id)
+        db.add_all([h1, h2, pris_m])
         await db.flush()
         o = Order(number="TN-1", client_id=cl.id, status=OrderStatus.PRODUCTION, amount=D(5_000_000))
         db.add(o)
@@ -83,7 +98,7 @@ async def main() -> None:
         await db.flush()
         p = Part(
             order_id=o.id, product_id=pr.id, code="01_001", name="Yon", count=2, length=600, width=400,
-            thickness=16, edges={"l": {}, "r": {}, "t": {}},
+            thickness=16, edges={"l": {}, "r": {}, "t": {}}, xnc_summary={"bores": 6, "grooves": 1},
         )
         db.add(p)
         await db.flush()
@@ -106,6 +121,7 @@ async def main() -> None:
             s = Scan(
                 order_id=o.id, part_id=p.id, instance_id=ins[n % 2].id, route_id=r.id, post_id=r.post_id,
                 employee_id=h.id, session_id=ses[r.post_id].id, client_event_id=uuid4().hex,
+                machine_id=pris_m.id if r is r_p else None,
                 created_at=vaqt(kun, 10) + timedelta(minutes=n), is_cancelled=bekor,
             )
             db.add(s)
@@ -176,6 +192,25 @@ async def main() -> None:
         pl = await moliya.pnl(db, today)
         tek("ish haqi to'lovi xarajatda yo'q", "Ish haqi (ishbay)" in {x.nom for x in pl.xarajatlar}, False)
         tek("tannarxda mehnat bor", pl.tannarx_buyurtma >= D("14400.00"), True)
+
+        print("7) to'liq tannarx: stanok va asbob (norma, buxgalteriyaga yozilmaydi)")
+        uzoq = today - timedelta(days=10)
+        await norma.stanok_narx_qosh(db, pris_m.id, D(36_000), uzoq, u1.id)
+        await rad("takror stanok narxi", norma.stanok_narx_qosh(db, pris_m.id, D(1), uzoq, u1.id), "allaqachon")
+        for amal, n in (("teshik", 100), ("paz", 500), ("kromka_metr", 50)):
+            await norma.asbob_stavka_qosh(db, amal, D(n), uzoq, u1.id)
+        x = (await norma.buyurtma_tannarxi(db, [o.id]))[o.id]
+        tek("stanok: (15 + 6*2 + 8) s * 36 000/soat = 350", (x.stanok, x.stanok_soat), (D("350.00"), D("0.01")))
+        tek("arra normasi yo'q — kamchilik", "asbob: Arra m² (disk)" in x.kamchilik, True)
+        await norma.asbob_stavka_qosh(db, "arra_m2", D(1_000), d3, u1.id)
+        x = (await norma.buyurtma_tannarxi(db, [o.id]))[o.id]
+        tek("asbob: 600 teshik + 500 paz + 2.8 m * 50 + 0.24 m² * 1 000", x.asbob, D("1480.00"))
+        tek("mehnat 14 400, hammasi tasdiqlangan", (x.mehnat, x.mehnat_tasdiqlangan), (D("14400.00"), D("14400.00")))
+        tek("jami = 14 400 + 350 + 1 480", (x.jami, x.kamchilik), (D("16230.00"), set()))
+        s6710 = await b.saldo(db, "6710")
+        await b.sinxron(db)
+        farq = [n.nom for n in await b.nazorat(db) if n.farq.quantize(D("0.01"))]
+        tek("norma buxgalteriyaga tushmadi", (await b.saldo(db, "6710"), farq), (s6710, []))
         await db.rollback()
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")
 

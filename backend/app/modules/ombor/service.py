@@ -101,6 +101,11 @@ async def buyurtma_tannarxi(db: AsyncSession, order_ids: list[int]) -> dict[int,
     return await moliya_oqish.buyurtma_tannarxi(db, order_ids)
 
 
+async def kromka_normasi(db: AsyncSession, order_ids: list[int]) -> dict[int, tuple[Decimal, Decimal]]:
+    """Buyurtma kromkasi (metr, so'm) — sexga rulonda berilgani uchun FIFO sarfda yo'q qismi."""
+    return await moliya_oqish.kromka_normasi(db, order_ids)
+
+
 async def ombor_qiymati(db: AsyncSession) -> Decimal:
     return await moliya_oqish.ombor_qiymati(db)
 

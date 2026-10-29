@@ -8,7 +8,7 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
+from app.modules.ombor.models import CatalogItem, Rezerv, RezervLine, StockDoc, StockDocLine, StockLot, StockMovement
 
 #: Qoldiqqa ta'sir qilgan hujjat holatlari: tasdiqlangan va keyin storno qilingan
 BOLGAN = ("confirmed", "storno")
@@ -87,6 +87,49 @@ async def buyurtma_tannarxi(db: AsyncSession, order_ids: list[int]) -> dict[int,
         )
     ).all()
     return {oid: Decimal(s) for oid, s in rows if oid is not None}
+
+
+async def kromka_normasi(db: AsyncSession, order_ids: list[int]) -> dict[int, tuple[Decimal, Decimal]]:
+    """Buyurtma kromkasi (metr, so'm) — tannarxga hali kirmagan qismi.
+
+    Kromka rulonda sexga beriladi va sex xarajatiga (2510) tushadi, buyurtmaga emas. Shuning uchun buyurtma
+    tannarxida u yo'q edi. Norma: oxirgi (bekor qilinmagan) rezervdagi kromka qatori `kerak − berilgan`
+    (buyurtmaga to'g'ridan berilgani FIFO sarfda allaqachon bor) × oxirgi partiya narxi (yo'q bo'lsa xarid narxi).
+    """
+    if not order_ids:
+        return {}
+    oxirgi = (
+        select(func.max(Rezerv.id))
+        .where(Rezerv.order_id.in_(order_ids), Rezerv.holat != "bekor", Rezerv.is_deleted == False)  # noqa: E712
+        .group_by(Rezerv.order_id)
+    )
+    rows = (
+        await db.execute(
+            select(Rezerv.order_id, RezervLine.item_id, RezervLine.kerak_qty, RezervLine.berilgan_qty)
+            .join(Rezerv, Rezerv.id == RezervLine.rezerv_id)
+            .where(RezervLine.rezerv_id.in_(oxirgi), RezervLine.kind == "band", RezervLine.item_id.is_not(None))
+        )
+    ).all()
+    items = {r[1] for r in rows}
+    if not items:
+        return {}
+    oxirgi_lot = (
+        select(StockLot.item_id, StockLot.unit_cost)
+        .where(StockLot.item_id.in_(items))
+        .distinct(StockLot.item_id)
+        .order_by(StockLot.item_id, StockLot.id.desc())
+    )
+    narx = {i: Decimal(c) for i, c in (await db.execute(oxirgi_lot)).all()}
+    for i, p in (
+        await db.execute(select(CatalogItem.id, CatalogItem.purchase_price).where(CatalogItem.id.in_(items)))
+    ).all():
+        narx.setdefault(i, Decimal(p or 0))
+    out: dict[int, tuple[Decimal, Decimal]] = {}
+    for oid, item_id, kerak, berilgan in rows:
+        q = max(Decimal(kerak) - Decimal(berilgan), Decimal(0))
+        m, s_ = out.get(oid, (Decimal(0), Decimal(0)))
+        out[oid] = (m + q, s_ + q * narx.get(item_id, Decimal(0)))
+    return out
 
 
 async def ombor_qiymati(db: AsyncSession) -> Decimal:
