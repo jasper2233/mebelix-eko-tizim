@@ -43,6 +43,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 7b Buxgalteriya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 8a Ishga tushirish (backend): ochilish qoldiqlari, qo'lda avans qulfi, tayyorlik tekshiruvi | tayyor, lokal sinalgan | pastda |
 | 8b Ishga tushirish (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
+| 9 Yo'riqnomalar: kassir, omborchi, moliyachi, direktor (dasturda `/yoriqnoma`) | tayyor | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -497,4 +498,12 @@ Ko'rsatish paytida topilib tuzatildi:
 - buyurtma sahifasi va mijoz kartasidagi «Qoldiq to'lov» faqat qo'lda avansdan hisoblanardi — endi buyurtma
   javoblarida `kassa_tolangan`, sahifada «To'langan» = avans + kassa (`lib/mes.ts: paidTotal`);
 - tayyorlikdagi «ikki kalit» admin va superuser ni sanamasdi (ular ham storno qila oladi).
+
+### 9 — Yo'riqnomalar (xodimlarni o'qitish, TZ §11 7-bosqich)
+
+Matn manbasi — `frontend/src/yoriqnoma/` (frontend image faqat `frontend/` papkasidan quriladi, shuning uchun
+`docs/` da emas): [kassir](../../frontend/src/yoriqnoma/kassir.md),
+[omborchi](../../frontend/src/yoriqnoma/omborchi.md), [moliyachi](../../frontend/src/yoriqnoma/moliyachi.md),
+[direktor](../../frontend/src/yoriqnoma/direktor.md). Dasturda — menyu **Yo'riqnoma** (`/yoriqnoma`, har xodimga o'z
+roli birinchi ochiladi, chop etiladi). Ekrandagi nom yoki qoida o'zgarsa — yo'riqnomani ham yangilang.
 

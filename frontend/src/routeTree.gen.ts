@@ -32,6 +32,7 @@ import { Route as LayoutSoliqRouteImport } from './routes/_layout/soliq'
 import { Route as LayoutSotuvRouteImport } from './routes/_layout/sotuv'
 import { Route as LayoutSystemHealthRouteImport } from './routes/_layout/system-health'
 import { Route as LayoutSystemSettingsRouteImport } from './routes/_layout/system-settings'
+import { Route as LayoutYoriqnomaRouteImport } from './routes/_layout/yoriqnoma'
 import { Route as TabloStanoklarRouteImport } from './routes/tablo_.stanoklar'
 import { Route as LayoutAnketaOrderIdRouteImport } from './routes/_layout/anketa.$orderId'
 import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap.$orderId'
@@ -166,6 +167,11 @@ const LayoutSystemSettingsRoute = LayoutSystemSettingsRouteImport.update({
   path: '/system-settings',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutYoriqnomaRoute = LayoutYoriqnomaRouteImport.update({
+  id: '/yoriqnoma',
+  path: '/yoriqnoma',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const TabloStanoklarRoute = TabloStanoklarRouteImport.update({
   id: '/tablo_/stanoklar',
   path: '/tablo/stanoklar',
@@ -286,6 +292,7 @@ export interface FileRoutesByFullPath {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
+  '/yoriqnoma': typeof LayoutYoriqnomaRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
@@ -328,6 +335,7 @@ export interface FileRoutesByTo {
   '/sotuv': typeof LayoutSotuvRoute
   '/system-health': typeof LayoutSystemHealthRoute
   '/system-settings': typeof LayoutSystemSettingsRoute
+  '/yoriqnoma': typeof LayoutYoriqnomaRoute
   '/tablo/stanoklar': typeof TabloStanoklarRoute
   '/': typeof LayoutIndexRoute
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -373,6 +381,7 @@ export interface FileRoutesById {
   '/_layout/sotuv': typeof LayoutSotuvRoute
   '/_layout/system-health': typeof LayoutSystemHealthRoute
   '/_layout/system-settings': typeof LayoutSystemSettingsRoute
+  '/_layout/yoriqnoma': typeof LayoutYoriqnomaRoute
   '/tablo_/stanoklar': typeof TabloStanoklarRoute
   '/_layout/': typeof LayoutIndexRoute
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
@@ -419,6 +428,7 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
+    | '/yoriqnoma'
     | '/tablo/stanoklar'
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
@@ -461,6 +471,7 @@ export interface FileRouteTypes {
     | '/sotuv'
     | '/system-health'
     | '/system-settings'
+    | '/yoriqnoma'
     | '/tablo/stanoklar'
     | '/'
     | '/anketa/$orderId'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/_layout/sotuv'
     | '/_layout/system-health'
     | '/_layout/system-settings'
+    | '/_layout/yoriqnoma'
     | '/tablo_/stanoklar'
     | '/_layout/'
     | '/_layout/anketa/$orderId'
@@ -699,6 +711,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutSystemSettingsRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/yoriqnoma': {
+      id: '/_layout/yoriqnoma'
+      path: '/yoriqnoma'
+      fullPath: '/yoriqnoma'
+      preLoaderRoute: typeof LayoutYoriqnomaRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/tablo_/stanoklar': {
       id: '/tablo_/stanoklar'
       path: '/tablo/stanoklar'
@@ -853,6 +872,7 @@ interface LayoutRouteChildren {
   LayoutSotuvRoute: typeof LayoutSotuvRoute
   LayoutSystemHealthRoute: typeof LayoutSystemHealthRoute
   LayoutSystemSettingsRoute: typeof LayoutSystemSettingsRoute
+  LayoutYoriqnomaRoute: typeof LayoutYoriqnomaRoute
   LayoutIndexRoute: typeof LayoutIndexRoute
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
@@ -892,6 +912,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutSotuvRoute: LayoutSotuvRoute,
   LayoutSystemHealthRoute: LayoutSystemHealthRoute,
   LayoutSystemSettingsRoute: LayoutSystemSettingsRoute,
+  LayoutYoriqnomaRoute: LayoutYoriqnomaRoute,
   LayoutIndexRoute: LayoutIndexRoute,
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,

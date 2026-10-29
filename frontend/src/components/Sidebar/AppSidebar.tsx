@@ -5,6 +5,7 @@ import {
   Banknote,
   BarChart3,
   Bolt,
+  BookOpen,
   BookOpenCheck,
   Boxes,
   ClipboardCheck,
@@ -126,6 +127,12 @@ export const NAV_ITEMS: (Item & {
     title: "Ishga tushirish",
     path: "/ishga-tushirish",
     show: isMoliya,
+  },
+  {
+    icon: BookOpen,
+    title: "Yo'riqnoma",
+    path: "/yoriqnoma",
+    show: () => true,
   },
   {
     icon: ClipboardList,
