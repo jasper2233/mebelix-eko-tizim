@@ -11,6 +11,7 @@ from app.core.utils.rate_limit import rate_limiter
 from app.crud import crud_machines, crud_users, log_action
 from app.models.enums import UserRole
 from app.models.user import User
+from app.modules.platforma import service as platforma
 from app.schemas.common import Message, Paginated
 from app.schemas.users import IdleLimit, UpdatePassword, UserAdminUpdate, UserCreate, UserRead, UserUpdate
 from app.services.activity import idle_minutes, touch_activity
@@ -106,6 +107,12 @@ async def read_users(
     """List users with pagination (manager/texnolog/director/admin — the list exposes every phone number)."""
     rows, total = await crud_users.get_multi(db=db, offset=skip, limit=limit)
     return Paginated(data=[UserRead.model_validate(user) for user in rows], count=total)
+
+
+@router.get("/me/modullar", response_model=list[str], operation_id="read_user_modullar")
+async def read_user_modullar(_: CurrentUser) -> list[str]:
+    """Joriy obunachi tarifidagi modullar (menyu shundan; backend baribir `require_module` bilan tekshiradi)."""
+    return [m for m in platforma.MODULLAR if await platforma.module_enabled(m)]
 
 
 @router.get("/me", response_model=UserRead, operation_id="read_user_me")

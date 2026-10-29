@@ -7,7 +7,7 @@ import (skript, orakl) aylana importga tushardi.
 
 from fastapi import APIRouter, Depends
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, require_module
 from app.api.routes.audit import router as audit_router
 from app.api.routes.bridge_agents import router as bridge_agents_router
 from app.api.routes.clients import router as clients_router
@@ -48,6 +48,13 @@ v1_router.include_router(login_router)
 v1_router.include_router(public_router)
 
 _protected = [Depends(get_current_user)]
+
+
+def _modul(name: str) -> list:  # type: ignore[type-arg]
+    """Himoyalangan + obunachi tarifida `name` moduli yoqilgan (TZ §2.4, 4-qoida; o'chiq modul — 403)."""
+    return [*_protected, Depends(require_module(name))]
+
+
 v1_router.include_router(logout_router, dependencies=_protected)
 v1_router.include_router(users_router, dependencies=_protected)
 v1_router.include_router(clients_router, dependencies=_protected)
@@ -58,17 +65,17 @@ v1_router.include_router(posts_router, dependencies=_protected)
 v1_router.include_router(orders_router, dependencies=_protected)
 v1_router.include_router(pachka_router, dependencies=_protected)
 v1_router.include_router(tmo_router, dependencies=_protected)
-v1_router.include_router(catalog_router, dependencies=_protected)  # mahsulotlar ombori katalogi
-v1_router.include_router(stock_router, dependencies=_protected)  # ombor hujjatlari va FIFO (docs/14 §9)
-v1_router.include_router(rezerv_router, dependencies=_protected)  # rezerv va ta'minot (EKO TZ §4.3)
-v1_router.include_router(berish_router, dependencies=_protected)  # sexga berish, barkodlar (EKO TZ §4.4)
-v1_router.include_router(sex_router, dependencies=_protected)  # sexdan so'rov, rulon tugadi (EKO TZ §4.4)
+v1_router.include_router(catalog_router, dependencies=_modul("ombor"))  # mahsulotlar ombori katalogi
+v1_router.include_router(stock_router, dependencies=_modul("ombor"))  # ombor hujjatlari va FIFO (docs/14 §9)
+v1_router.include_router(rezerv_router, dependencies=_modul("ombor"))  # rezerv va ta'minot (EKO TZ §4.3)
+v1_router.include_router(berish_router, dependencies=_modul("ombor"))  # sexga berish, barkodlar (EKO TZ §4.4)
+v1_router.include_router(sex_router, dependencies=_modul("ombor"))  # sexdan so'rov, rulon tugadi (EKO TZ §4.4)
 # MX Kroy (EKO TZ §6, K3/K4): foydalanuvchi emas — xizmat tokeni (`KROY_API_TOKEN`), shuning uchun _protected YO'Q
-v1_router.include_router(kroy_router)
-v1_router.include_router(integ_router)
-v1_router.include_router(kassa_router, dependencies=_protected)  # kassa (EKO TZ §7)
-v1_router.include_router(moliya_router, dependencies=_protected)  # moliya (EKO TZ §8)
-v1_router.include_router(integ_user_router, dependencies=_protected)  # «Kroy» tugmasi, SSO (K1, K6)
+v1_router.include_router(kroy_router, dependencies=[Depends(require_module("kroy"))])
+v1_router.include_router(integ_router, dependencies=[Depends(require_module("kroy"))])
+v1_router.include_router(kassa_router, dependencies=_modul("kassa"))  # kassa (EKO TZ §7)
+v1_router.include_router(moliya_router, dependencies=_modul("moliya"))  # moliya (EKO TZ §8)
+v1_router.include_router(integ_user_router, dependencies=_modul("kroy"))  # «Kroy» tugmasi, SSO (K1, K6)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)
 v1_router.include_router(terminal_devices_router, dependencies=_protected)

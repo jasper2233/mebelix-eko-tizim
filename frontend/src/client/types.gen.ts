@@ -9406,6 +9406,24 @@ export type CreateUserResponses = {
 
 export type CreateUserResponse = CreateUserResponses[keyof CreateUserResponses];
 
+export type ReadUserModullarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/users/me/modullar';
+};
+
+export type ReadUserModullarResponses = {
+    /**
+     * Response Read User Modullar
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type ReadUserModullarResponse = ReadUserModullarResponses[keyof ReadUserModullarResponses];
+
 export type DeleteUserMeData = {
     body?: never;
     path?: never;

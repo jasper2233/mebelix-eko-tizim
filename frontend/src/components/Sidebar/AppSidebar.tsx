@@ -31,7 +31,7 @@ import {
   Wrench,
 } from "lucide-react"
 import type { UserRead } from "@/client"
-import { DefectsService, SystemService } from "@/client"
+import { DefectsService, SystemService, UsersService } from "@/client"
 import {
   Sidebar,
   SidebarContent,
@@ -79,6 +79,8 @@ const katalogOf = (s: Record<string, unknown>): string =>
 
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
+  /** Obunachi tarifidagi modul (`/users/me/modullar`); yoqilmagan bo'lsa band ko'rinmaydi */
+  modul?: string
 })[] = [
   // Mahsulot omborchisining boshqaruv paneli yo'q: u `_layout` guard'ida
   // to'g'ri omborga yo'naltiriladi, menyuda esa bo'sh havola qolmasin
@@ -88,8 +90,20 @@ export const NAV_ITEMS: (Item & {
     path: "/",
     show: (u) => !isWarehouseOnly(u) && !isKassaOnly(u),
   },
-  { icon: Banknote, title: "Kassa", path: "/kassa", show: isKassa },
-  { icon: Landmark, title: "Moliya", path: "/moliya", show: isMoliya },
+  {
+    icon: Banknote,
+    title: "Kassa",
+    path: "/kassa",
+    show: isKassa,
+    modul: "kassa",
+  },
+  {
+    icon: Landmark,
+    title: "Moliya",
+    path: "/moliya",
+    show: isMoliya,
+    modul: "moliya",
+  },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",
@@ -109,6 +123,7 @@ export const NAV_ITEMS: (Item & {
     title: "Mahsulotlar ombori",
     path: "/warehouse/hisobot",
     show: (u) => isWarehouseStaff(u) && !isWarehouseOnly(u),
+    modul: "ombor",
   },
   {
     icon: Boxes,
@@ -119,6 +134,7 @@ export const NAV_ITEMS: (Item & {
     path: "/warehouse",
     flat: true,
     show: isWarehouseOnly,
+    modul: "ombor",
     children: [
       // «Qudrat Ombor» dizayni (docs/14 §8): narx boshqaruvi + nomenklatura bo'limlari.
       // Kartochka (`/warehouse/item/F-RC-…`) o'z kategoriyasini faol qiladi — kod harfidan.
@@ -306,7 +322,17 @@ export const NAV_ITEMS: (Item & {
 
 export function AppSidebar() {
   const { currentUser } = useCurrentUser()
-  const items = NAV_ITEMS.filter((i) => i.show(currentUser))
+  // Tarif (obuna): menyu faqat yoqilgan modullardan; backend baribir `require_module` bilan tekshiradi
+  const { data: modullar } = useQuery({
+    queryKey: ["modullar"],
+    queryFn: async () => (await UsersService.readUserModullar()).data,
+    staleTime: 5 * 60_000,
+  })
+  const items = NAV_ITEMS.filter(
+    (i) =>
+      i.show(currentUser) &&
+      (!i.modul || !modullar || modullar.includes(i.modul)),
+  )
 
   // Reyestr sahifasi ham shu kalit — /orders da TanStack dedupe qiladi; boshqa sahifalarda
   // sidebar yagona obunachi va 30 s pollni o'zi yuritadi (queries/mes.ts).
