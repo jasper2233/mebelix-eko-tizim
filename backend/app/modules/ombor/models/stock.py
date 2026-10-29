@@ -11,7 +11,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -79,6 +79,7 @@ class StockLot(BaseModel):
     __table_args__ = (
         # Chiqimda: shu pozitsiyaning qolgan partiyalari, eng eskisi birinchi
         Index("ix_stock_lot_open", "item_id", "received_on", "id", postgresql_where=text("qty_left > 0")),
+        CheckConstraint("qty_left >= 0 AND qty_left <= qty", name="ck_stock_lot_qty_left"),
     )
 
     item_id: Mapped[int] = mapped_column(ForeignKey("catalog_item.id"), index=True, kw_only=True)
@@ -96,7 +97,11 @@ class StockLot(BaseModel):
 
 
 class StockMovement(BaseModel):
-    """Qoldiq harakati — har o'zgarishning izi (kartochkadagi «Harakat tarixi»)."""
+    """Qoldiq harakati — har o'zgarishning izi (kartochkadagi «Harakat tarixi»).
+
+    JURNAL: faqat qo'shiladi. UPDATE va DELETE bazada trigger bilan taqiqlangan (EKO 2.4) — xato
+    harakat faqat yangi (teskari) harakat bilan tuzatiladi. Qoida: `catalog_item.quantity` =
+    shu pozitsiya harakatlari yig'indisi (`commands/ombor_solishtirish.py` har kecha tekshiradi)."""
 
     __tablename__ = "stock_movement"
 

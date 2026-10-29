@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import select, text
+from sqlalchemy.exc import DBAPIError
 
 from app.modules.ombor.routes.stock import read_stock_report
 from app.core.config import TASHKENT_TZ
@@ -134,14 +135,17 @@ async def main() -> None:
         keng_g = {f"{g.catalog}-{g.group_code}": g for g in keng.groups}
         natija.append(("keng oraliqda kromka kirimi ko'rinadi", keng_g["F-KM"].qty_in, Decimal(6)))
 
-        # --- Yumshoq o'chirilgan harakat sanalmaydi
+        # --- Harakatni o'chirib bo'lmaydi (EKO 2.4: jurnal faqat qo'shiladi, bazada trigger).
+        # Ilgari bu yerda yumshoq o'chirilgan harakat aylanmaga kirmasligi tekshirilardi — endi
+        # o'chirishning o'zi yo'q, xato teskari harakat bilan tuzatiladi.
         mv = (await db.execute(select(StockMovement).where(StockMovement.item_id == rc2.id))).scalar_one()
         mv.is_deleted = True
-        await db.commit()
-        keyin = await read_stock_report(db, admin, date_from=KECHA.date(), date_to=BUGUN.date())
-        keyin_g = {f"{g.catalog}-{g.group_code}": g for g in keyin.groups}
-        natija.append(("o'chirilgan harakat aylanmaga kirmaydi", keyin_g["F-RC"].qty_in, Decimal(10)))
-        natija.append(("harakati o'chgach pozitsiya harakatsizga qo'shiladi", keyin.dead_total, 2))
+        try:
+            await db.commit()
+            natija.append(("harakatni o'chirish rad etiladi", False, True))
+        except DBAPIError as e:
+            await db.rollback()
+            natija.append(("harakatni o'chirish rad etiladi", "jurnal faqat qo'shiladi" in str(e), True))
 
     xato = sum(1 for _, olingan, kutilgan in natija if olingan != kutilgan)
     for nom, olingan, kutilgan in natija:

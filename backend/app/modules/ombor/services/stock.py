@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import Integer, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
@@ -62,11 +62,17 @@ def head_rate(head: dict[str, Any]) -> Decimal | None:
 
 
 async def next_no(db: AsyncSession, kind: str, year: int) -> str:
-    """`KIR-2026-0148` — turi va yili bo'yicha keyingi raqam (o'chirilgan qoralamalar ham hisobda)."""
+    """`KIR-2026-0148` — turi va yili bo'yicha keyingi raqam (o'chirilgan qoralamalar ham hisobda).
+
+    Ikki parallel hujjat bir raqam olmasin (EKO 2.4 parallel sinovi topgan): shu prefiks uchun
+    tranzaksiya qulfi — keyingisi birinchisi commit bo'lguncha kutadi. Raqam SON sifatida
+    solishtiriladi: matn bo'yicha `…-10000` `…-9999` dan «kichik» chiqardi."""
     prefix = f"{PREFIX[kind]}-{year}-"
-    last = await db.scalar(select(func.max(StockDoc.no)).where(StockDoc.no.like(f"{prefix}%")))
-    n = int(last.rsplit("-", 1)[1]) + 1 if last else 1
-    return f"{prefix}{n:04d}"
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtext(prefix))))
+    last = await db.scalar(
+        select(func.max(cast(func.split_part(StockDoc.no, "-", 3), Integer))).where(StockDoc.no.like(f"{prefix}%"))
+    )
+    return f"{prefix}{(last or 0) + 1:04d}"
 
 
 async def save_draft(db: AsyncSession, body: DocIn, user_id: int | None) -> StockDoc:

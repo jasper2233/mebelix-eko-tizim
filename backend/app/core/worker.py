@@ -14,6 +14,7 @@ from app.tasks import (
     all_tasks,
     close_idle_sessions_all,
     expire_reservations_all,
+    ombor_solishtirish_all,
     sync_downtimes_all,
 )
 
@@ -50,6 +51,8 @@ class WorkerSettings:
         cron(sync_downtimes_all, minute=set(range(0, 60, DOWNTIME_SWEEP_MINUTES))),
         # To'lov muddati o'tgan rezervlarni bo'shatish (EKO TZ §4.3)
         cron(expire_reservations_all, minute=set(range(0, 60, REZERV_SWEEP_MINUTES))),
+        # Kechki ombor solishtirishi (EKO 2.4): 21:30 UTC = 02:30 Toshkent, ish yo'q payt
+        cron(ombor_solishtirish_all, hour={21}, minute={30}),
     ]
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup

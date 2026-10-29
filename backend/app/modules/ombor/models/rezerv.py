@@ -11,7 +11,7 @@ Rezerv qoldiqni o'zi kamaytirmaydi — kamaytirish (sarf) faqat ombor hujjati bi
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel
@@ -69,6 +69,9 @@ class RezervLine(BaseModel):
     ehtiyoj ko'rinib tursin va bog'langanda shu qatordan davom etilsin."""
 
     __tablename__ = "rezerv_line"
+    __table_args__ = (
+        CheckConstraint("qoplangan_qty >= 0 AND berilgan_qty >= 0 AND kerak_qty >= 0", name="ck_rezerv_line_qty"),
+    )
 
     rezerv_id: Mapped[int] = mapped_column(ForeignKey("rezerv.id", ondelete="CASCADE"), index=True, kw_only=True)
     kind: Mapped[str] = mapped_column(String(10), kw_only=True)

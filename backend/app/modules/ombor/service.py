@@ -7,7 +7,7 @@ buyurtma amali va ombor oqibati bitta tranzaksiyada.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
-from app.modules.ombor.services import rezerv
+from app.modules.ombor.services import rezerv, solishtirish
 
 
 async def on_project_loaded(db: AsyncSession, order: Order) -> None:
@@ -28,6 +28,11 @@ async def production_block_reason(db: AsyncSession, order: Order) -> str | None:
 async def on_order_cancelled(db: AsyncSession, order_id: int) -> None:
     """B12: buyurtma bekor qilindi → rezerv bekor, material bo'shaydi."""
     await rezerv.cancel_for_order(db, order_id)
+
+
+async def reconcile(db: AsyncSession) -> list[solishtirish.Farq]:
+    """Kechki solishtirish natijasi (bo'sh — hammasi mos)."""
+    return await solishtirish.solishtir(db)
 
 
 async def expire_reservations(db: AsyncSession) -> int:

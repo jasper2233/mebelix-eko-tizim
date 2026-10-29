@@ -1,7 +1,7 @@
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Index, Numeric, String, Text
+from sqlalchemy import CheckConstraint, Index, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -31,6 +31,8 @@ class CatalogItem(BaseModel):
     __table_args__ = (
         # Kategoriya daraxti (katalog -> guruh) va guruh ichidagi tartib
         Index("ix_catalog_item_group", "catalog", "group_code", "model_no", "variant_no"),
+        # Qoldiq manfiy bo'lolmaydi — kod xato qilsa ham BAZA ushlaydi (EKO 2.4, prototip qoidasi)
+        CheckConstraint("quantity >= 0", name="ck_catalog_item_quantity_nonneg"),
     )
 
     #: To'liq variant kodi — `M-LD-054-03`. Katalogning yagona identifikatori.

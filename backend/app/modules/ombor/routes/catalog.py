@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -178,8 +179,8 @@ async def _create(db: SessionDep, body: CatalogItemCreate, cfg: WarehousePricing
         name=body.name.strip(),
         description=(body.description or "").strip() or None,
         unit=body.unit,
-        # Xizmat omborda saqlanmaydi — qoldiq va chegara yo'q
-        quantity=body.quantity if not xizmat else 0,  # type: ignore[arg-type]
+        # Qoldiq 0 dan boshlanadi: boshlang'ichi pastda HARAKAT bilan yoziladi (jurnal = qoldiq, EKO 2.4)
+        quantity=Decimal(0),
         min_quantity=None if xizmat else body.min_quantity,
         location=(body.location or "").strip() or None,
         purchase_price=body.purchase_price,
@@ -189,6 +190,9 @@ async def _create(db: SessionDep, body: CatalogItemCreate, cfg: WarehousePricing
         reprice(item, cfg)  # furnitura: sotuv ustamadan
     db.add(item)
     await db.flush()
+    # Xizmat omborda saqlanmaydi — qoldiq va chegara yo'q
+    if not xizmat and body.quantity:
+        await adjust_quantity(db, item, Decimal(body.quantity), None, note="Boshlang'ich qoldiq")
     return item
 
 

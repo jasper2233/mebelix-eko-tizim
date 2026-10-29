@@ -17,7 +17,7 @@ avval o'shandan oladi.
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import BaseModel
@@ -34,6 +34,7 @@ class MaterialBirlik(BaseModel):
     __table_args__ = (
         # Berishda: pozitsiyaning shu joydagi tirik birliklari, eng eskisi birinchi
         Index("ix_material_birlik_item_joy", "item_id", "joy", "id", postgresql_where=text("qoldiq > 0")),
+        CheckConstraint("qoldiq >= 0 AND qoldiq <= hajm", name="ck_material_birlik_qoldiq"),
     )
 
     #: Tizim barkodi `EK` + 7 raqam — id dan yasaladi (yaratilgandan keyin beriladi)

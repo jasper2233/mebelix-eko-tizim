@@ -72,6 +72,17 @@ async def main(apply: bool) -> None:
                     continue
                 v = r[key]
                 setattr(item, field, Decimal(str(v)) if isinstance(v, (int, float)) else str(v)[:200])
+                if field == "quantity" and item.quantity:
+                    # Jurnal = qoldiq (EKO 2.4): boshlang'ich qoldiq ham harakat bilan
+                    db.add(
+                        StockMovement(
+                            item_id=item.id,
+                            kind="boshlangich",
+                            qty=item.quantity,
+                            balance=item.quantity,
+                            note="Boshlang'ich qoldiq (ombor varag'i)",
+                        )
+                    )
                 sanoq[(field, bosh)] += 1
         for (field, _), n in sanoq.items():
             print(f"  {field:15} {n:5} ta to'ldiriladi")

@@ -446,7 +446,17 @@ async def expire_reservations(ctx: dict[str, Any]) -> str:
     return f"expired:{n}"
 
 
+async def ombor_solishtirish(ctx: dict[str, Any]) -> str:
+    """Kechki solishtirish (EKO 2.4): farq bo'lsa ERROR logi — monitoring ushlaydi. Hech narsani tuzatmaydi."""
+    async with local_session() as db:
+        farqlar = await ombor.reconcile(db)
+    for f in farqlar[:50]:
+        logger.error("ombor solishtirish: [%s] %s hisobda=%s kerak=%s — %s", f.tur, f.kalit, f.hisobda, f.kerak, f.izoh)
+    return f"farq:{len(farqlar)}"
+
+
 all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
 sync_downtimes_all = per_tenant_cron(sync_downtimes)
 close_idle_sessions_all = per_tenant_cron(close_idle_sessions)
 expire_reservations_all = per_tenant_cron(expire_reservations)
+ombor_solishtirish_all = per_tenant_cron(ombor_solishtirish)
