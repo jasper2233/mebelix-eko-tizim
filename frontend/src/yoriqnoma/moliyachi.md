@@ -66,6 +66,24 @@ Provodkalar o'zi yasaladi (kassa, ombor, buyurtma, soliq). Siz faqat:
 - **Schyotlar va qoidalar** — qaysi xarajat qaysi schyotga tushishini o'zgartirish (eski provodkalar tuzatish bilan
   qayta tasniflanadi, o'chirilmaydi).
 
+## Ish haqi (Moliya → Ish haqi)
+
+1. Har post uchun ishbay stavkani yozing: so'm / m² (arra, qadoqlash), / metr (kromka), / dona (qolgani).
+   Stavka yozilgan sanadan amal qiladi.
+2. Davrni tanlang (kechagi kun bilan tugaydi) — hodimlar bo'yicha hisob MES skanlaridan chiqadi. Stavkasi yo'q
+   post bo'lsa vedomost yozilmaydi.
+3. **Vedomost yozish**, keyin boshqa xodim **Tasdiqlaydi** (ikki kalit). Skan keyin o'zgargan bo'lsa tasdiq rad
+   etiladi — vedomostni bekor qilib, qaytadan yozing.
+4. Pulni kassadan **«Ish haqi (ishbay)»** moddasi bilan bering: u xarajat emas, ish haqi qarzini yopadi
+   (xarajat buyurtmalar tannarxida).
+
+## Tannarx (Moliya → Tannarx)
+
+Yetkazilgan buyurtmalarning to'liq tannarxi: material, kromka, mehnat, stanok vaqti, asbob — va foyda, marja.
+Pastda normalar: stanok soat narxi va asbob normasi (sverlo narxi ÷ resursi va h.k.). «Narxi yo'q» yozuvi
+chiqsa — shu normani to'ldiring. «OEE yo'qotishi pulda» — stanoklar to'xtab, sekin ishlab va brak tufayli
+yo'qotgan vaqt so'mda.
+
 ## Oy oxiri
 
 1. Barcha smenalar yopilgan, ombordagi qoralamalar tasdiqlangan bo'lsin.
