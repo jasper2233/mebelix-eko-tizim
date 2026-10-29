@@ -101,7 +101,7 @@ class StornoIn(BaseModel):
     sabab: Annotated[str, Field(min_length=1, max_length=200)]
 
 
-class OrderRead(BaseModel):
+class KassaOrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -130,7 +130,7 @@ class OrderRead(BaseModel):
 
 
 class AmalNatija(BaseModel):
-    orderlar: list[OrderRead]
+    orderlar: list[KassaOrderRead]
     xabar: str
     qaytim: Decimal | None = None
     #: «B-2026-101: material biriktirildi» / «… chegaraga yana N so'm kerak»

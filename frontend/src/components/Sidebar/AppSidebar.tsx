@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import {
   Activity,
+  Banknote,
   BarChart3,
   Bolt,
   Boxes,
@@ -40,6 +41,8 @@ import {
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
   isAdmin,
+  isKassa,
+  isKassaOnly,
   isManagement,
   isManager,
   isProductionStaff,
@@ -81,8 +84,9 @@ export const NAV_ITEMS: (Item & {
     icon: Home,
     title: "Boshqaruv paneli",
     path: "/",
-    show: (u) => !isWarehouseOnly(u),
+    show: (u) => !isWarehouseOnly(u) && !isKassaOnly(u),
   },
+  { icon: Banknote, title: "Kassa", path: "/kassa", show: isKassa },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",

@@ -263,6 +263,11 @@ export const isWarehouseWriter = (u?: RoleUser | null) =>
 /** Faqat omborni ko'radigan rol — boshqa sahifalari yo'q, kirgach to'g'ri
  *  `/warehouse` ga tushadi (`_layout` guard'i) */
 export const isWarehouseOnly = (u?: RoleUser | null) => u?.role === "skladchi"
+/** Kassa (EKO TZ §7, backend `KassaUser`): kassir va direktor */
+export const isKassa = (u?: RoleUser | null) =>
+  Boolean(u?.is_superuser || u?.role === "kassir" || u?.role === "director")
+/** Faqat kassa — kirgach to'g'ri `/kassa` ga tushadi (`_layout` guard'i) */
+export const isKassaOnly = (u?: RoleUser | null) => u?.role === "kassir"
 
 // Ish markazi bog'lami MAJBURIY rollar — qurilma akkauntlari (Admin dialoglarida
 // rol tanlovi, machine_id validatsiyasi va bog'lamni uzish shu ro'yxatdan)

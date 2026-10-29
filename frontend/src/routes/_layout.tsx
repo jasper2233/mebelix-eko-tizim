@@ -22,7 +22,7 @@ import {
 import { useIdleLogout } from "@/hooks/useIdleLogout"
 import { useMesWs } from "@/hooks/useMesWs"
 import { requireAuth } from "@/lib/guards"
-import { isWarehouseOnly, OPERATOR_ROLES } from "@/lib/mes"
+import { isKassaOnly, isWarehouseOnly, OPERATOR_ROLES } from "@/lib/mes"
 
 // Mobil sarlavhalar sidebar menyusi bilan BITTA manbadan (NAV_ITEMS) —
 // "/settings" menyuda yo'q (foydalanuvchi dropdown'ida), alohida qo'shiladi.
@@ -55,6 +55,12 @@ export const Route = createFileRoute("/_layout")({
       !OMBOR_YOLLARI.some((p) => location.pathname.startsWith(p))
     )
       throw redirect({ to: "/warehouse/panel" })
+    // Kassir ham xuddi shunday: uning ekrani faqat kassa (EKO TZ §7)
+    if (
+      isKassaOnly(me) &&
+      !["/kassa", "/settings"].some((p) => location.pathname.startsWith(p))
+    )
+      throw redirect({ to: "/kassa" })
   },
 })
 

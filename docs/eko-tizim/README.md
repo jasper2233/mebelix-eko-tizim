@@ -33,7 +33,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i | tayyor, MX klon bilan sinalgan | pastda |
 | 3f Ortiqcha berilgan materialni sexdan qaytarish | tayyor, brauzerda sinalgan | pastda |
 | 4a Kassa (backend): smena, PKO/RKO, aralash to'lov, qarz, qaytarish, o'tkazma, storno, rezerv | tayyor, lokal sinalgan | pastda |
-| 4b Kassa (kassir ekrani) | navbatda | |
+| 4b Kassa (kassir ekrani) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -330,4 +330,15 @@ paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES 
 - Rol `kassir` (o'rta daraja). API `/api/v1/kassa/...`. Orakl `kassa_oracle.py` 27/27.
 
 Ochiq: `advance_payment` maydonini kassa yoqilgach tahrirlashni yopish (hozir ikkalasi qo'shiladi); fiskal chek (9-bo'lim).
+
+### 4b — Kassir ekrani `/kassa`
+
+Prototip `Kassa.dc.html` tuzilishi: tepada smena, kassir, naqd qoldiq, smenadagi kirim/chiqim/karta; chapda to'lov
+navbati (qolgani bor buyurtmalar, qidiruv, «avans: N so'm» — rezerv chegarasigacha); o'rtada Kirim (avans, to'lov,
+qarz, boshqa; naqd/karta/bank/naqd+karta; «Eng kam avans» va «Hammasi» tugmalari; mijoz bergan pul → qaytim) va
+Chiqim (xarajat turkumlari, ta'minotchi, qaytarish, inkassatsiya); o'ngda smena orderlari. Smena ochish/yopish —
+kupyura bo'yicha sanash, kitob/kutilgan bilan farq, karta terminali Z. Rad xabarlari backenddan, o'zbekcha.
+Kassir (`kassir` roli) kirgach to'g'ri `/kassa` ga tushadi; sidebar «Kassa» — kassir va direktor.
+Demo: smena 2 500 000 → B-2026-101 avans 2 500 000 (berdi 2 600 000, qaytim 100 000) → «material biriktirildi»
+→ turkumsiz xarajat rad → 150 000 xarajat → yopishda 10 000 kam sanaldi → «Smena farqi» RKO avtomatik.
 

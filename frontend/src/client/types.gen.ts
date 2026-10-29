@@ -21,6 +21,28 @@ export type AgentRelease = {
 };
 
 /**
+ * AmalNatija
+ */
+export type AmalNatija = {
+    /**
+     * Orderlar
+     */
+    orderlar: Array<KassaOrderRead>;
+    /**
+     * Xabar
+     */
+    xabar: string;
+    /**
+     * Qaytim
+     */
+    qaytim?: string | null;
+    /**
+     * Rezerv
+     */
+    rezerv?: Array<string>;
+};
+
+/**
  * AndonCurrent
  *
  * Stanokning JONLI holati — agent oxirgi hodisa va snapshot'dan o'zi yig'adi.
@@ -1281,6 +1303,40 @@ export type CbRateRead = {
      * Diff
      */
     diff?: string | null;
+};
+
+/**
+ * ChiqimIn
+ */
+export type ChiqimIn = {
+    /**
+     * Maqsad
+     */
+    maqsad: 'taminotchi' | 'xarajat' | 'qaytarish' | 'inkassatsiya' | 'boshqa';
+    /**
+     * Hisob
+     */
+    hisob: 'naqd' | 'karta' | 'bank';
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Kontragent
+     */
+    kontragent?: string;
+    /**
+     * Turkum
+     */
+    turkum?: string;
+    /**
+     * Izoh
+     */
+    izoh?: string;
+    /**
+     * Order Id
+     */
+    order_id?: number | null;
 };
 
 /**
@@ -2997,6 +3053,28 @@ export type HealthCheck = {
 };
 
 /**
+ * HisobRead
+ */
+export type HisobRead = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Qoldiq
+     */
+    qoldiq: string;
+};
+
+/**
  * Holiday
  */
 export type Holiday = {
@@ -3485,6 +3563,138 @@ export type KalibStart = {
      * L Ref
      */
     L_ref: number;
+};
+
+/**
+ * KassaOrderRead
+ */
+export type KassaOrderRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Maqsad
+     */
+    maqsad: string;
+    /**
+     * Hisob
+     */
+    hisob?: string | null;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Valyuta Summa
+     */
+    valyuta_summa: string | null;
+    /**
+     * Kurs
+     */
+    kurs: string | null;
+    /**
+     * Order Id
+     */
+    order_id: number | null;
+    /**
+     * Order Number
+     */
+    order_number?: string | null;
+    /**
+     * Client Id
+     */
+    client_id: number | null;
+    /**
+     * Kontragent
+     */
+    kontragent: string;
+    /**
+     * Turkum
+     */
+    turkum: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Guruh
+     */
+    guruh: string | null;
+    /**
+     * Mijoz Berdi
+     */
+    mijoz_berdi: string | null;
+    /**
+     * Qaytim
+     */
+    qaytim: string | null;
+    /**
+     * Smena No
+     */
+    smena_no?: string | null;
+    /**
+     * Kassir
+     */
+    kassir?: string | null;
+    /**
+     * Storno Of Id
+     */
+    storno_of_id: number | null;
+    /**
+     * Storno No
+     */
+    storno_no?: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
+ * KirimIn
+ */
+export type KirimIn = {
+    /**
+     * Maqsad
+     */
+    maqsad: 'avans' | 'tolov' | 'qarz' | 'sotuv' | 'boshqa';
+    /**
+     * Tolovlar
+     */
+    tolovlar: Array<TolovIn>;
+    /**
+     * Order Id
+     */
+    order_id?: number | null;
+    /**
+     * Client Id
+     */
+    client_id?: number | null;
+    /**
+     * Stock Doc Id
+     */
+    stock_doc_id?: number | null;
+    /**
+     * Kontragent
+     */
+    kontragent?: string;
+    /**
+     * Izoh
+     */
+    izoh?: string;
+    /**
+     * Mijoz Berdi
+     */
+    mijoz_berdi?: number | string | null;
 };
 
 /**
@@ -4531,6 +4741,58 @@ export type MoveRead = {
 };
 
 /**
+ * NavbatRow
+ *
+ * To'lov navbati: summasi bor, to'liq to'lanmagan buyurtmalar (kassir chapdan tanlaydi).
+ */
+export type NavbatRow = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Client Id
+     */
+    client_id: number;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Telefon
+     */
+    telefon: string | null;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Tolangan
+     */
+    tolangan: string;
+    /**
+     * Qolgan
+     */
+    qolgan: string;
+    /**
+     * Chegara
+     */
+    chegara: string | null;
+    /**
+     * Chegaraga Kerak
+     */
+    chegaraga_kerak: string | null;
+    /**
+     * Holat
+     */
+    holat: string;
+};
+
+/**
  * OeeStart
  *
  * OEE hisobi shu kundan boshlanadi. `None` — cheklov yo'q (butun tarix).
@@ -4978,6 +5240,28 @@ export type OrdersReport = {
      * Rows
      */
     rows: Array<OrderReportRow>;
+};
+
+/**
+ * OtkazmaIn
+ */
+export type OtkazmaIn = {
+    /**
+     * Dan
+     */
+    dan: 'naqd' | 'karta' | 'bank';
+    /**
+     * Ga
+     */
+    ga: 'naqd' | 'karta' | 'bank';
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Izoh
+     */
+    izoh?: string;
 };
 
 /**
@@ -6271,6 +6555,131 @@ export type SlowRequest = {
 };
 
 /**
+ * SmenaHolat
+ */
+export type SmenaHolat = {
+    smena: SmenaRead | null;
+    /**
+     * Kirim
+     */
+    kirim?: string;
+    /**
+     * Chiqim
+     */
+    chiqim?: string;
+    /**
+     * Kutilgan
+     */
+    kutilgan?: string;
+    /**
+     * Karta
+     */
+    karta?: string;
+    /**
+     * Ochilish Farq
+     */
+    ochilish_farq?: string;
+    /**
+     * Hisoblar
+     */
+    hisoblar: Array<HisobRead>;
+};
+
+/**
+ * SmenaOchIn
+ */
+export type SmenaOchIn = {
+    /**
+     * Kupyura
+     */
+    kupyura: {
+        [key: string]: unknown | number;
+    };
+};
+
+/**
+ * SmenaRead
+ */
+export type SmenaRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Ochilgan At
+     */
+    ochilgan_at: string;
+    /**
+     * Ochilish Naqd
+     */
+    ochilish_naqd: string;
+    /**
+     * Ochilish Kitob
+     */
+    ochilish_kitob: string;
+    /**
+     * Yopilgan At
+     */
+    yopilgan_at: string | null;
+    /**
+     * Yopilish Naqd
+     */
+    yopilish_naqd: string | null;
+    /**
+     * Kirim
+     */
+    kirim: string | null;
+    /**
+     * Chiqim
+     */
+    chiqim: string | null;
+    /**
+     * Kutilgan
+     */
+    kutilgan: string | null;
+    /**
+     * Farq
+     */
+    farq: string | null;
+    /**
+     * Terminal Z
+     */
+    terminal_z: string | null;
+    /**
+     * Karta Tushum
+     */
+    karta_tushum: string | null;
+    /**
+     * Ochgan
+     */
+    ochgan?: string | null;
+    /**
+     * Yopgan
+     */
+    yopgan?: string | null;
+};
+
+/**
+ * SmenaYopIn
+ */
+export type SmenaYopIn = {
+    /**
+     * Kupyura
+     */
+    kupyura: {
+        [key: string]: unknown | number;
+    };
+    /**
+     * Terminal Z
+     */
+    terminal_z?: number | string | null;
+};
+
+/**
  * SorovIn
  */
 export type SorovIn = {
@@ -6392,16 +6801,6 @@ export type StockReport = {
      * Positions
      */
     positions: number;
-};
-
-/**
- * StornoIn
- */
-export type StornoIn = {
-    /**
-     * Sabab
-     */
-    sabab: string;
 };
 
 /**
@@ -7459,6 +7858,28 @@ export type Token = {
 };
 
 /**
+ * TolovIn
+ */
+export type TolovIn = {
+    /**
+     * Hisob
+     */
+    hisob: 'naqd' | 'karta' | 'bank';
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Valyuta Summa
+     */
+    valyuta_summa?: number | string | null;
+    /**
+     * Kurs
+     */
+    kurs?: number | string | null;
+};
+
+/**
  * TrendDay
  */
 export type TrendDay = {
@@ -7656,7 +8077,7 @@ export type UserRead = {
 /**
  * UserRole
  */
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'skladchi';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'skladchi' | 'kassir';
 
 /**
  * UserUpdate
@@ -7866,6 +8287,26 @@ export type YorliqIn = {
      * Ishlab Kod
      */
     ishlab_kod?: string | null;
+};
+
+/**
+ * StornoIn
+ */
+export type AppModulesKassaSchemasStornoIn = {
+    /**
+     * Sabab
+     */
+    sabab: string;
+};
+
+/**
+ * StornoIn
+ */
+export type AppModulesOmborSchemasStockStornoIn = {
+    /**
+     * Sabab
+     */
+    sabab: string;
 };
 
 export type HealthApiV1HealthGetData = {
@@ -10772,7 +11213,7 @@ export type ConfirmStockDocResponses = {
 export type ConfirmStockDocResponse = ConfirmStockDocResponses[keyof ConfirmStockDocResponses];
 
 export type StornoStockDocData = {
-    body: StornoIn;
+    body: AppModulesOmborSchemasStockStornoIn;
     path: {
         /**
          * Doc Id
@@ -11798,6 +12239,303 @@ export type KroyPackagePushResponses = {
      */
     200: unknown;
 };
+
+export type KassaHolatData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/holat';
+};
+
+export type KassaHolatResponses = {
+    /**
+     * Successful Response
+     */
+    200: SmenaHolat;
+};
+
+export type KassaHolatResponse = KassaHolatResponses[keyof KassaHolatResponses];
+
+export type KassaSmenaOchData = {
+    body: SmenaOchIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/smena/ochish';
+};
+
+export type KassaSmenaOchErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaSmenaOchError = KassaSmenaOchErrors[keyof KassaSmenaOchErrors];
+
+export type KassaSmenaOchResponses = {
+    /**
+     * Successful Response
+     */
+    200: SmenaRead;
+};
+
+export type KassaSmenaOchResponse = KassaSmenaOchResponses[keyof KassaSmenaOchResponses];
+
+export type KassaSmenaYopData = {
+    body: SmenaYopIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/smena/yopish';
+};
+
+export type KassaSmenaYopErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaSmenaYopError = KassaSmenaYopErrors[keyof KassaSmenaYopErrors];
+
+export type KassaSmenaYopResponses = {
+    /**
+     * Successful Response
+     */
+    200: SmenaRead;
+};
+
+export type KassaSmenaYopResponse = KassaSmenaYopResponses[keyof KassaSmenaYopResponses];
+
+export type KassaSmenalarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/kassa/smenalar';
+};
+
+export type KassaSmenalarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaSmenalarError = KassaSmenalarErrors[keyof KassaSmenalarErrors];
+
+export type KassaSmenalarResponses = {
+    /**
+     * Response Kassa Smenalar
+     *
+     * Successful Response
+     */
+    200: Array<SmenaRead>;
+};
+
+export type KassaSmenalarResponse = KassaSmenalarResponses[keyof KassaSmenalarResponses];
+
+export type KassaNavbatData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+    };
+    url: '/api/v1/kassa/navbat';
+};
+
+export type KassaNavbatErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaNavbatError = KassaNavbatErrors[keyof KassaNavbatErrors];
+
+export type KassaNavbatResponses = {
+    /**
+     * Response Kassa Navbat
+     *
+     * Successful Response
+     */
+    200: Array<NavbatRow>;
+};
+
+export type KassaNavbatResponse = KassaNavbatResponses[keyof KassaNavbatResponses];
+
+export type KassaKirimData = {
+    body: KirimIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/kirim';
+};
+
+export type KassaKirimErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaKirimError = KassaKirimErrors[keyof KassaKirimErrors];
+
+export type KassaKirimResponses = {
+    /**
+     * Successful Response
+     */
+    200: AmalNatija;
+};
+
+export type KassaKirimResponse = KassaKirimResponses[keyof KassaKirimResponses];
+
+export type KassaChiqimData = {
+    body: ChiqimIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/chiqim';
+};
+
+export type KassaChiqimErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaChiqimError = KassaChiqimErrors[keyof KassaChiqimErrors];
+
+export type KassaChiqimResponses = {
+    /**
+     * Successful Response
+     */
+    200: AmalNatija;
+};
+
+export type KassaChiqimResponse = KassaChiqimResponses[keyof KassaChiqimResponses];
+
+export type KassaOtkazmaData = {
+    body: OtkazmaIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/otkazma';
+};
+
+export type KassaOtkazmaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaOtkazmaError = KassaOtkazmaErrors[keyof KassaOtkazmaErrors];
+
+export type KassaOtkazmaResponses = {
+    /**
+     * Successful Response
+     */
+    200: AmalNatija;
+};
+
+export type KassaOtkazmaResponse = KassaOtkazmaResponses[keyof KassaOtkazmaResponses];
+
+export type KassaOrderlarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Smena Id
+         */
+        smena_id?: number | null;
+        /**
+         * Order Id
+         */
+        order_id?: number | null;
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/kassa/orderlar';
+};
+
+export type KassaOrderlarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaOrderlarError = KassaOrderlarErrors[keyof KassaOrderlarErrors];
+
+export type KassaOrderlarResponses = {
+    /**
+     * Response Kassa Orderlar
+     *
+     * Successful Response
+     */
+    200: Array<KassaOrderRead>;
+};
+
+export type KassaOrderlarResponse = KassaOrderlarResponses[keyof KassaOrderlarResponses];
+
+export type KassaStornoData = {
+    body: AppModulesKassaSchemasStornoIn;
+    path: {
+        /**
+         * Kassa Order Id
+         */
+        kassa_order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/kassa/orderlar/{kassa_order_id}/storno';
+};
+
+export type KassaStornoErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KassaStornoError = KassaStornoErrors[keyof KassaStornoErrors];
+
+export type KassaStornoResponses = {
+    /**
+     * Successful Response
+     */
+    200: AmalNatija;
+};
+
+export type KassaStornoResponse = KassaStornoResponses[keyof KassaStornoResponses];
+
+export type KassaTurkumlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/kassa/turkumlar';
+};
+
+export type KassaTurkumlarResponses = {
+    /**
+     * Response Kassa Turkumlar
+     *
+     * Successful Response
+     */
+    200: Array<string>;
+};
+
+export type KassaTurkumlarResponse = KassaTurkumlarResponses[keyof KassaTurkumlarResponses];
 
 export type KroyHolatData = {
     body?: never;

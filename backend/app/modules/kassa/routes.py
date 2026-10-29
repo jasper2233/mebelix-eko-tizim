@@ -17,9 +17,9 @@ from app.modules.kassa.schemas import (
     AmalNatija,
     ChiqimIn,
     HisobRead,
+    KassaOrderRead,
     KirimIn,
     NavbatRow,
-    OrderRead,
     OtkazmaIn,
     SmenaHolat,
     SmenaOchIn,
@@ -63,7 +63,7 @@ async def _smena_read(db: SessionDep, sm: KassaSmena) -> SmenaRead:
     )
 
 
-async def _orders_read(db: SessionDep, rows: list[KassaOrder]) -> list[OrderRead]:
+async def _orders_read(db: SessionDep, rows: list[KassaOrder]) -> list[KassaOrderRead]:
     ids = [o.id for o in rows]
     if not ids:
         return []
@@ -94,7 +94,7 @@ async def _orders_read(db: SessionDep, rows: list[KassaOrder]) -> list[OrderRead
         .all()
     )
     return [
-        OrderRead.model_validate(o).model_copy(
+        KassaOrderRead.model_validate(o).model_copy(
             update={
                 "hisob": hisob.get(o.hisob_id),
                 "order_number": nums.get(o.order_id or 0),
@@ -275,7 +275,7 @@ async def kassa_otkazma(db: SessionDep, user: KassaUser, body: OtkazmaIn, reques
     return await _natija(db, n)
 
 
-@router.get("/orderlar", response_model=list[OrderRead], operation_id="kassa_orderlar")
+@router.get("/orderlar", response_model=list[KassaOrderRead], operation_id="kassa_orderlar")
 async def kassa_orderlar(
     db: SessionDep,
     _: KassaUser,
@@ -283,7 +283,7 @@ async def kassa_orderlar(
     order_id: int | None = None,
     q: Annotated[str, Query(max_length=60)] = "",
     limit: int = Query(200, ge=1, le=2000),
-) -> list[OrderRead]:
+) -> list[KassaOrderRead]:
     """Orderlar jurnali: smena, buyurtma yoki qidiruv (order №, kontragent) bo'yicha."""
     stmt: Any = select(KassaOrder).order_by(KassaOrder.id.desc()).limit(limit)
     if smena_id is not None:
