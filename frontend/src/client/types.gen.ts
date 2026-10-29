@@ -5827,6 +5827,10 @@ export type RezervLineRead = {
      * Qoplangan Qty
      */
     qoplangan_qty: string;
+    /**
+     * Berilgan Qty
+     */
+    berilgan_qty?: string;
 };
 
 /**

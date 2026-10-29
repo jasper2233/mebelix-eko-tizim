@@ -157,12 +157,16 @@ function RezervBody({ data }: { data: RezervRead }) {
             <TableHead>Material</TableHead>
             <TableHead className="text-right">Kerak</TableHead>
             <TableHead className="text-right">Band</TableHead>
+            <TableHead className="text-right">Berilgan</TableHead>
             <TableHead className="text-right">Yetmaydi</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.lines.map((l) => {
             const yetmaydi = num(l.kerak_qty) - num(l.qoplangan_qty)
+            // Band — omborda shu buyurtmaga ajratilgani (sexga hali berilmagan); berilgan — sexda
+            const band = Math.max(num(l.qoplangan_qty) - num(l.berilgan_qty), 0)
+            const ortiqcha = num(l.berilgan_qty) - num(l.kerak_qty)
             return (
               <TableRow key={l.id}>
                 <TableCell>
@@ -185,7 +189,15 @@ function RezervBody({ data }: { data: RezervRead }) {
                     : `${fmtQty(l.kerak_qty)} ${l.item_unit ?? ""}`}
                 </TableCell>
                 <TableCell className="num text-right">
-                  {l.item_id == null ? "—" : fmtQty(l.qoplangan_qty)}
+                  {l.item_id == null ? "—" : band > 0 ? fmtQty(band) : "—"}
+                </TableCell>
+                <TableCell className="num text-right">
+                  {num(l.berilgan_qty) > 0 ? fmtQty(l.berilgan_qty) : "—"}
+                  {ortiqcha > 0 && (
+                    <div className="text-xs font-semibold text-amber-700">
+                      ortiqcha {fmtQty(ortiqcha)} — sexdan qaytarish
+                    </div>
+                  )}
                 </TableCell>
                 <TableCell
                   className={cn(

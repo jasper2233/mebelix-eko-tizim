@@ -116,13 +116,26 @@ async def order_body(db: AsyncSession, order: Order) -> dict[str, Any]:
 
 
 async def ochish(db: AsyncSession, order: Order, user: User) -> tuple[KroyLoyiha, str]:
-    """MX loyihasini yaratadi yoki yangilaydi va brauzer manzilini qaytaradi (`commit` — chaqiruvchida)."""
+    """MX loyihasini (faqat bog'lanmagan bo'lsa) yaratadi va brauzer manzilini qaytaradi (`commit` — chaqiruvchida).
+
+    Bog'langan loyiha QAYTA YUBORILMAYDI: MX `merge_order` MES dan kelgan mahsulotlar ro'yxatini MES niki deb
+    biladi — detalsiz sarlavha yuborilsa kroychining MX da yuklagan detallari va CS operatsiyasi o'chib ketardi
+    (brauzerda ko'rilgan, EKO 3d). Loyiha MX da o'chirilgan bo'lsa (404) — qaytadan yaratiladi."""
     if not enabled():
         raise KroyXato("MX Kroy ulanmagan (MX_URL, MX_SSO_PRIVATE_KEY).")
     token = sso_token(user)
     link = (
         await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id).with_for_update())
     ).scalar_one_or_none()
+    if link is not None:
+        code, p = await _mx("GET", f"/projects/{link.project_id}")
+        if code == 200 and isinstance(p, dict):
+            link.holat = int(p.get("status") or link.holat)
+            public = (settings.MX_PUBLIC_URL or settings.MX_URL or "").rstrip("/")
+            return link, f"{public}/?token={token}#/p/{link.project_id}"
+        if code != 404:
+            detail = p.get("detail") if isinstance(p, dict) else None
+            raise KroyXato(f"MX Kroy loyihani bermadi ({code}): {detail or ''}".strip())
     code, p = await _mx("POST", "/mes/orders", await order_body(db, order))
     if code == 200 and isinstance(p, dict):
         if link is None:

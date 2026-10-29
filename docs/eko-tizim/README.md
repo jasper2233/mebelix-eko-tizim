@@ -225,8 +225,9 @@ Ochiq: MX bo'lagining jismoniy yorlig'i — K2 paketidagi qoldiq (`waste_item`, 
 
 - Buyurtma sahifasida «Kroy (MX)» (admin, direktor, texnolog, menejer): `POST /integ/kroy/orders/{id}/ochish`
   MX `POST /api/mes/orders` ga sarlavha yuboradi (`mes_order_ref` = buyurtma raqami, mijoz, sanalar), `kroy_loyiha`
-  ga bog'laydi va brauzerni `{MX_PUBLIC_URL}/?token=…#/p/{pid}` ga ochadi. Qayta bosish — o'sha loyiha yangilanadi;
-  MX da tasdiqlangan (409) — o'sha loyiha ochiladi. Detallarni kroychi MX da `.project` dan yuklaydi.
+  ga bog'laydi va brauzerni `{MX_PUBLIC_URL}/?token=…#/p/{pid}` ga ochadi. Bog'langan loyiha QAYTA YUBORILMAYDI —
+  faqat ochiladi (MX `merge_order` detalsiz sarlavhani olib kroychining detallarini va CS operatsiyasini o'chirib
+  yuborardi — brauzerda ko'rilgan xato); MX da o'chirilgan bo'lsa (404) — qaytadan yaratiladi. Detallarni kroychi MX da `.project` dan yuklaydi.
 - SSO: MES RS256 bilan imzolaydi (`MX_SSO_PRIVATE_KEY`), MX faqat ochiq kalitni biladi (`MEBELIX_JWT_PUBLIC_KEY`).
   Kalit jufti: `python -m app.commands.kroy_kalit`. Rollar: admin/direktor → `admin`, texnolog → `texnolog`+`kroychi`,
   menejer/skladchi → `ko'ruvchi` (MX da faqat o'qish, tahrir 403), sex rollari — ochilmaydi. Sessiya 8 soat

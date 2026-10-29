@@ -19,6 +19,8 @@ class RezervLineRead(BaseModel):
     item_unit: str | None = None
     kerak_qty: Decimal
     qoplangan_qty: Decimal
+    #: Sexga berilgan; kerakdan ko'p bo'lsa — kroy berilgandan keyin o'zgargan, ortig'i qaytariladi
+    berilgan_qty: Decimal = Decimal(0)
 
 
 class RezervRead(BaseModel):

@@ -109,14 +109,17 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
     """Buyurtma rezervini (qayta) quradi. Eski tirik rezerv bekor qilinadi, to'lov saqlanadi (TZ §4.3 8-band).
     To'liq berilgan (`sarflandi`) rezerv ham almashtiriladi — aks holda kroy qayta yuklanganda berilgan
     material hisobdan tushib qolardi (orakl topgan, EKO 3c)."""
-    old = await _tirik(db, order.id) or (
-        await db.execute(
-            select(Rezerv)
-            .where(Rezerv.order_id == order.id, Rezerv.holat == SARFLANDI, Rezerv.is_deleted == False)  # noqa: E712
-            .order_by(Rezerv.id.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
+    old = (
+        await _tirik(db, order.id)
+        or (
+            await db.execute(
+                select(Rezerv)
+                .where(Rezerv.order_id == order.id, Rezerv.holat == SARFLANDI, Rezerv.is_deleted == False)  # noqa: E712
+                .order_by(Rezerv.id.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+    )
     #: Eski rezervdan sexga allaqachon berilgani (pozitsiya bo'yicha) — TO'LIQ ko'chadi: yangi kroyga
     #: kamroq kerak bo'lsa ham berilgani kesilmaydi (ortig'i sexda — omborchi qaytaradi), yangi kroyda
     #: umuman yo'q material ham «kerak 0, berilgan N» qatori bo'lib qoladi. Aks holda ortiqcha
