@@ -337,6 +337,186 @@ export type BazisState = {
 };
 
 /**
+ * BerishLine
+ *
+ * Berish varaqasining qatori — bitta material.
+ */
+export type BerishLine = {
+    /**
+     * Line Id
+     */
+    line_id: number;
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Code
+     */
+    code: string | null;
+    /**
+     * Unit
+     */
+    unit: string | null;
+    /**
+     * Birlikli
+     */
+    birlikli: boolean;
+    /**
+     * Rulon
+     */
+    rulon: boolean;
+    /**
+     * Kerak
+     */
+    kerak: string;
+    /**
+     * Berilgan
+     */
+    berilgan: string;
+    /**
+     * Qoldi
+     */
+    qoldi: string;
+    /**
+     * Sexda
+     */
+    sexda: Array<BirlikRead>;
+    /**
+     * Omborda
+     */
+    omborda: number;
+    /**
+     * Yorliqsiz
+     */
+    yorliqsiz: string;
+};
+
+/**
+ * BerishOrder
+ *
+ * Berish navbatidagi buyurtma: rezervi tirik (faol/yechildi).
+ */
+export type BerishOrder = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Client
+     */
+    client: string | null;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Tosiq
+     */
+    tosiq: string | null;
+    /**
+     * Qatorlar
+     */
+    qatorlar: number;
+    /**
+     * Tayyor
+     */
+    tayyor: number;
+};
+
+/**
+ * BerishRead
+ */
+export type BerishRead = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Holat
+     */
+    holat: string | null;
+    /**
+     * Tosiq
+     */
+    tosiq: string | null;
+    /**
+     * Lines
+     */
+    lines: Array<BerishLine>;
+};
+
+/**
+ * BirlikRead
+ */
+export type BirlikRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Barkod
+     */
+    barkod: string | null;
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Item Name
+     */
+    item_name?: string | null;
+    /**
+     * Item Code
+     */
+    item_code?: string | null;
+    /**
+     * Unit
+     */
+    unit?: string | null;
+    /**
+     * Ishlab Kod
+     */
+    ishlab_kod: string | null;
+    /**
+     * Hajm
+     */
+    hajm: string;
+    /**
+     * Qoldiq
+     */
+    qoldiq: string;
+    /**
+     * Joy
+     */
+    joy: string;
+    /**
+     * Order Id
+     */
+    order_id: number | null;
+    /**
+     * Sexga At
+     */
+    sexga_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * Body_login_access_token
  */
 export type BodyLoginAccessToken = {
@@ -794,6 +974,14 @@ export type CatalogItemRead = {
      * Tracked
      */
     tracked: boolean;
+    /**
+     * Birlik Hajm
+     */
+    birlik_hajm?: string | null;
+    /**
+     * Ishlab Barkod
+     */
+    ishlab_barkod?: string | null;
 };
 
 /**
@@ -861,6 +1049,14 @@ export type CatalogItemUpdate = {
      * Tracked
      */
     tracked?: boolean | null;
+    /**
+     * Birlik Hajm
+     */
+    birlik_hajm?: number | string | null;
+    /**
+     * Ishlab Barkod
+     */
+    ishlab_barkod?: string | null;
 };
 
 /**
@@ -946,6 +1142,10 @@ export type CatalogRow = {
      * Tracked
      */
     tracked: boolean;
+    /**
+     * Birlik Hajm
+     */
+    birlik_hajm?: string | null;
     /**
      * Narx Qolda
      */
@@ -2064,6 +2264,10 @@ export type DocLineIn = {
      * Note
      */
     note?: string;
+    /**
+     * Hajm
+     */
+    hajm?: number | string | null;
 };
 
 /**
@@ -2122,6 +2326,10 @@ export type DocLineRead = {
      * Book Qty
      */
     book_qty?: string | null;
+    /**
+     * Hajm
+     */
+    hajm?: string | null;
 };
 
 /**
@@ -5856,6 +6064,35 @@ export type ShortageRead = {
 };
 
 /**
+ * SkanIn
+ */
+export type SkanIn = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Qty
+     */
+    qty?: number | string | null;
+};
+
+/**
+ * SkanNatija
+ */
+export type SkanNatija = {
+    /**
+     * Xabar
+     */
+    xabar: string;
+    /**
+     * Ogohlantirish
+     */
+    ogohlantirish: Array<string>;
+    varaqa: BerishRead;
+};
+
+/**
  * SlowRequest
  */
 export type SlowRequest = {
@@ -7392,6 +7629,30 @@ export type WorkShift = {
      * Breaks
      */
     breaks?: Array<WorkBreak>;
+};
+
+/**
+ * YorliqIn
+ *
+ * Eski (barkodsiz) qoldiqni yorliqlash: `soni` ta birlik, har biri `hajm` (listda 1).
+ */
+export type YorliqIn = {
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Soni
+     */
+    soni: number;
+    /**
+     * Hajm
+     */
+    hajm?: number | string | null;
+    /**
+     * Ishlab Kod
+     */
+    ishlab_kod?: string | null;
 };
 
 export type HealthApiV1HealthGetData = {
@@ -10584,6 +10845,241 @@ export type MapProjectMaterialResponses = {
 };
 
 export type MapProjectMaterialResponse = MapProjectMaterialResponses[keyof MapProjectMaterialResponses];
+
+export type ListBerishOrdersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/berish';
+};
+
+export type ListBerishOrdersResponses = {
+    /**
+     * Response List Berish Orders
+     *
+     * Successful Response
+     */
+    200: Array<BerishOrder>;
+};
+
+export type ListBerishOrdersResponse = ListBerishOrdersResponses[keyof ListBerishOrdersResponses];
+
+export type ReadBerishVaraqaData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/berish/{order_id}';
+};
+
+export type ReadBerishVaraqaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadBerishVaraqaError = ReadBerishVaraqaErrors[keyof ReadBerishVaraqaErrors];
+
+export type ReadBerishVaraqaResponses = {
+    /**
+     * Successful Response
+     */
+    200: BerishRead;
+};
+
+export type ReadBerishVaraqaResponse = ReadBerishVaraqaResponses[keyof ReadBerishVaraqaResponses];
+
+export type BerishSkanData = {
+    body: SkanIn;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/berish/{order_id}/skan';
+};
+
+export type BerishSkanErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BerishSkanError = BerishSkanErrors[keyof BerishSkanErrors];
+
+export type BerishSkanResponses = {
+    /**
+     * Successful Response
+     */
+    200: SkanNatija;
+};
+
+export type BerishSkanResponse = BerishSkanResponses[keyof BerishSkanResponses];
+
+export type ReadBirlikData = {
+    body?: never;
+    path: {
+        /**
+         * Barkod
+         */
+        barkod: string;
+    };
+    query?: never;
+    url: '/api/v1/ombor/birlik/{barkod}';
+};
+
+export type ReadBirlikErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadBirlikError = ReadBirlikErrors[keyof ReadBirlikErrors];
+
+export type ReadBirlikResponses = {
+    /**
+     * Successful Response
+     */
+    200: BirlikRead;
+};
+
+export type ReadBirlikResponse = ReadBirlikResponses[keyof ReadBirlikResponses];
+
+export type ListBirliklarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Item Id
+         */
+        item_id?: number | null;
+        /**
+         * Joy
+         */
+        joy?: string | null;
+        /**
+         * Doc Id
+         */
+        doc_id?: number | null;
+    };
+    url: '/api/v1/ombor/birliklar';
+};
+
+export type ListBirliklarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListBirliklarError = ListBirliklarErrors[keyof ListBirliklarErrors];
+
+export type ListBirliklarResponses = {
+    /**
+     * Response List Birliklar
+     *
+     * Successful Response
+     */
+    200: Array<BirlikRead>;
+};
+
+export type ListBirliklarResponse = ListBirliklarResponses[keyof ListBirliklarResponses];
+
+export type YorliqBirlikData = {
+    body: YorliqIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/birlik/yorliq';
+};
+
+export type YorliqBirlikErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type YorliqBirlikError = YorliqBirlikErrors[keyof YorliqBirlikErrors];
+
+export type YorliqBirlikResponses = {
+    /**
+     * Response Yorliq Birlik
+     *
+     * Successful Response
+     */
+    200: Array<BirlikRead>;
+};
+
+export type YorliqBirlikResponse = YorliqBirlikResponses[keyof YorliqBirlikResponses];
+
+export type BirlikTugadiData = {
+    body?: never;
+    path: {
+        /**
+         * Barkod
+         */
+        barkod: string;
+    };
+    query?: never;
+    url: '/api/v1/ombor/birlik/{barkod}/tugadi';
+};
+
+export type BirlikTugadiErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BirlikTugadiError = BirlikTugadiErrors[keyof BirlikTugadiErrors];
+
+export type BirlikTugadiResponses = {
+    /**
+     * Successful Response
+     */
+    200: BirlikRead;
+};
+
+export type BirlikTugadiResponse = BirlikTugadiResponses[keyof BirlikTugadiResponses];
+
+export type BirlikOmborgaData = {
+    body?: never;
+    path: {
+        /**
+         * Barkod
+         */
+        barkod: string;
+    };
+    query?: never;
+    url: '/api/v1/ombor/birlik/{barkod}/omborga';
+};
+
+export type BirlikOmborgaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BirlikOmborgaError = BirlikOmborgaErrors[keyof BirlikOmborgaErrors];
+
+export type BirlikOmborgaResponses = {
+    /**
+     * Successful Response
+     */
+    200: BirlikRead;
+};
+
+export type BirlikOmborgaResponse = BirlikOmborgaResponses[keyof BirlikOmborgaResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

@@ -12,6 +12,8 @@ Pozitsiyalar: A (list, `M`), K (kromka, metr, rulon 100 m), C (furnitura, dona �
     8) A dan 1 sotuv → eng eski ombordagi list barkodi yopiladi (birliklar ≤ qoldiq).
     9) yorliqlash: qoldiq +2 tuzatish → 2 yorliqsiz → 2 barkod; ortig'i rad.
    10) buyurtma 2 rezervi qayta qurilsa berilgan K saqlanadi.
+   11) K 130: buyurtma 4 100 m band qiladi, buyurtma 3 (120 m) faqat 30 m qoplangan — rulon 2 (100)
+       skanerlansa 30 m beriladi (ogohlantirish bilan), qolgan 70 m sexda; bandsiz rulon — rad.
 Yurgizish (lokal sinov bazasi, katalog yuklangan, prod EMAS):
     cd backend && uv run python ../scripts/oracles/berish_oracle.py
 """
@@ -208,6 +210,20 @@ async def main() -> None:
         lk = await line(db, o2.id, k.id)
         tek("K berilgan 20, qoplangan 20", (lk.berilgan_qty, lk.qoplangan_qty), (D(20), D(20)))
         tek("K band 0", (await rezerv.reserved_qty(db, [k.id])).get(k.id, D(0)), D(0))
+
+        print("11) rulondan faqat band + erkin qism")
+        o4 = order("BR-4", [{"name": "Kromka", "code": "KK", "kind": "band", "count": 100, "unit": "metr"}])
+        o3 = order("BR-3", [{"name": "Kromka", "code": "KK", "kind": "band", "count": 120, "unit": "metr"}])
+        await db.flush()
+        await rezerv.reserve_for_order(db, o4)
+        await rezerv.reserve_for_order(db, o3)
+        await rezerv.approve(db, o3.id, None)
+        tek("o3 qoplangan 30", (await line(db, o3.id, k.id)).qoplangan_qty, D(30))
+        n = await berish.skan_birlik(db, o3, uk[1].barkod, None)
+        tek("30 m berildi", n.sarf, D(30))
+        tek("ogohlantirish: band", any("boshqa buyurtmalarga band" in w for w in n.ogohlantirish), True)
+        tek("rulon 2 sexda 70", (uk[1].joy, uk[1].qoldiq), ("sex", D(70)))
+        await rad("bandsiz qoldiq yo'q", berish.skan_birlik(db, o3, uk[2].barkod, None), "Ta'minot kerak")
 
         await db.rollback()  # sinov ma'lumoti bazada qolmaydi
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")

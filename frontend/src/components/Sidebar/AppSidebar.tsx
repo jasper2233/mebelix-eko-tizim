@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   MonitorCog,
   Ruler,
+  ScanLine,
   ScrollText,
   SlidersHorizontal,
   TriangleAlert,
@@ -199,6 +200,14 @@ export const NAV_ITEMS: (Item & {
         path: "/warehouse/taminot",
         match: (_s: Record<string, unknown>, p: string) =>
           p === "/warehouse/taminot",
+      },
+      // Kroy bo'yicha materialni sexga skaner bilan berish (EKO TZ §4.4)
+      {
+        icon: ScanLine,
+        title: "Material berish",
+        path: "/warehouse/berish",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/berish" || p === "/warehouse/yorliq",
       },
       {
         icon: FileText,

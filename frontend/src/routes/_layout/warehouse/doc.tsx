@@ -98,6 +98,8 @@ type Line = {
   price: string
   disc: string
   note: string
+  //: Kirim, metrdagi pozitsiya: bitta rulon uzunligi (bo'sh — katalogdagi)
+  hajm: string
 }
 type Draft = {
   id?: number
@@ -117,6 +119,7 @@ const blankLine = (): Line => ({
   price: "",
   disc: "",
   note: "",
+  hajm: "",
 })
 const today = () => new Date().toLocaleDateString("sv-SE")
 const blank = (kind: Kind, me: string, rate?: string): Draft => ({
@@ -173,6 +176,7 @@ const fromServer = (d: DocRead): Draft => ({
       price: num(l.price) ? String(num(l.price)) : "",
       disc: num(l.discount) ? String(num(l.discount)) : "",
       note: l.note,
+      hajm: l.hajm != null ? String(num(l.hajm)) : "",
     })),
     blankLine(),
   ],
@@ -340,6 +344,7 @@ function Editor({
       price: parseNum(l.price) ?? 0,
       discount: isK ? 0 : (parseNum(l.disc) ?? 0),
       note: l.note,
+      hajm: isK && parseNum(l.hajm) ? parseNum(l.hajm) : null,
     })),
   })
   const reset = () => {
@@ -1030,6 +1035,24 @@ function LineRow({
             }
           }}
         />
+        {isK && item?.unit === "metr" && (
+          // Har rulon alohida barkod oladi (EKO TZ §4.4): miqdor shu uzunlik bo'yicha rulonlarga bo'linadi
+          <Input
+            className="num mt-1 h-7 text-right text-xs"
+            inputMode="decimal"
+            placeholder={
+              item.birlik_hajm != null
+                ? `rulon ${fmtQty(item.birlik_hajm)} m`
+                : "1 rulon, m"
+            }
+            title="Bitta rulon necha metr"
+            value={l.hajm}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange({ hajm: e.target.value.replace(/[^0-9.,]/g, "") })
+            }
+          />
+        )}
       </TableCell>
       <TableCell>
         <Input
@@ -1302,6 +1325,14 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
           Tasdiqlangan
         </span>
         <span className="text-sm text-muted-foreground">{doc.doc_date}</span>
+        {isK && (
+          // Kirimda list/rulon barkod oladi (EKO TZ §4.4) — yorliqlar shu hujjat bo'yicha
+          <Button variant="outline" asChild>
+            <Link to="/warehouse/yorliq" search={{ doc: doc.id }}>
+              <Printer /> Barkod yorliqlari
+            </Link>
+          </Button>
+        )}
         {isC && (
           <Button
             variant="outline"

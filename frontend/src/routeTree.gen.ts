@@ -33,6 +33,7 @@ import { Route as LayoutCutmapOrderIdRouteImport } from './routes/_layout/cutmap
 import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/index'
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
 import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
+import { Route as LayoutWarehouseBerishRouteImport } from './routes/_layout/warehouse/berish'
 import { Route as LayoutWarehouseDocRouteImport } from './routes/_layout/warehouse/doc'
 import { Route as LayoutWarehouseDocsRouteImport } from './routes/_layout/warehouse/docs'
 import { Route as LayoutWarehouseHisobotRouteImport } from './routes/_layout/warehouse/hisobot'
@@ -40,6 +41,7 @@ import { Route as LayoutWarehouseInvRouteImport } from './routes/_layout/warehou
 import { Route as LayoutWarehousePanelRouteImport } from './routes/_layout/warehouse/panel'
 import { Route as LayoutWarehouseSexSarfiRouteImport } from './routes/_layout/warehouse/sex-sarfi'
 import { Route as LayoutWarehouseTaminotRouteImport } from './routes/_layout/warehouse/taminot'
+import { Route as LayoutWarehouseYorliqRouteImport } from './routes/_layout/warehouse/yorliq'
 import { Route as LayoutWorkCentersIndexRouteImport } from './routes/_layout/work-centers/index'
 import { Route as LayoutWorkCentersMachineIdRouteImport } from './routes/_layout/work-centers/$machineId'
 import { Route as LayoutWarehouseItemCodeRouteImport } from './routes/_layout/warehouse/item.$code'
@@ -163,6 +165,11 @@ const LayoutWarehouseIndexRoute = LayoutWarehouseIndexRouteImport.update({
   path: '/warehouse/',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseBerishRoute = LayoutWarehouseBerishRouteImport.update({
+  id: '/warehouse/berish',
+  path: '/warehouse/berish',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWarehouseDocRoute = LayoutWarehouseDocRouteImport.update({
   id: '/warehouse/doc',
   path: '/warehouse/doc',
@@ -196,6 +203,11 @@ const LayoutWarehouseSexSarfiRoute = LayoutWarehouseSexSarfiRouteImport.update({
 const LayoutWarehouseTaminotRoute = LayoutWarehouseTaminotRouteImport.update({
   id: '/warehouse/taminot',
   path: '/warehouse/taminot',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutWarehouseYorliqRoute = LayoutWarehouseYorliqRouteImport.update({
+  id: '/warehouse/yorliq',
+  path: '/warehouse/yorliq',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutWorkCentersIndexRoute = LayoutWorkCentersIndexRouteImport.update({
@@ -237,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/berish': typeof LayoutWarehouseBerishRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -244,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/warehouse/taminot': typeof LayoutWarehouseTaminotRoute
+  '/warehouse/yorliq': typeof LayoutWarehouseYorliqRoute
   '/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/orders/': typeof LayoutOrdersIndexRoute
   '/warehouse/': typeof LayoutWarehouseIndexRoute
@@ -272,6 +286,7 @@ export interface FileRoutesByTo {
   '/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/warehouse/berish': typeof LayoutWarehouseBerishRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -279,6 +294,7 @@ export interface FileRoutesByTo {
   '/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/warehouse/taminot': typeof LayoutWarehouseTaminotRoute
+  '/warehouse/yorliq': typeof LayoutWarehouseYorliqRoute
   '/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/orders': typeof LayoutOrdersIndexRoute
   '/warehouse': typeof LayoutWarehouseIndexRoute
@@ -309,6 +325,7 @@ export interface FileRoutesById {
   '/_layout/anketa/$orderId': typeof LayoutAnketaOrderIdRoute
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
+  '/_layout/warehouse/berish': typeof LayoutWarehouseBerishRoute
   '/_layout/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/_layout/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/_layout/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -316,6 +333,7 @@ export interface FileRoutesById {
   '/_layout/warehouse/panel': typeof LayoutWarehousePanelRoute
   '/_layout/warehouse/sex-sarfi': typeof LayoutWarehouseSexSarfiRoute
   '/_layout/warehouse/taminot': typeof LayoutWarehouseTaminotRoute
+  '/_layout/warehouse/yorliq': typeof LayoutWarehouseYorliqRoute
   '/_layout/work-centers/$machineId': typeof LayoutWorkCentersMachineIdRoute
   '/_layout/orders/': typeof LayoutOrdersIndexRoute
   '/_layout/warehouse/': typeof LayoutWarehouseIndexRoute
@@ -346,6 +364,7 @@ export interface FileRouteTypes {
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/berish'
     | '/warehouse/doc'
     | '/warehouse/docs'
     | '/warehouse/hisobot'
@@ -353,6 +372,7 @@ export interface FileRouteTypes {
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
     | '/warehouse/taminot'
+    | '/warehouse/yorliq'
     | '/work-centers/$machineId'
     | '/orders/'
     | '/warehouse/'
@@ -381,6 +401,7 @@ export interface FileRouteTypes {
     | '/anketa/$orderId'
     | '/cutmap/$orderId'
     | '/orders/$orderId'
+    | '/warehouse/berish'
     | '/warehouse/doc'
     | '/warehouse/docs'
     | '/warehouse/hisobot'
@@ -388,6 +409,7 @@ export interface FileRouteTypes {
     | '/warehouse/panel'
     | '/warehouse/sex-sarfi'
     | '/warehouse/taminot'
+    | '/warehouse/yorliq'
     | '/work-centers/$machineId'
     | '/orders'
     | '/warehouse'
@@ -417,6 +439,7 @@ export interface FileRouteTypes {
     | '/_layout/anketa/$orderId'
     | '/_layout/cutmap/$orderId'
     | '/_layout/orders/$orderId'
+    | '/_layout/warehouse/berish'
     | '/_layout/warehouse/doc'
     | '/_layout/warehouse/docs'
     | '/_layout/warehouse/hisobot'
@@ -424,6 +447,7 @@ export interface FileRouteTypes {
     | '/_layout/warehouse/panel'
     | '/_layout/warehouse/sex-sarfi'
     | '/_layout/warehouse/taminot'
+    | '/_layout/warehouse/yorliq'
     | '/_layout/work-centers/$machineId'
     | '/_layout/orders/'
     | '/_layout/warehouse/'
@@ -610,6 +634,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseIndexRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/berish': {
+      id: '/_layout/warehouse/berish'
+      path: '/warehouse/berish'
+      fullPath: '/warehouse/berish'
+      preLoaderRoute: typeof LayoutWarehouseBerishRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/doc': {
       id: '/_layout/warehouse/doc'
       path: '/warehouse/doc'
@@ -659,6 +690,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseTaminotRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/yorliq': {
+      id: '/_layout/warehouse/yorliq'
+      path: '/warehouse/yorliq'
+      fullPath: '/warehouse/yorliq'
+      preLoaderRoute: typeof LayoutWarehouseYorliqRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/work-centers/': {
       id: '/_layout/work-centers/'
       path: '/work-centers'
@@ -700,6 +738,7 @@ interface LayoutRouteChildren {
   LayoutAnketaOrderIdRoute: typeof LayoutAnketaOrderIdRoute
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
+  LayoutWarehouseBerishRoute: typeof LayoutWarehouseBerishRoute
   LayoutWarehouseDocRoute: typeof LayoutWarehouseDocRoute
   LayoutWarehouseDocsRoute: typeof LayoutWarehouseDocsRoute
   LayoutWarehouseHisobotRoute: typeof LayoutWarehouseHisobotRoute
@@ -707,6 +746,7 @@ interface LayoutRouteChildren {
   LayoutWarehousePanelRoute: typeof LayoutWarehousePanelRoute
   LayoutWarehouseSexSarfiRoute: typeof LayoutWarehouseSexSarfiRoute
   LayoutWarehouseTaminotRoute: typeof LayoutWarehouseTaminotRoute
+  LayoutWarehouseYorliqRoute: typeof LayoutWarehouseYorliqRoute
   LayoutWorkCentersMachineIdRoute: typeof LayoutWorkCentersMachineIdRoute
   LayoutOrdersIndexRoute: typeof LayoutOrdersIndexRoute
   LayoutWarehouseIndexRoute: typeof LayoutWarehouseIndexRoute
@@ -731,6 +771,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutAnketaOrderIdRoute: LayoutAnketaOrderIdRoute,
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
+  LayoutWarehouseBerishRoute: LayoutWarehouseBerishRoute,
   LayoutWarehouseDocRoute: LayoutWarehouseDocRoute,
   LayoutWarehouseDocsRoute: LayoutWarehouseDocsRoute,
   LayoutWarehouseHisobotRoute: LayoutWarehouseHisobotRoute,
@@ -738,6 +779,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutWarehousePanelRoute: LayoutWarehousePanelRoute,
   LayoutWarehouseSexSarfiRoute: LayoutWarehouseSexSarfiRoute,
   LayoutWarehouseTaminotRoute: LayoutWarehouseTaminotRoute,
+  LayoutWarehouseYorliqRoute: LayoutWarehouseYorliqRoute,
   LayoutWorkCentersMachineIdRoute: LayoutWorkCentersMachineIdRoute,
   LayoutOrdersIndexRoute: LayoutOrdersIndexRoute,
   LayoutWarehouseIndexRoute: LayoutWarehouseIndexRoute,

@@ -117,6 +117,8 @@ class CatalogRow(BaseModel):
     tier: str | None
     markup_pct: Decimal | None
     tracked: bool
+    #: Bitta rulon uzunligi (metrdagi pozitsiya) — kirimda rulonlarga bo'lish uchun
+    birlik_hajm: Decimal | None = None
     #: Sotuv narxi QO'LDA qo'yilgan — guruh qoidasi (ustama, kromka o'lchami) unga tegmaydi
     narx_qolda: bool = False
     image_url: str | None

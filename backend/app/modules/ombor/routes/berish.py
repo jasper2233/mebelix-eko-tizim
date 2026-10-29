@@ -8,10 +8,18 @@ from sqlalchemy import func, select
 from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import log_action
-from app.models import Order
+from app.models import Client, Order
 from app.modules.ombor.models import CatalogItem, MaterialBirlik, Rezerv, RezervLine
 from app.modules.ombor.models.birlik import OMBOR, SEX
-from app.modules.ombor.schemas.berish import BerishLine, BerishRead, BirlikRead, SkanIn, SkanNatija, YorliqIn
+from app.modules.ombor.schemas.berish import (
+    BerishLine,
+    BerishOrder,
+    BerishRead,
+    BirlikRead,
+    SkanIn,
+    SkanNatija,
+    YorliqIn,
+)
 from app.modules.ombor.services import berish, birlik, rezerv
 from app.modules.ombor.services.stock import fmt
 
@@ -123,6 +131,41 @@ async def _varaqa(db: SessionDep, order: Order) -> BerishRead:
     )
 
 
+@router.get("/berish", response_model=list[BerishOrder], operation_id="list_berish_orders")
+async def list_berish_orders(db: SessionDep, _: WarehouseReadUser) -> list[BerishOrder]:
+    """Berish navbati: rezervi tirik buyurtmalar — ochiqlari (darvoza ochiq) birinchi."""
+    tayyor = func.count().filter(RezervLine.item_id.is_not(None), RezervLine.berilgan_qty >= RezervLine.kerak_qty)
+    rows = (
+        await db.execute(
+            select(Order, Client.full_name, Rezerv.holat, func.count(RezervLine.id), tayyor)
+            .join(Rezerv, Rezerv.order_id == Order.id)
+            .join(RezervLine, RezervLine.rezerv_id == Rezerv.id)
+            .outerjoin(Client, Client.id == Order.client_id)
+            .where(
+                Rezerv.holat.in_((rezerv.FAOL, rezerv.YECHILDI)),
+                Rezerv.is_deleted == False,  # noqa: E712
+                RezervLine.is_deleted == False,  # noqa: E712
+                Order.is_deleted == False,  # noqa: E712
+            )
+            .group_by(Order.id, Client.full_name, Rezerv.holat)
+            .order_by(Order.id)
+        )
+    ).all()
+    out = [
+        BerishOrder(
+            order_id=o.id,
+            order_number=o.number,
+            client=client,
+            holat=holat,
+            tosiq=await rezerv.production_block_reason(db, o),
+            qatorlar=n,
+            tayyor=t,
+        )
+        for o, client, holat, n, t in rows
+    ]
+    return sorted(out, key=lambda b: b.tosiq is not None)
+
+
 @router.get("/berish/{order_id}", response_model=BerishRead, operation_id="read_berish_varaqa")
 async def read_berish_varaqa(db: SessionDep, _: WarehouseReadUser, order_id: int) -> BerishRead:
     """Berish varaqasi: buyurtmaga nima kerak, qanchasi berilgan, sexda qaysi ochiq rulonlar bor."""
@@ -172,17 +215,24 @@ async def read_birlik(db: SessionDep, _: WarehouseReadUser, barkod: str) -> Birl
 
 @router.get("/birliklar", response_model=list[BirlikRead], operation_id="list_birliklar")
 async def list_birliklar(
-    db: SessionDep, _: WarehouseReadUser, item_id: int | None = None, joy: str | None = None
+    db: SessionDep,
+    _: WarehouseReadUser,
+    item_id: int | None = None,
+    joy: str | None = None,
+    doc_id: int | None = None,
 ) -> list[BirlikRead]:
-    """Barkodli birliklar: pozitsiya bo'yicha yoki joy bo'yicha (`sex` — sexdagi rulon qoldiqlari)."""
-    if item_id is None and joy is None:
-        raise _bad("item_id yoki joy kerak.")
+    """Barkodli birliklar: pozitsiya, joy (`sex` — sexdagi rulon qoldiqlari) yoki kirim hujjati bo'yicha
+    (yorliq chop etish uchun)."""
+    if item_id is None and joy is None and doc_id is None:
+        raise _bad("item_id, joy yoki doc_id kerak.")
     q = select(MaterialBirlik, CatalogItem).join(CatalogItem, CatalogItem.id == MaterialBirlik.item_id)
     q = q.where(MaterialBirlik.is_deleted == False, MaterialBirlik.qoldiq > 0)  # noqa: E712
     if item_id is not None:
         q = q.where(MaterialBirlik.item_id == item_id)
     if joy is not None:
         q = q.where(MaterialBirlik.joy == joy)
+    if doc_id is not None:
+        q = q.where(MaterialBirlik.doc_id == doc_id)
     rows = (await db.execute(q.order_by(CatalogItem.name, MaterialBirlik.id).limit(2000))).all()
     return [_birlik(u, it) for u, it in rows]
 

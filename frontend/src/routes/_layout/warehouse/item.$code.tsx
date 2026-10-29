@@ -24,6 +24,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { BirlikPanel, isTracked } from "@/components/Warehouse/BirlikPanel"
 import { GotoSearch } from "@/components/Warehouse/GotoSearch"
 import { ItemHistory } from "@/components/Warehouse/ItemHistory"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
@@ -237,6 +238,7 @@ function ItemCard() {
         {editing && <EditForm row={r} onDone={() => setEditing(false)} />}
       </section>
 
+      {isTracked(r) && <BirlikPanel item={r} canWrite={canWrite} />}
       {!xizmat && <ItemHistory itemId={r.id} unit={r.unit} />}
 
       <ConfirmDialog

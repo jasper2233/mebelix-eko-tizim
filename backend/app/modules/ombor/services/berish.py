@@ -165,6 +165,19 @@ async def skan_birlik(db: AsyncSession, order: Order, barkod: str, user_id: int 
         unit.order_id = order.id
         natija.xabar = f"{unit.barkod} «{item.name}» berildi. Qoldi: {fmt(max(kerak - natija.sarf, Decimal(0)))}"
     else:
+        # Rulondan faqat shu buyurtmaning bandi + erkin qoldiq olinadi; qolgani boshqa buyurtmalarniki
+        mumkin = max(line.qoplangan_qty - line.berilgan_qty, Decimal(0)) + max(await _erkin(db, item), Decimal(0))
+        ol = min(kerak, unit.qoldiq, mumkin)
+        if ol <= 0:
+            raise BerishError(
+                f"«{item.name}»: bu buyurtmaga band qoldiq qolmagan, erkin qoldiq ham yo'q — "
+                "qolgani boshqa buyurtmalarga band. Ta'minot kerak."
+            )
+        if ol < min(kerak, unit.qoldiq):
+            natija.ogohlantirish.append(
+                f"Faqat {fmt(ol)} {item.unit or ''} berildi: yana {fmt(kerak - ol)} kerak, lekin u boshqa "
+                "buyurtmalarga band — ta'minot kerak."
+            )
         if unit.joy == OMBOR:
             # Ombordagi rulon — avval sexdagi qoldiqni ishlatish kerak (foydalanuvchi qarori, 2026-10-29)
             sexda = await db.scalar(
@@ -191,7 +204,6 @@ async def skan_birlik(db: AsyncSession, order: Order, barkod: str, user_id: int 
                     birlik_id=unit.id,
                 )
             )
-        ol = min(kerak, unit.qoldiq)
         await _sarf(db, order, item, line, ol, user_id, unit)
         unit.qoldiq -= ol
         unit.order_id = order.id
@@ -199,11 +211,10 @@ async def skan_birlik(db: AsyncSession, order: Order, barkod: str, user_id: int 
             unit.joy = TUGADI
         natija.sarf = ol
         natija.rulon_qoldi = unit.qoldiq
-        natija.xabar = (
-            f"{unit.barkod}: {fmt(ol)} {item.unit or ''} «{item.name}» buyurtmaga yozildi, "
-            f"rulonda {fmt(unit.qoldiq)} qoldi (sexda)."
+        natija.xabar = f"{unit.barkod}: {fmt(ol)} {item.unit or ''} «{item.name}» buyurtmaga yozildi, " + (
+            f"rulonda {fmt(unit.qoldiq)} qoldi (sexda)." if unit.qoldiq > 0 else "rulon tugadi."
         )
-        if kerak > ol:
+        if kerak > ol and unit.qoldiq == 0:
             natija.xabar += f" Yana {fmt(kerak - ol)} kerak — keyingi rulonni skanerlang."
     await _yopish(db, rez)
     return natija

@@ -53,6 +53,19 @@ class BerishRead(BaseModel):
     lines: list[BerishLine]
 
 
+class BerishOrder(BaseModel):
+    """Berish navbatidagi buyurtma: rezervi tirik (faol/yechildi)."""
+
+    order_id: int
+    order_number: str
+    client: str | None
+    holat: str
+    #: Darvoza yopiq bo'lsa — sababi (material berilmaydi)
+    tosiq: str | None
+    qatorlar: int
+    tayyor: int
+
+
 class SkanIn(BaseModel):
     #: Tizim barkodi (`EK0000123`), katalog kodi yoki ishlab chiqaruvchi shtrix-kodi
     kod: str = Field(min_length=1, max_length=60)

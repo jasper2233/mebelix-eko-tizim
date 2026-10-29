@@ -24,7 +24,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.1 Ombor moduli | tayyor (kod ko'chirildi, xulq o'zgarmadi) | pastda |
 | 2.2 Rezerv (backend) | tayyor, lokal sinalgan | pastda |
 | 2.2b Rezerv (interfeys) | tayyor, brauzerda sinalgan | pastda |
-| 2.3 Qoldiq bo'laklari, TMO | navbatda | |
+| 2.3a Barkodlar, sexga berish, sexdagi rulonlar | tayyor, brauzerda sinalgan | pastda |
+| 2.3b Tablodan material so'rash, qoldiq bo'laklari, TMO | navbatda | |
 
 ### 1a — nima qo'shildi
 
@@ -126,3 +127,27 @@ Kromka katalogda **metr**da (moslashda koef 1). Rulon butunligicha, ortig'i bila
 
 Brauzerda tekshirildi (lokal backend + vite): panel to'langan va to'lanmagan buyurtmada, to'siq matni, direktor tugmasi,
 ta'minot ro'yxati, moslash oynasi (qidiruv → tanlash → saqlash → ro'yxat yangilandi); konsolda xato yo'q.
+
+### 2.3a — barkodli birliklar va materialni sexga berish
+
+Foydalanuvchi qarorlari (2026-10-29): rulon qoldig'i **sexda qoladi** va tizim uni eslaydi — keyingi
+buyurtma avval o'shandan oladi; har tovar zavod kodi + tizimning **o'z barkodi** bilan; arrachi/kromkachi
+tablodan so'raydi **yoki** omborchi oldindan yetkazadi (ikkalasi ham).
+
+- `material_birlik` (`modules/ombor/models/birlik.py`): har list (1 dona) va har rulon (metri bilan) —
+  `EK0000123` barkod, zavod kodi, joy `ombor` | `sex` | `tugadi`. Furnitura birliksiz: katalog kodi
+  yoki zavod shtrix-kodi (`catalog_item.ishlab_barkod`) + son.
+- Kirim: list soni butun bo'lishi shart; metrdagi pozitsiyada rulon uzunligi (`stock_doc_line.hajm`
+  yoki katalogdagi `birlik_hajm`) — miqdor rulonlarga bo'linadi. Eski qoldiq kartochkada bir marta
+  yorliqlanadi (`POST /ombor/birlik/yorliq`). Yorliqlar: `/warehouse/yorliq?doc=` yoki `?item=` (QR, 58×40 mm).
+- `catalog_item.quantity` — korxonaning JAMI miqdori, sexdagi rulon qoldiqlari ham kiradi. Rulon sexga
+  o'tganda kamaymaydi; kamayish faqat sarf (`stock_movement.kind='sarf'`, `order_id` bilan — buyurtma
+  tannarxi) yoki «rulon tugadi» (`sex_farq`). Birliklar yig'indisi hech qachon qoldiqdan oshmaydi
+  (`services/birlik.py: sync_down` — sotuv, inventarizatsiya, tuzatishdan keyin).
+- Berish (`services/berish.py`, sahifa `/warehouse/berish`): faqat darvoza ochiq buyurtmaga; rezervdan
+  tashqari qism faqat erkin qoldiqdan — rulondan esa band + erkin qismi olinadi, qolgani ogohlantirish.
+  Ombordagi rulon skanerlanganda sexda shu kromkadan ochiq rulon bo'lsa — ogohlantirish.
+  `rezerv_line.berilgan_qty`; band = qoplangan − berilgan; hamma qator berilsa rezerv `sarflandi`;
+  rezerv qayta qurilsa berilgani saqlanadi.
+- Orakl: `scripts/oracles/berish_oracle.py` 39/39; boshqa ombor orakllari o'zgarmay o'tadi.
+
