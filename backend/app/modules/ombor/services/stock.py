@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 from app.modules.ombor.schemas.stock import DocIn
-from app.modules.ombor.services import rezerv
+from app.modules.ombor.services import birlik, rezerv
 from app.modules.ombor.services.warehouse import abc_classes, get_pricing, reprice
 
 PREFIX = {"kirim": "KIR", "chiqim": "CHQ", "sex": "SEX", "inv": "INV"}
@@ -107,6 +107,7 @@ async def save_draft(db: AsyncSession, body: DocIn, user_id: int | None) -> Stoc
                 price=ln.price,
                 discount=ln.discount if body.kind == "chiqim" else Decimal(0),
                 note=ln.note.strip(),
+                hajm=ln.hajm if body.kind == "kirim" else None,
             )
         )
     await db.flush()
@@ -203,6 +204,19 @@ async def _check_free(db: AsyncSession, need: dict[int, Decimal], items: dict[in
     return errors
 
 
+def _plan_birlik(
+    is_k: bool, it: CatalogItem, ln: StockDocLine, birliklar: dict[int, list[Decimal]], errors: list[str]
+) -> None:
+    """Kirimda barkodli pozitsiya qatori qanday birliklarga bo'linadi (list — dona-dona, rulon — uzunligi)."""
+    if not is_k or not birlik.tracked(it):
+        return
+    sizes = birlik.split(it, ln.qty, ln.hajm)
+    if isinstance(sizes, str):
+        errors.append(f"{ln.line_no}-qator: {sizes}")
+    else:
+        birliklar[ln.id] = sizes
+
+
 async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     """Qoralamani tasdiqlaydi: tekshiradi, qoldiq/partiya/harakat yozadi, qulflaydi. Xato — `DocError`."""
     if doc.status != "draft":
@@ -235,6 +249,8 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     if not lines:
         errors.append("Birorta ham mahsulot qatori yo'q")
     need: dict[int, Decimal] = {}
+    #: Kirim qatori → yaratiladigan barkodli birliklar hajmi (list/rulon)
+    birliklar: dict[int, list[Decimal]] = {}
     for ln in lines:
         it = items.get(ln.item_id) if ln.item_id is not None else None
         if it is None:
@@ -249,6 +265,7 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
             errors.append(f"{ln.line_no}-qator: «{it.name}» sex xo'jaligiga tegishli — sotilmaydi")
         elif it.catalog != "X":
             need[it.id] = need.get(it.id, Decimal(0)) + ln.qty
+            _plan_birlik(is_k, it, ln, birliklar, errors)
     if not is_k:
         errors += await _check_free(db, need, items)
     if errors:
@@ -278,12 +295,14 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
                 it.purchase_usd = ln.price
                 reprice(it, cfg.model_copy(update={"usd_rate": rate}))
             it.quantity += ln.qty
+            await birlik.create(db, it, birliklar.get(ln.id, []), doc.id)
             amount = ln.qty * unit
             total += _so_m(s * rate)
         else:
             amount = await consume(db, it, ln.qty)
             ln.cost = amount
             it.quantity -= ln.qty
+            await birlik.sync_down(db, it)
             cogs += amount
             # Sexga — sotuv emas: summasi tannarxning o'zi (dizayndagi `sum += isSx ? fc`)
             total += amount if is_sx else s
@@ -353,6 +372,7 @@ async def inventory(
             amount = -(await consume(db, it, -d))
         diff_sum += amount
         it.quantity = real
+        await birlik.sync_down(db, it)
         db.add(
             StockDocLine(doc_id=doc.id, line_no=n, item_id=it.id, name=it.name, qty=real, book_qty=book, cost=amount)
         )
@@ -392,6 +412,7 @@ async def adjust_quantity(
     else:
         amount = await consume(db, item, -d)
     item.quantity = new_qty
+    await birlik.sync_down(db, item)
     db.add(
         StockMovement(
             item_id=item.id,

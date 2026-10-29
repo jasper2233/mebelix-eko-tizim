@@ -85,3 +85,8 @@ class CatalogItem(BaseModel):
     #: Material «zaxiraga olingan» — kam qoldiq ogohlantirishi FAQAT shularda (2 000+ dekorning
     #: hammasi omborda turmaydi, aks holda ro'yxat doim qizil bo'lardi)
     tracked: Mapped[bool] = mapped_column(default=False, server_default="false", kw_only=True)
+    # --- Barkodli birliklar (EKO TZ §4.4) ---
+    #: Bitta rulon/dona uzunligi (metrdagi pozitsiyalarda) — kirimda rulon hajmi shundan olinadi
+    birlik_hajm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), default=None, kw_only=True)
+    #: Ishlab chiqaruvchi shtrix-kodi (EAN) — birliksiz furniturani skaner bilan topish uchun
+    ishlab_barkod: Mapped[str | None] = mapped_column(String(40), default=None, index=True, kw_only=True)

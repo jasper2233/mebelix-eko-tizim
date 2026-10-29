@@ -88,6 +88,8 @@ class CatalogItemRead(BaseModel):
     tier: str | None
     markup_pct: Decimal | None
     tracked: bool
+    birlik_hajm: Decimal | None = None
+    ishlab_barkod: str | None = None
 
 
 class CatalogRow(BaseModel):
@@ -142,6 +144,9 @@ class CatalogItemUpdate(BaseModel):
     tier: Literal["S", "M", "P"] | None = None
     markup_pct: Pct | None = None
     tracked: bool | None = None
+    #: Bitta rulon uzunligi, metr (kromka) — kirimda rulonlarga bo'lish uchun
+    birlik_hajm: Annotated[Decimal, Field(gt=0, le=10**6)] | None = None
+    ishlab_barkod: Annotated[str, Field(max_length=40)] | None = None
 
 
 class CatalogItemCreate(BaseModel):

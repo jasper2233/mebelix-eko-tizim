@@ -66,6 +66,8 @@ class StockDocLine(BaseModel):
     cost: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
     #: Inventarizatsiya: sanash paytidagi HISOBDAGI qoldiq (`qty` — haqiqiy, sanalgani)
     book_qty: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), default=None, kw_only=True)
+    #: Kirim: bitta rulon uzunligi (metrdagi pozitsiyada) — `qty` shu bo'yicha rulonlarga bo'linadi
+    hajm: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), default=None, kw_only=True)
 
 
 class StockLot(BaseModel):
@@ -102,7 +104,8 @@ class StockMovement(BaseModel):
 
     item_id: Mapped[int] = mapped_column(ForeignKey("catalog_item.id"), kw_only=True)
     doc_id: Mapped[int | None] = mapped_column(ForeignKey("stock_doc.id"), default=None, kw_only=True)
-    #: `kirim` | `chiqim` | `tuzatish` (keyin `sex`, `inv`)
+    #: `kirim` | `chiqim` | `tuzatish` | `sex` | `inv` | `sarf` (buyurtmaga) | `sexga` (rulon sexga,
+    #: miqdor o'zgarmaydi) | `sex_farq` (rulon tugadi — hisobdagi qoldiq hisobdan chiqdi)
     kind: Mapped[str] = mapped_column(String(12), kw_only=True)
     #: Ishorali: kirim +, chiqim −
     qty: Mapped[Decimal] = mapped_column(Numeric(12, 3), kw_only=True)
@@ -113,3 +116,6 @@ class StockMovement(BaseModel):
     #: «Kirim · Ningbo Haitian», «Sotuv · Jahongir Rustamov · Jahongir Abdullayev»
     note: Mapped[str] = mapped_column(String(200), default="", kw_only=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+    #: Sarf qaysi buyurtmaga (buyurtma tannarxi shu yerdan) va qaysi barkodli birlikdan
+    order_id: Mapped[int | None] = mapped_column(ForeignKey("order.id"), index=True, default=None, kw_only=True)
+    birlik_id: Mapped[int | None] = mapped_column(ForeignKey("material_birlik.id"), default=None, kw_only=True)

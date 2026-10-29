@@ -81,3 +81,5 @@ class RezervLine(BaseModel):
     #: Katalog birligida: kerak = fayl_qty × koef; qoplangan ≤ kerak. Farqi — ta'minot ehtiyoji
     kerak_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=Decimal(0), kw_only=True)
     qoplangan_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=Decimal(0), kw_only=True)
+    #: Sexga berilgan (sarflangan). Band = qoplangan − berilgan: berilgani endi qoldiqda yo'q
+    berilgan_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=Decimal(0), kw_only=True)

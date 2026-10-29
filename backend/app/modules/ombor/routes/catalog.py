@@ -51,6 +51,8 @@ _NULLABLE_FIELDS = (
     "purchase_usd",
     "tier",
     "markup_pct",
+    "birlik_hajm",
+    "ishlab_barkod",
 )
 
 

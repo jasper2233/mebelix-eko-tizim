@@ -70,12 +70,15 @@ async def has_live(db: AsyncSession, order_id: int) -> bool:
 
 
 async def reserved_qty(db: AsyncSession, item_ids: Iterable[int]) -> dict[int, Decimal]:
-    """Pozitsiyalar bo'yicha buyurtmalarga band (qoplangan) miqdor."""
+    """Pozitsiyalar bo'yicha buyurtmalarga band miqdor: qoplangan − allaqachon sexga berilgan."""
     ids = list(set(item_ids))
     if not ids:
         return {}
     rows = await db.execute(
-        select(RezervLine.item_id, func.coalesce(func.sum(RezervLine.qoplangan_qty), 0))
+        select(
+            RezervLine.item_id,
+            func.coalesce(func.sum(func.greatest(RezervLine.qoplangan_qty - RezervLine.berilgan_qty, 0)), 0),
+        )
         .join(Rezerv, Rezerv.id == RezervLine.rezerv_id)
         .where(
             RezervLine.item_id.in_(ids),
@@ -105,7 +108,14 @@ async def _free(db: AsyncSession, items: dict[int, CatalogItem]) -> dict[int, De
 async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
     """Buyurtma rezervini (qayta) quradi. Eski tirik rezerv bekor qilinadi, to'lov saqlanadi (TZ §4.3 8-band)."""
     old = await _tirik(db, order.id)
+    #: Eski rezervdan sexga allaqachon berilgani — yangisida qayta berilmasin (pozitsiya bo'yicha)
+    berilgan: dict[int, Decimal] = {}
     if old is not None:
+        for ln in (
+            await db.execute(select(RezervLine).where(RezervLine.rezerv_id == old.id, RezervLine.berilgan_qty > 0))
+        ).scalars():
+            assert ln.item_id is not None
+            berilgan[ln.item_id] = berilgan.get(ln.item_id, Decimal(0)) + ln.berilgan_qty
         old.holat = BEKOR
         await db.flush()
     if not order.material_usage:
@@ -147,6 +157,7 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
             fayl_birlik=str(row["birlik"])[:10],
         )
         if mm is not None and mm.item_id in items:
+            line.berilgan_qty = min(berilgan.pop(mm.item_id, Decimal(0)), line.fayl_qty * mm.koef)
             _cover(line, mm, free)
         db.add(line)
     await db.flush()
@@ -155,9 +166,14 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
 
 
 def _cover(line: RezervLine, mm: MaterialMap, free: dict[int, Decimal]) -> None:
+    """Qatorni pozitsiyaga bog'lab erkin qoldiqdan qoplaydi va `free` ni kamaytiradi.
+    Sexga allaqachon berilgan qism (`berilgan_qty`) qoldiqdan chiqqan — u o'z-o'zidan qoplangan."""
     line.item_id = mm.item_id
     line.kerak_qty = (line.fayl_qty * mm.koef).quantize(_Q, ROUND_HALF_UP)
-    line.qoplangan_qty = min(line.kerak_qty, free.get(mm.item_id, Decimal(0)))
+    bor = free.get(mm.item_id, Decimal(0))
+    ol = min(max(line.kerak_qty - line.berilgan_qty, Decimal(0)), bor)
+    line.qoplangan_qty = line.berilgan_qty + ol
+    free[mm.item_id] = bor - ol
     free[mm.item_id] = free.get(mm.item_id, Decimal(0)) - line.qoplangan_qty
 
 
@@ -287,6 +303,10 @@ async def production_block_reason(db: AsyncSession, order: Order) -> str | None:
     rez = await _tirik(db, order.id)
     if rez is not None and (rez.holat == YECHILDI or rez.tasdiq_at is not None):
         return None
+    if rez is None and await db.scalar(
+        select(Rezerv.id).where(Rezerv.order_id == order.id, Rezerv.holat == SARFLANDI, Rezerv.is_deleted == False)  # noqa: E712
+    ):
+        return None  # material allaqachon to'liq berilgan
     client = await db.get(Client, order.client_id)
     if client is not None and client.doimiy and client.kredit_limit is not None:
         if await client_debt(db, client.id) <= client.kredit_limit:

@@ -19,6 +19,8 @@ class DocLineIn(BaseModel):
     price: Annotated[Decimal, Field(ge=0, le=10**12)] = Decimal(0)
     discount: Annotated[Decimal, Field(ge=0, le=10**12)] = Decimal(0)
     note: Text200 = ""
+    #: Kirim, metrdagi pozitsiya: bitta rulon uzunligi (bo'sh — katalogdagi `birlik_hajm`)
+    hajm: Annotated[Decimal, Field(gt=0, le=10**6)] | None = None
 
 
 class DocIn(BaseModel):
@@ -49,6 +51,7 @@ class DocLineRead(BaseModel):
     cost: Decimal | None
     #: Inventarizatsiya: hisobdagi qoldiq (`qty` — sanalgani)
     book_qty: Decimal | None = None
+    hajm: Decimal | None = None
 
 
 class DocRead(BaseModel):
