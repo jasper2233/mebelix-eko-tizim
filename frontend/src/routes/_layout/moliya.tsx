@@ -17,6 +17,7 @@ import {
   type Qator,
 } from "@/client"
 import { client } from "@/client/client.gen"
+import { IshHaqi } from "@/components/Moliya/IshHaqi"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import {
@@ -51,6 +52,7 @@ const BOLIMLAR = [
   { v: "jurnal", l: "Orderlar jurnali" },
   { v: "smenalar", l: "Smenalar" },
   { v: "hisobotlar", l: "Hisobotlar" },
+  { v: "ishhaqi", l: "Ish haqi" },
   { v: "davrlar", l: "Davr yopish" },
   { v: "sozlamalar", l: "Sozlamalar" },
 ] as const
@@ -100,6 +102,7 @@ function MoliyaPage() {
       {b === "jurnal" && <Jurnal />}
       {b === "smenalar" && <Smenalar />}
       {b === "hisobotlar" && <Hisobotlar />}
+      {b === "ishhaqi" && <IshHaqi />}
       {b === "davrlar" && <Davrlar />}
       {b === "sozlamalar" && <Sozlamalar />}
     </div>

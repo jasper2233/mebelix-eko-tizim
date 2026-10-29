@@ -3515,6 +3515,48 @@ export type HttpValidationError = {
 };
 
 /**
+ * HaqQator
+ */
+export type HaqQator = {
+    /**
+     * Employee Id
+     */
+    employee_id: number;
+    /**
+     * Hodim
+     */
+    hodim: string;
+    /**
+     * Post Id
+     */
+    post_id: number;
+    /**
+     * Post
+     */
+    post: string;
+    /**
+     * Birlik
+     */
+    birlik: string;
+    /**
+     * Hajm
+     */
+    hajm: string;
+    /**
+     * Skanlar
+     */
+    skanlar: number;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Stavkasiz
+     */
+    stavkasiz?: number;
+};
+
+/**
  * HealthCheck
  */
 export type HealthCheck = {
@@ -8315,6 +8357,54 @@ export type StageAgg = {
 };
 
 /**
+ * StavkaIn
+ */
+export type StavkaIn = {
+    /**
+     * Post Id
+     */
+    post_id: number;
+    /**
+     * Process Code
+     */
+    process_code?: number | null;
+    /**
+     * Narx
+     */
+    narx: number | string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+};
+
+/**
+ * StavkaRead
+ */
+export type StavkaRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Post Id
+     */
+    post_id: number;
+    /**
+     * Process Code
+     */
+    process_code: number | null;
+    /**
+     * Narx
+     */
+    narx: string;
+    /**
+     * Amal Boshi
+     */
+    amal_boshi: string;
+};
+
+/**
  * StockReport
  *
  * Ombor hisoboti (docs/14 §11) — dizayndagi `rep` ekrani.
@@ -9024,6 +9114,24 @@ export type TabloStopRow = {
 };
 
 /**
+ * TannarxPost
+ */
+export type TannarxPost = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Birlik
+     */
+    birlik: string;
+};
+
+/**
  * Tekshiruv
  */
 export type Tekshiruv = {
@@ -9729,6 +9837,70 @@ export type Vazifa = {
      * Bolim
      */
     bolim: string;
+};
+
+/**
+ * VedomostIn
+ */
+export type VedomostIn = {
+    /**
+     * Dan
+     */
+    dan: string;
+    /**
+     * Gacha
+     */
+    gacha: string;
+};
+
+/**
+ * VedomostRead
+ */
+export type VedomostRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Dan
+     */
+    dan: string;
+    /**
+     * Gacha
+     */
+    gacha: string;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Jami
+     */
+    jami: string;
+    /**
+     * Skanlar
+     */
+    skanlar: number;
+    /**
+     * Tasdiqlangan At
+     */
+    tasdiqlangan_at: string | null;
+    /**
+     * Yaratgan
+     */
+    yaratgan?: string | null;
+    /**
+     * Tasdiqlagan
+     */
+    tasdiqlagan?: string | null;
+    /**
+     * Qatorlar
+     */
+    qatorlar?: Array<HaqQator>;
 };
 
 /**
@@ -15456,6 +15628,236 @@ export type SoliqKitobCsvResponses = {
      */
     200: unknown;
 };
+
+export type TannarxPostlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/postlar';
+};
+
+export type TannarxPostlarResponses = {
+    /**
+     * Response Tannarx Postlar
+     *
+     * Successful Response
+     */
+    200: Array<TannarxPost>;
+};
+
+export type TannarxPostlarResponse = TannarxPostlarResponses[keyof TannarxPostlarResponses];
+
+export type TannarxStavkalarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/stavkalar';
+};
+
+export type TannarxStavkalarResponses = {
+    /**
+     * Response Tannarx Stavkalar
+     *
+     * Successful Response
+     */
+    200: Array<StavkaRead>;
+};
+
+export type TannarxStavkalarResponse = TannarxStavkalarResponses[keyof TannarxStavkalarResponses];
+
+export type TannarxStavkaQoshData = {
+    body: StavkaIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/stavkalar';
+};
+
+export type TannarxStavkaQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxStavkaQoshError = TannarxStavkaQoshErrors[keyof TannarxStavkaQoshErrors];
+
+export type TannarxStavkaQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: StavkaRead;
+};
+
+export type TannarxStavkaQoshResponse = TannarxStavkaQoshResponses[keyof TannarxStavkaQoshResponses];
+
+export type TannarxHisobData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Dan
+         */
+        dan: string;
+        /**
+         * Gacha
+         */
+        gacha: string;
+    };
+    url: '/api/v1/tannarx/hisob';
+};
+
+export type TannarxHisobErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxHisobError = TannarxHisobErrors[keyof TannarxHisobErrors];
+
+export type TannarxHisobResponses = {
+    /**
+     * Response Tannarx Hisob
+     *
+     * Successful Response
+     */
+    200: Array<HaqQator>;
+};
+
+export type TannarxHisobResponse = TannarxHisobResponses[keyof TannarxHisobResponses];
+
+export type TannarxVedomostlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/vedomostlar';
+};
+
+export type TannarxVedomostlarResponses = {
+    /**
+     * Response Tannarx Vedomostlar
+     *
+     * Successful Response
+     */
+    200: Array<VedomostRead>;
+};
+
+export type TannarxVedomostlarResponse = TannarxVedomostlarResponses[keyof TannarxVedomostlarResponses];
+
+export type TannarxVedomostYaratData = {
+    body: VedomostIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tannarx/vedomostlar';
+};
+
+export type TannarxVedomostYaratErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxVedomostYaratError = TannarxVedomostYaratErrors[keyof TannarxVedomostYaratErrors];
+
+export type TannarxVedomostYaratResponses = {
+    /**
+     * Successful Response
+     */
+    200: VedomostRead;
+};
+
+export type TannarxVedomostYaratResponse = TannarxVedomostYaratResponses[keyof TannarxVedomostYaratResponses];
+
+export type TannarxVedomostData = {
+    body?: never;
+    path: {
+        /**
+         * Vedomost Id
+         */
+        vedomost_id: number;
+    };
+    query?: never;
+    url: '/api/v1/tannarx/vedomostlar/{vedomost_id}';
+};
+
+export type TannarxVedomostErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxVedomostError = TannarxVedomostErrors[keyof TannarxVedomostErrors];
+
+export type TannarxVedomostResponses = {
+    /**
+     * Successful Response
+     */
+    200: VedomostRead;
+};
+
+export type TannarxVedomostResponse = TannarxVedomostResponses[keyof TannarxVedomostResponses];
+
+export type TannarxVedomostTasdiqData = {
+    body?: never;
+    path: {
+        /**
+         * Vedomost Id
+         */
+        vedomost_id: number;
+    };
+    query?: never;
+    url: '/api/v1/tannarx/vedomostlar/{vedomost_id}/tasdiq';
+};
+
+export type TannarxVedomostTasdiqErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxVedomostTasdiqError = TannarxVedomostTasdiqErrors[keyof TannarxVedomostTasdiqErrors];
+
+export type TannarxVedomostTasdiqResponses = {
+    /**
+     * Successful Response
+     */
+    200: VedomostRead;
+};
+
+export type TannarxVedomostTasdiqResponse = TannarxVedomostTasdiqResponses[keyof TannarxVedomostTasdiqResponses];
+
+export type TannarxVedomostBekorData = {
+    body?: never;
+    path: {
+        /**
+         * Vedomost Id
+         */
+        vedomost_id: number;
+    };
+    query?: never;
+    url: '/api/v1/tannarx/vedomostlar/{vedomost_id}/bekor';
+};
+
+export type TannarxVedomostBekorErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TannarxVedomostBekorError = TannarxVedomostBekorErrors[keyof TannarxVedomostBekorErrors];
+
+export type TannarxVedomostBekorResponses = {
+    /**
+     * Successful Response
+     */
+    200: VedomostRead;
+};
+
+export type TannarxVedomostBekorResponse = TannarxVedomostBekorResponses[keyof TannarxVedomostBekorResponses];
 
 export type BuxSinxronData = {
     body?: never;

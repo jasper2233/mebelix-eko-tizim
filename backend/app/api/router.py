@@ -42,6 +42,7 @@ from app.modules.kassa.routes import router as kassa_router
 from app.modules.moliya.routes import router as moliya_router
 from app.modules.ombor.routes import berish_router, catalog_router, kroy_router, rezerv_router, sex_router, stock_router
 from app.modules.soliq.routes import router as soliq_router
+from app.modules.tannarx.routes import router as tannarx_router
 
 v1_router = APIRouter(prefix="/v1")
 v1_router.include_router(health_router)
@@ -79,6 +80,7 @@ v1_router.include_router(integ_router, dependencies=[Depends(require_module("kro
 v1_router.include_router(kassa_router, dependencies=_modul("kassa"))  # kassa (EKO TZ §7)
 v1_router.include_router(moliya_router, dependencies=_modul("moliya"))  # moliya (EKO TZ §8)
 v1_router.include_router(soliq_router, dependencies=_modul("soliq"))  # soliq (EKO TZ §9)
+v1_router.include_router(tannarx_router, dependencies=_modul("moliya"))  # tannarx va ish haqi (EKO 10)
 v1_router.include_router(bux_router, dependencies=_modul("buxgalteriya"))  # buxgalteriya (EKO 7)
 v1_router.include_router(tayyorlik_router, dependencies=_protected)  # ishga tayyorlik (EKO 8)
 v1_router.include_router(integ_user_router, dependencies=_modul("kroy"))  # «Kroy» tugmasi, SSO (K1, K6)

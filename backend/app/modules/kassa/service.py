@@ -108,3 +108,9 @@ async def ochilish_qosh(
     return await services.ochilish_qosh(
         db, tur, summa, sana, user_id, client_id=client_id, kontragent=kontragent, izoh=izoh
     )
+
+
+async def pnl_emas_moddalar(db: AsyncSession) -> set[str]:
+    """P&L xarajati bo'lmagan moddalar (ishbay ish haqi to'lovi — 6710 ni yopadi)."""
+    rows = await db.execute(select(models.KassaModda.nom).where(models.KassaModda.pnl_emas == True))  # noqa: E712
+    return set(rows.scalars())

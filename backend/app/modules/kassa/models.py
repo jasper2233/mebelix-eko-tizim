@@ -142,6 +142,8 @@ class KassaModda(BaseModel):
     oylik_limit: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
     tartib: Mapped[int] = mapped_column(default=0, kw_only=True)
     faol: Mapped[bool] = mapped_column(default=True, server_default="true", kw_only=True)
+    #: To'lov majburiyatni yopadi (hisoblangan ishbay ish haqi): P&L xarajati EMAS — xarajat tannarxda allaqachon
+    pnl_emas: Mapped[bool] = mapped_column(default=False, server_default="false", kw_only=True)
 
 
 class KassaOchilish(BaseModel):

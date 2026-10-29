@@ -40,6 +40,7 @@ from app.modules.moliya.schemas import (
 )
 from app.modules.ombor import service as ombor
 from app.modules.soliq import service as soliq
+from app.modules.tannarx import service as tannarx
 from app.services.settings_service import TOLOV_MUDDAT_KUN, get_setting
 
 #: Kassa order maqsadlari — hisobotdagi nomi
@@ -132,6 +133,10 @@ async def pnl(db: AsyncSession, oy: date, qotgan: bool = True) -> PnL:
         ).all()
     )
     tan = await ombor.buyurtma_tannarxi(db, [o.id for o, _ in orders])
+    # Mehnat (ishbay ish haqi, EKO 10a) ham buyurtma tannarxi — tasdiqlangan vedomostlardan
+    for oid, m in (await tannarx.buyurtma_mehnati(db, [o.id for o, _ in orders])).items():
+        tan[oid] = tan.get(oid, _0) + m
+    pnl_emas = await kassa.pnl_emas_moddalar(db)
     rent = [
         BuyurtmaFoyda(
             order_id=o.id,
@@ -150,7 +155,7 @@ async def pnl(db: AsyncSession, oy: date, qotgan: bool = True) -> PnL:
     for o in await kassa.orderlar_davr(db, dan, gacha):
         if o.maqsad == "farq":
             farq += o.summa if o.tur == "chiqim" else -o.summa
-        elif o.tur == "chiqim" and o.maqsad in ("xarajat", "komissiya"):
+        elif o.tur == "chiqim" and o.maqsad in ("xarajat", "komissiya") and o.turkum not in pnl_emas:
             nom = o.turkum or MAQSAD[o.maqsad]
             xar[nom] += o.summa
             xar_soni[nom] += 1

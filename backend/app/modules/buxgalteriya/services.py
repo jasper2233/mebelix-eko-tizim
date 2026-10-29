@@ -29,6 +29,7 @@ from app.modules.kassa import service as kassa
 from app.modules.moliya import service as moliya
 from app.modules.ombor import service as ombor
 from app.modules.soliq import service as soliq
+from app.modules.tannarx import service as tannarx
 
 _0 = Decimal(0)
 _Q = Decimal("0.01")
@@ -139,7 +140,17 @@ async def _buyurtmalar(db: AsyncSession) -> list[Maqsad]:
             )
         ).scalars()
     )
-    tan = await ombor.buyurtma_tannarxi(db, [o.id for o in orders if o.delivered_at is not None])
+    yetkazilgan = [o.id for o in orders if o.delivered_at is not None]
+    tan = await ombor.buyurtma_tannarxi(db, yetkazilgan)
+    for oid, m in (await tannarx.buyurtma_mehnati(db, yetkazilgan)).items():
+        tan[oid] = tan.get(oid, _0) + m
+    # Hisoblangan ishbay ish haqi (tasdiqlangan vedomost): D 2010 — K 6710, hodim bo'yicha
+    for h in await tannarx.hisoblangan(db):
+        out.append(
+            Maqsad(
+                f"ishhaqi:{h.vedomost_id}", h.sana, "2010", "6710", h.summa, f"{h.no}: ish haqi", None, _nom(h.hodim)
+            )
+        )
     for o in orders:
         if o.advance_payment:
             izoh = f"{o.number}: kassagacha to'lov"
@@ -504,6 +515,13 @@ async def nazorat(db: AsyncSession) -> list[Nazorat]:
         for k, nom in (("naqd", "naqd kassa"), ("karta", "karta terminali"), ("bank", "bank hisobi"))
     ]
     out.append(Nazorat("1010 — ombor", await saldo(db, "1010"), await ombor.ombor_qiymati(db), "Ombor qiymati (FIFO)"))
+    # 6710: hisoblangan ishbay ish haqi − kassadan to'langan («P&L xarajati emas» moddalar)
+    pnl_emas = await kassa.pnl_emas_moddalar(db)
+    tolangan = sum((o.summa for o in await kassa.orderlar_davr(db) if o.tur == "chiqim" and o.turkum in pnl_emas), _0)
+    hisoblangan = sum((h.summa for h in await tannarx.hisoblangan(db)), _0)
+    out.append(
+        Nazorat("6710 — ish haqi qarzi", -await saldo(db, "6710"), hisoblangan - tolangan, "Vedomost − kassa to'lovi")
+    )
     out.append(
         Nazorat(
             "4010 — mijozlar (qarz − avans)",

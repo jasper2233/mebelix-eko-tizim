@@ -4,6 +4,7 @@ from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSm
 from app.modules.moliya.models import MoliyaDavr, MoliyaMijozShart, MoliyaReja
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 from app.modules.soliq.models import SoliqEsf, SoliqKorxona, SoliqMijoz, SoliqRejim, SoliqSinovOperator
+from app.modules.tannarx.models import IshHaqiQator, IshHaqiVedomost, IshStavka
 
 from .andon import AndonEvent
 from .audit import AuditLog
@@ -55,6 +56,9 @@ __all__ = [
     "BuxQoida",
     "BuxSchyot",
     "BuxYozuv",
+    "IshHaqiQator",
+    "IshHaqiVedomost",
+    "IshStavka",
     "SoliqEsf",
     "SoliqKorxona",
     "SoliqMijoz",

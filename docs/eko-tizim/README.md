@@ -507,3 +507,27 @@ Matn manbasi — `frontend/src/yoriqnoma/` (frontend image faqat `frontend/` pap
 [direktor](../../frontend/src/yoriqnoma/direktor.md). Dasturda — menyu **Yo'riqnoma** (`/yoriqnoma`, har xodimga o'z
 roli birinchi ochiladi, chop etiladi). Ekrandagi nom yoki qoida o'zgarsa — yo'riqnomani ham yangilang.
 
+
+### 10a — Ishbay ish haqi va mehnat tannarxi (`modules/tannarx`)
+
+MES da OEE, ideal sikl va hodim mahsuldorligi bor edi, lekin pul yo'q edi: stavka, ish haqi va buyurtmaning
+mehnat tannarxi yo'q. Endi:
+
+- **Stavka** (`ish_stavka`) — post birligi uchun so'm (arra/qadoqlash — m², kromka — metr, qolgani — dona), kerak
+  bo'lsa aniq amal (`process_code`) uchun alohida; sanadan boshlab tarix bilan. Tasdiqlangan vedomost davriga
+  orqaga yozilmaydi.
+- **Hisob** — bekor qilinmagan skanlardan: bitta skan hajmi = detalning shu postdagi hajmi ÷ marshrut
+  `total_required` (TABLO bilan bir xil, `services/metrics.part_volume`). Skan sanasidagi stavka olinadi. Brak
+  tasdiqlanib bekor qilingan skan haqi to'lanmaydi.
+- **Vedomost** (`ish_haqi_vedomost` + qatorlar hodim × post) — davr kechagi kun bilan tugaydi, ustma-ust davr
+  yo'q, stavkasi yo'q postdagi ish bo'lsa yaratilmaydi. Tasdiqlash — ikki kalit; tasdiqlashda skanlar qayta
+  hisoblanadi, o'zgargan bo'lsa rad (bekor qilib qaytadan).
+- **Buxgalteriya**: tasdiqlangan vedomost — D 2010 — K 6710 (hodim bo'yicha); buyurtma yetkazilganda tannarx
+  (D 9110 — K 2010) material + mehnat. Kassadan to'lov — modda **«Ish haqi (ishbay)»** (`kassa_modda.pnl_emas`,
+  qoida → 6710): P&L xarajati emas, qarzni yopadi. Nazoratda yangi qator: 6710 = vedomost − kassa to'lovi.
+- **Moliya P&L**: buyurtma tannarxida mehnat bor; ish haqi to'lovi xarajatga ikkinchi marta kirmaydi.
+- API `/tannarx/...` (direktor, moliyachi; tarif — `moliya` moduli), ekran — Moliya → **Ish haqi**.
+- Orakl: `scripts/oracles/tannarx_oracle.py` (19).
+
+Keyingi: 10b stanok soat narxi va asbob (tig') eskirishi `xnc_summary` bo'yicha buyurtma tannarxiga;
+10c kromka metri tannarxda; 10d OEE yo'qotishi pulda.
