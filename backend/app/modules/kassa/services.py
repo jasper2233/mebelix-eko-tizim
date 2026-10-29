@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client, Order
 from app.models.enums import OrderStatus
-from app.modules.kassa.models import KassaHisob, KassaOrder, KassaSmena, KassaTaqsimot
+from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSmena, KassaTaqsimot
 from app.modules.ombor import service as ombor
 
 KIRIM_MAQSAD = ("avans", "tolov", "qarz", "sotuv", "boshqa")
@@ -397,6 +397,8 @@ async def chiqim(
                 kontragent = cl.full_name if cl else ""
     if maqsad == "xarajat" and not turkum.strip():
         xato.append("Xarajat turkumini tanlang")
+    elif maqsad == "xarajat" and turkum.strip() not in {m.nom for m in await moddalar(db)}:
+        xato.append(f"«{turkum.strip()}» moddasi yo'q yoki o'chirilgan")
     if not kontragent.strip() and maqsad not in ("xarajat", "boshqa"):
         xato.append("Kimga berilayotganini yozing")
     if xato:
@@ -552,3 +554,110 @@ async def hisob_qoldiqlari(db: AsyncSession) -> list[dict[str, Any]]:
     for h in (await db.execute(select(KassaHisob).where(KassaHisob.faol == True).order_by(KassaHisob.id))).scalars():  # noqa: E712
         out.append({"kod": h.kod, "nom": h.nom, "tur": h.tur, "qoldiq": await qoldiq(db, h)})
     return out
+
+
+# ───────────────────────── moddalar va sozlama (Moliya) ─────────────────────────
+async def moddalar(db: AsyncSession, faqat_faol: bool = True) -> list[KassaModda]:
+    q = select(KassaModda).order_by(KassaModda.tartib, KassaModda.id)
+    if faqat_faol:
+        q = q.where(KassaModda.faol == True)  # noqa: E712
+    return list((await db.execute(q)).scalars())
+
+
+async def modda_saqla(
+    db: AsyncSession, nom: str, oylik_limit: Decimal | None, faol: bool, modda_id: int | None = None
+) -> KassaModda:
+    nom = " ".join(nom.split())
+    if not nom:
+        raise KassaXato(["Modda nomini yozing"])
+    band = await db.scalar(select(KassaModda.id).where(func.lower(KassaModda.nom) == nom.lower()))
+    if band is not None and band != modda_id:
+        raise KassaXato([f"«{nom}» moddasi allaqachon bor"])
+    if modda_id is None:
+        tartib = await db.scalar(select(func.coalesce(func.max(KassaModda.tartib), 0)))
+        m = KassaModda(nom=nom, oylik_limit=oylik_limit, faol=faol, tartib=int(tartib or 0) + 1)
+        db.add(m)
+    else:
+        found = await db.get(KassaModda, modda_id)
+        if found is None:
+            raise KassaXato(["Modda topilmadi"])
+        m = found
+        m.nom, m.oylik_limit, m.faol = nom, oylik_limit, faol
+    await db.flush()
+    return m
+
+
+async def hisob_sozla(
+    db: AsyncSession, kod: str, boshlangich: Decimal | None, komissiya_foiz: Decimal | None
+) -> KassaHisob:
+    """Boshlang'ich qoldiq — faqat karta/bank va faqat hali order yo'q paytda (naqd — birinchi smenadan)."""
+    h = await hisob(db, kod, lock=True)
+    if boshlangich is not None and boshlangich != h.boshlangich:
+        if h.tur == "naqd":
+            raise KassaXato(["Naqd kassa boshlang'ichi birinchi smenada sanalgan puldan olinadi"])
+        if await db.scalar(select(KassaOrder.id).where(KassaOrder.hisob_id == h.id).limit(1)) is not None:
+            raise KassaXato([f"{h.nom} da orderlar bor — boshlang'ich qoldiq endi o'zgarmaydi"])
+        h.boshlangich = boshlangich
+    if komissiya_foiz is not None:
+        h.komissiya_foiz = komissiya_foiz
+    await db.flush()
+    return h
+
+
+@dataclass
+class OrderQator:
+    """Moliya hisobotlari uchun order (mahalliy sana bilan)."""
+
+    id: int
+    no: str
+    sana: datetime
+    tur: str
+    maqsad: str
+    hisob: str
+    summa: Decimal
+    turkum: str
+    kontragent: str
+    client_id: int | None
+    order_id: int | None
+    kassir_id: int | None
+    smena_id: int | None
+    storno_of_id: int | None
+    izoh: str
+
+
+async def orderlar_davr(
+    db: AsyncSession, dan: datetime | None = None, gacha: datetime | None = None, client_id: int | None = None
+) -> list[OrderQator]:
+    """[dan, gacha) oralig'idagi orderlar (storno ham), eskisi birinchi."""
+    kod = {h.id: h.kod for h in (await db.execute(select(KassaHisob))).scalars()}
+    q = select(KassaOrder).order_by(KassaOrder.id)
+    if dan is not None:
+        q = q.where(KassaOrder.created_at >= dan)
+    if gacha is not None:
+        q = q.where(KassaOrder.created_at < gacha)
+    if client_id is not None:
+        q = q.where(KassaOrder.client_id == client_id)
+    return [
+        OrderQator(
+            o.id,
+            o.no,
+            o.created_at,
+            o.tur,
+            o.maqsad,
+            kod.get(o.hisob_id, ""),
+            o.summa,
+            o.turkum,
+            o.kontragent,
+            o.client_id,
+            o.order_id,
+            o.kassir_id,
+            o.smena_id,
+            o.storno_of_id,
+            o.izoh,
+        )
+        for o in (await db.execute(q)).scalars()
+    ]
+
+
+async def ochiq_smenalar(db: AsyncSession) -> list[KassaSmena]:
+    return list((await db.execute(select(KassaSmena).where(KassaSmena.yopilgan_at.is_(None)))).scalars())

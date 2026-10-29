@@ -31,6 +31,8 @@ class UserRole(StrEnum):
     SKLADCHI = "skladchi"
     #: Kassir (EKO TZ §7) — o'rta daraja: smena, kirim/chiqim orderlari. Storno qilolmaydi (Moliya, direktor)
     KASSIR = "kassir"
+    #: Moliyachi / buxgalter (EKO TZ §8) — ofis darajasi: hisobotlar, qarzlar, storno (ikki kalit), davr yopish
+    MOLIYACHI = "moliyachi"
 
 
 class UserLevel(IntEnum):
@@ -54,6 +56,7 @@ ROLE_LEVEL: dict[UserRole, UserLevel] = {
     UserRole.TEXNOLOG: UserLevel.OFIS,
     UserRole.SKLADCHI: UserLevel.ORTA,
     UserRole.KASSIR: UserLevel.ORTA,
+    UserRole.MOLIYACHI: UserLevel.OFIS,
     UserRole.TERMINAL: UserLevel.JARAYON,
     UserRole.TABLO: UserLevel.JARAYON,
     UserRole.ARRACHI: UserLevel.JARAYON,

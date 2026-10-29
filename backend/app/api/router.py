@@ -37,6 +37,7 @@ from app.api.routes.ws import router as ws_router
 from app.modules.integratsiya.routes import router as integ_router
 from app.modules.integratsiya.routes import user_router as integ_user_router
 from app.modules.kassa.routes import router as kassa_router
+from app.modules.moliya.routes import router as moliya_router
 from app.modules.ombor.routes import berish_router, catalog_router, kroy_router, rezerv_router, sex_router, stock_router
 
 v1_router = APIRouter(prefix="/v1")
@@ -66,6 +67,7 @@ v1_router.include_router(sex_router, dependencies=_protected)  # sexdan so'rov, 
 v1_router.include_router(kroy_router)
 v1_router.include_router(integ_router)
 v1_router.include_router(kassa_router, dependencies=_protected)  # kassa (EKO TZ §7)
+v1_router.include_router(moliya_router, dependencies=_protected)  # moliya (EKO TZ §8)
 v1_router.include_router(integ_user_router, dependencies=_protected)  # «Kroy» tugmasi, SSO (K1, K6)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)

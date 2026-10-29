@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import or_, select
 from sqlalchemy.orm import aliased
 
-from app.api.deps import DirectorUser, SessionDep, client_ip, require_roles
+from app.api.deps import SessionDep, client_ip, require_roles
 from app.crud import log_action
 from app.models import Client, Order, User
 from app.models.enums import OrderStatus, UserRole
@@ -32,19 +32,10 @@ from app.modules.ombor import service as ombor
 router = APIRouter(prefix="/kassa", tags=["kassa"])
 
 KassaUser = Annotated[User, Depends(require_roles(UserRole.KASSIR, UserRole.DIRECTOR))]
-
-#: Xarajat turkumlari (Moliya moddalari 5-bosqichda sozlanadigan bo'ladi)
-TURKUMLAR = [
-    "Ijara",
-    "Kommunal",
-    "Ish haqi",
-    "Transport va yetkazish",
-    "Xo'jalik mollari",
-    "Ta'mirlash",
-    "Soliq va to'lovlar",
-    "Bank komissiyasi",
-    "Boshqa",
-]
+#: O'qish — kassir, direktor va moliyachi (Moliya jurnali va smenalar shu yo'llardan)
+KassaReadUser = Annotated[User, Depends(require_roles(UserRole.KASSIR, UserRole.DIRECTOR, UserRole.MOLIYACHI))]
+#: Storno — Moliya: direktor va moliyachi (ikki kalit servisda)
+MoliyaUser = Annotated[User, Depends(require_roles(UserRole.DIRECTOR, UserRole.MOLIYACHI))]
 
 
 def _bad(e: k.KassaXato) -> HTTPException:
@@ -168,7 +159,7 @@ async def kassa_smena_yop(db: SessionDep, user: KassaUser, body: SmenaYopIn, req
 
 
 @router.get("/smenalar", response_model=list[SmenaRead], operation_id="kassa_smenalar")
-async def kassa_smenalar(db: SessionDep, _: KassaUser, limit: int = Query(30, ge=1, le=500)) -> list[SmenaRead]:
+async def kassa_smenalar(db: SessionDep, _: KassaReadUser, limit: int = Query(30, ge=1, le=500)) -> list[SmenaRead]:
     rows = (await db.execute(select(KassaSmena).order_by(KassaSmena.id.desc()).limit(limit))).scalars()
     return [await _smena_read(db, s) for s in rows]
 
@@ -278,7 +269,7 @@ async def kassa_otkazma(db: SessionDep, user: KassaUser, body: OtkazmaIn, reques
 @router.get("/orderlar", response_model=list[KassaOrderRead], operation_id="kassa_orderlar")
 async def kassa_orderlar(
     db: SessionDep,
-    _: KassaUser,
+    _: KassaReadUser,
     smena_id: int | None = None,
     order_id: int | None = None,
     q: Annotated[str, Query(max_length=60)] = "",
@@ -298,9 +289,9 @@ async def kassa_orderlar(
 
 @router.post("/orderlar/{kassa_order_id}/storno", response_model=AmalNatija, operation_id="kassa_storno")
 async def kassa_storno(
-    db: SessionDep, user: DirectorUser, kassa_order_id: int, body: StornoIn, request: Request
+    db: SessionDep, user: MoliyaUser, kassa_order_id: int, body: StornoIn, request: Request
 ) -> AmalNatija:
-    """Xato orderni teskari order bilan bekor qilish (Moliya, faqat direktor, ikki kalit)."""
+    """Xato orderni teskari order bilan bekor qilish (Moliya: direktor yoki moliyachi, ikki kalit)."""
     try:
         n = await k.storno(db, kassa_order_id, user.id, body.sabab)
     except k.KassaXato as e:
@@ -319,5 +310,6 @@ async def kassa_storno(
 
 
 @router.get("/turkumlar", response_model=list[str], operation_id="kassa_turkumlar")
-async def kassa_turkumlar(_: KassaUser) -> list[str]:
-    return TURKUMLAR
+async def kassa_turkumlar(db: SessionDep, _: KassaUser) -> list[str]:
+    """Faol xarajat moddalari (Moliya sozlamasida yuritiladi)."""
+    return [m.nom for m in await k.moddalar(db)]

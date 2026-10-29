@@ -34,6 +34,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3f Ortiqcha berilgan materialni sexdan qaytarish | tayyor, brauzerda sinalgan | pastda |
 | 4a Kassa (backend): smena, PKO/RKO, aralash to'lov, qarz, qaytarish, o'tkazma, storno, rezerv | tayyor, lokal sinalgan | pastda |
 | 4b Kassa (kassir ekrani) | tayyor, Chrome'da ko'rsatilgan | pastda |
+| 5a Moliya (backend): P&L, pul oqimi, debitor/kreditor, kalendar, byudjet, balans, akt sverki, davr yopish | tayyor, lokal sinalgan | pastda |
+| 5b Moliya (ekran) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -341,4 +343,29 @@ kupyura bo'yicha sanash, kitob/kutilgan bilan farq, karta terminali Z. Rad xabar
 Kassir (`kassir` roli) kirgach to'g'ri `/kassa` ga tushadi; sidebar «Kassa» — kassir va direktor.
 Demo: smena 2 500 000 → B-2026-101 avans 2 500 000 (berdi 2 600 000, qaytim 100 000) → «material biriktirildi»
 → turkumsiz xarajat rad → 150 000 xarajat → yopishda 10 000 kam sanaldi → «Smena farqi» RKO avtomatik.
+
+### 5a — Moliya (backend)
+
+`app/modules/moliya` (TZ §8; prototip `Moliya.dc.html`). Moliya o'zi pul yozmaydi: hamma raqam jurnallardan
+yig'iladi — kassa orderlari, ombor hujjatlari va sarf harakatlari, buyurtmalar (`delivered_at`). O'zining jadvallari:
+`moliya_reja` (rejali to'lovlar: oylik / bir marta), `moliya_mijoz_shart` (shartnoma №, to'lov muddati),
+`moliya_davr` (yopilgan oylar). Xarajat moddalari va oylik limit — `kassa_modda` (xarajat orderi faqat faol moddaga).
+- **P&L** (oy): sotuv = shu oy yetkazilgan buyurtmalar + do'kon chiqim hujjatlari (storno ayirilgan); tannarx =
+  buyurtmaga sarf − qaytish (FIFO) + chiqim hujjati `cogs`; xarajat = xarajat va komissiya orderlari moddalar
+  bo'yicha + smena kamomadi; buyurtma rentabelligi.
+- **Pul oqimi**: o'tkazmalarsiz kirim/chiqim moddalar, hisoblar, kassirlar bo'yicha va 12 oy.
+- **Debitorlik**: yetkazilgan va to'lanmagan — qarz, yetkazilmaganga olingan — avans; muddat (shartnoma yoki
+  sozlama `tolov_muddat_kun`, standart 10), kredit limiti (`client.kredit_limit`). **Akt sverki**: debet — yetkazilgan
+  buyurtma va qaytarilgan pul, kredit — to'lov, boshlang'ich va yakuniy saldo.
+- **Kreditorlik**: ombor kirimlari (`head.supplier`, `head.due`) − kassa «ta'minotchi» orderlari (kontragent nomi,
+  harf farqsiz), to'lov eng eski hujjatdan yopiladi.
+- **To'lov kalendari** (45 kun), **byudjet** (limit va fakt), **balans** (pul, debitorlik, ombor qiymati FIFO,
+  kreditorlik, olingan avans), **bosh sahifa** vazifalari (yopilmagan smena, muddati o'tgan qarz, 3 kun ichidagi
+  to'lov, byudjetdan oshish, o'tgan oy yopilmagan), orderlar jurnali CSV.
+- **Davr yopish**: faqat tugagan oy, ochiq smena va qoralama hujjat bo'lmasa; P&L nusxasi qotadi; o'sha sanali
+  ombor hujjati tasdiqlanmaydi; qayta ochish — ikki kalit (so'rov va boshqa xodim tasdig'i).
+- Rol `moliyachi` (ofis darajasi); Moliya API va kassa stornosi — direktor va moliyachi. Orakl `moliya_oracle.py` 32/32.
+
+Ochiq: dollar kursi tarixi (TZ §8 «Kurs») — hozir ombor kirimidagi kurs ishlatiladi; ta'minotchi alohida
+ma'lumotnoma emas (nom bo'yicha), og'ir hisobotlarni fonga o'tkazish (TZ §10) — hajm o'sganda.
 

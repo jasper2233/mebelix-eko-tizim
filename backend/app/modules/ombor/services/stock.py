@@ -234,6 +234,11 @@ async def confirm(db: AsyncSession, doc: StockDoc, user_id: int | None) -> None:
     """Qoralamani tasdiqlaydi: tekshiradi, qoldiq/partiya/harakat yozadi, qulflaydi. Xato — `DocError`."""
     if doc.status != "draft":
         raise DocError([f"{doc.no} allaqachon tasdiqlangan"])
+    # Davr yopish (EKO TZ §8): yopilgan oyga hujjat yozilmaydi. Funksiya ichida — moliya ombordan o'qiydi
+    from app.modules.moliya import service as moliya
+
+    if await moliya.davr_yopiq(db, doc.doc_date):
+        raise DocError([f"{doc.doc_date:%Y-%m} oyi yopilgan — hujjat sanasini joriy oyga qo'ying"])
     if await get_setting(db, OMBOR_IKKI_KALIT) == "1" and user_id is not None and user_id == doc.created_by_id:
         # Ikki kalit (EKO 2.4, prototip qoidasi): hujjatni yozgan odam o'zi tasdiqlamaydi
         raise DocError([f"{doc.no}: ikki kalit qoidasi — qoralamani saqlang, uni boshqa xodim tasdiqlaydi"])

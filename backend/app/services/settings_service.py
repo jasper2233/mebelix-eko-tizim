@@ -59,6 +59,8 @@ REZERV_MUDDAT_KUN = "rezerv_muddat_kun"
 ENG_KAM_AVANS_FOIZ = "eng_kam_avans_foiz"
 #: 1 — rezervi yechilmagan (va limit/direktor ruxsatisiz) buyurtma ishlab chiqarishga o'tmaydi; 0 — o'chiq
 REZERV_DARVOZA = "rezerv_darvoza"
+#: Moliya (EKO TZ §8): shartnomasi yo'q mijozning qarzi yetkazilgandan shuncha kun o'tib «muddati o'tgan»
+TOLOV_MUDDAT_KUN = "tolov_muddat_kun"
 #: 1 — ombor hujjatini yozgan xodim uni o'zi tasdiqlay olmaydi (ikki kalit, EKO 2.4); 0 — o'chiq
 OMBOR_IKKI_KALIT = "ombor_ikki_kalit"
 
@@ -77,6 +79,7 @@ INT_RANGES: dict[str, tuple[int, int]] = {
     ENG_KAM_AVANS_FOIZ: (0, 100),
     REZERV_DARVOZA: (0, 1),
     OMBOR_IKKI_KALIT: (0, 1),
+    TOLOV_MUDDAT_KUN: (0, 365),
 }
 
 #: Sahifada ko'rsatiladigan sozlamalar va ularning sukut qiymati.
@@ -95,6 +98,7 @@ DEFAULTS: dict[str, str] = {
     ENG_KAM_AVANS_FOIZ: "50",
     REZERV_DARVOZA: "1",
     OMBOR_IKKI_KALIT: "0",
+    TOLOV_MUDDAT_KUN: "10",
 }
 
 #: Ish jadvali (JSON). `DEFAULTS` da YO'Q: umumiy `PUT /settings/{key}` 8 belgilik

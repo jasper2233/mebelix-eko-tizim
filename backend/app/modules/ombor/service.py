@@ -4,13 +4,14 @@ Ishlab chiqarish ↔ ombor bog'lanishlari (TZ §5). Hammasi chaqiruvchining sess
 buyurtma amali va ombor oqibati bitta tranzaksiyada.
 """
 
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
-from app.modules.ombor.services import kroy, mx_katalog, rezerv, solishtirish
+from app.modules.ombor.services import kroy, moliya_oqish, mx_katalog, rezerv, solishtirish
 from app.modules.ombor.services.kroy_auth import kroy_token
 
 __all__ = ["kroy_token"]
@@ -79,3 +80,30 @@ async def adopt_open_order(db: AsyncSession, order: Order) -> bool:
     await rezerv.reserve_for_order(db, order)
     await rezerv.approve(db, order.id, None)
     return True
+
+
+# ── Moliya (EKO TZ §8) uchun o'qish ──
+Hujjat = moliya_oqish.Hujjat
+
+
+async def sotuv_hujjatlari(db: AsyncSession, dan: date | None = None, gacha: date | None = None) -> list[Hujjat]:
+    """Do'kon sotuvi (chiqim hujjatlari) summasi va FIFO tannarxi; storno — manfiy qator."""
+    return await moliya_oqish.hujjatlar(db, "chiqim", dan, gacha)
+
+
+async def kirim_hujjatlari(db: AsyncSession, dan: date | None = None, gacha: date | None = None) -> list[Hujjat]:
+    """Ta'minotchidan kirimlar (kreditorlik manbasi); storno — manfiy qator."""
+    return await moliya_oqish.hujjatlar(db, "kirim", dan, gacha)
+
+
+async def buyurtma_tannarxi(db: AsyncSession, order_ids: list[int]) -> dict[int, Decimal]:
+    """Buyurtmaga sarflangan material FIFO tannarxi (qaytgani ayirilgan)."""
+    return await moliya_oqish.buyurtma_tannarxi(db, order_ids)
+
+
+async def ombor_qiymati(db: AsyncSession) -> Decimal:
+    return await moliya_oqish.ombor_qiymati(db)
+
+
+async def qoralamalar(db: AsyncSession, dan: date, gacha: date) -> list[str]:
+    return await moliya_oqish.qoralamalar(db, dan, gacha)

@@ -1,5 +1,6 @@
 from app.modules.integratsiya.models import IntegInbox, IntegOutbox, KroyKatalog, KroyLoyiha
-from app.modules.kassa.models import KassaHisob, KassaOrder, KassaSmena, KassaTaqsimot
+from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSmena, KassaTaqsimot
+from app.modules.moliya.models import MoliyaDavr, MoliyaMijozShart, MoliyaReja
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 
 from .andon import AndonEvent
@@ -45,6 +46,10 @@ __all__ = [
     "CatalogItem",
     "IntegInbox",
     "KassaHisob",
+    "KassaModda",
+    "MoliyaDavr",
+    "MoliyaMijozShart",
+    "MoliyaReja",
     "KassaOrder",
     "KassaSmena",
     "KassaTaqsimot",

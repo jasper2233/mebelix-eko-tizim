@@ -119,3 +119,18 @@ class KassaTaqsimot(BaseModel):
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
     #: Kirim — musbat, buyurtma bo'yicha qaytarish (chiqim) va storno — manfiy
     summa: Mapped[Decimal] = mapped_column(Numeric(16, 2), kw_only=True)
+
+
+class KassaModda(BaseModel):
+    """Xarajat moddasi (turkum) va oylik byudjet limiti (EKO TZ §8 «Moddalar va byudjet»).
+
+    Xarajat orderining turkumi faqat faol moddalardan; nomi orderga matn bo'lib yoziladi (order jurnal —
+    keyin modda nomi o'zgarsa ham eski order o'z nomini saqlaydi)."""
+
+    __tablename__ = "kassa_modda"
+
+    nom: Mapped[str] = mapped_column(String(60), unique=True, kw_only=True)
+    #: Oylik byudjet, so'm; bo'sh — limit yo'q
+    oylik_limit: Mapped[Decimal | None] = mapped_column(Numeric(16, 2), default=None, kw_only=True)
+    tartib: Mapped[int] = mapped_column(default=0, kw_only=True)
+    faol: Mapped[bool] = mapped_column(default=True, server_default="true", kw_only=True)
