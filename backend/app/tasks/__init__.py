@@ -23,6 +23,7 @@ from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import AndonEvent, BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
 from app.models.enums import SessionStatus
+from app.modules.buxgalteriya import service as buxgalteriya
 from app.modules.integratsiya import service as integratsiya
 from app.modules.ombor import service as ombor
 from app.modules.platforma import service as platforma
@@ -472,6 +473,16 @@ async def kroy_katalog(ctx: dict[str, Any]) -> str:
     return f"navbatga:{n}"
 
 
+async def bux_sinxron(ctx: dict[str, Any]) -> str:
+    """Avtomatik provodkalarni manbalarga moslash (EKO 7). Tarifda buxgalteriya yo'q obunachi — o'tadi."""
+    if not await platforma.module_enabled("buxgalteriya"):
+        return "buxgalteriya o'chiq"
+    async with local_session() as db:
+        n = await buxgalteriya.sinxron(db)
+        await db.commit()
+    return f"yozildi:{n.yozildi} tuzatish:{n.tuzatish}"
+
+
 async def soliq_esf(ctx: dict[str, Any]) -> str:
     """ESF navbati (EKO 6): yuborish, holat so'rash, kiruvchilarni olish. Tarifda soliq yo'q obunachi — o'tadi."""
     if not await platforma.module_enabled("soliq"):
@@ -490,3 +501,4 @@ ombor_solishtirish_all = per_tenant_cron(ombor_solishtirish)
 kroy_outbox_all = per_tenant_cron(kroy_outbox)
 kroy_katalog_all = per_tenant_cron(kroy_katalog)
 soliq_esf_all = per_tenant_cron(soliq_esf)
+bux_sinxron_all = per_tenant_cron(bux_sinxron)

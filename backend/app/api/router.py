@@ -34,6 +34,7 @@ from app.api.routes.terminal_devices import router as terminal_devices_router
 from app.api.routes.tmo import router as tmo_router
 from app.api.routes.users import router as users_router
 from app.api.routes.ws import router as ws_router
+from app.modules.buxgalteriya.routes import router as bux_router
 from app.modules.integratsiya.routes import router as integ_router
 from app.modules.integratsiya.routes import user_router as integ_user_router
 from app.modules.kassa.routes import router as kassa_router
@@ -77,6 +78,7 @@ v1_router.include_router(integ_router, dependencies=[Depends(require_module("kro
 v1_router.include_router(kassa_router, dependencies=_modul("kassa"))  # kassa (EKO TZ §7)
 v1_router.include_router(moliya_router, dependencies=_modul("moliya"))  # moliya (EKO TZ §8)
 v1_router.include_router(soliq_router, dependencies=_modul("soliq"))  # soliq (EKO TZ §9)
+v1_router.include_router(bux_router, dependencies=_modul("buxgalteriya"))  # buxgalteriya (EKO 7)
 v1_router.include_router(integ_user_router, dependencies=_modul("kroy"))  # «Kroy» tugmasi, SSO (K1, K6)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)

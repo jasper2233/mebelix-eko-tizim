@@ -12,6 +12,7 @@ from app.tasks import (
     IDLE_SWEEP_MINUTES,
     REZERV_SWEEP_MINUTES,
     all_tasks,
+    bux_sinxron_all,
     close_idle_sessions_all,
     expire_reservations_all,
     kroy_katalog_all,
@@ -59,6 +60,7 @@ class WorkerSettings:
         # MES → MX Kroy xabarlari (EKO 3d): har daqiqa; MX javob bermasa navbatda qoladi
         cron(kroy_outbox_all, second={15}),
         cron(soliq_esf_all, second={45}),  # ESF navbati (EKO 6)
+        cron(bux_sinxron_all, minute=set(range(2, 60, 5))),  # provodkalar sinxroni (EKO 7)
         # MES katalogi → MX (EKO 3e, K5): faqat o'zgarganlari, navbat orqali
         cron(kroy_katalog_all, minute=set(range(0, 60, 10)), second={40}),
     ]

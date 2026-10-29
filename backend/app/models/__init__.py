@@ -1,3 +1,4 @@
+from app.modules.buxgalteriya.models import BuxQoida, BuxSchyot, BuxYozuv
 from app.modules.integratsiya.models import IntegInbox, IntegOutbox, KroyKatalog, KroyLoyiha
 from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSmena, KassaTaqsimot
 from app.modules.moliya.models import MoliyaDavr, MoliyaMijozShart, MoliyaReja
@@ -51,6 +52,9 @@ __all__ = [
     "MoliyaDavr",
     "MoliyaMijozShart",
     "MoliyaReja",
+    "BuxQoida",
+    "BuxSchyot",
+    "BuxYozuv",
     "SoliqEsf",
     "SoliqKorxona",
     "SoliqMijoz",

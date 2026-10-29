@@ -525,6 +525,9 @@ class OySoliq:
     dokon: Decimal
     #: QQS rejimida: sotuvdagi QQS, qabul qilingan kiruvchi ESF dagi QQS (hisobga olinadi), to'lanadigan
     sotuv_qqs: Decimal
+    #: Sotuv QQS ining qismlari: buyurtmalar va do'kon (buxgalteriya 9010 / 9020 dan 6410 ga)
+    buyurtma_qqs: Decimal
+    dokon_qqs: Decimal
     xarid_qqs: Decimal
     tolanadigan_qqs: Decimal
     #: Aylanma rejimida: aylanma × stavka
@@ -549,11 +552,13 @@ async def oy_soliq(db: AsyncSession, oy: date) -> OySoliq:
     )
     qatorlar = await ombor.sotuv_qatorlari(db, oy, keyingi_oy(oy))
     dokon = sum((s for s, _ in qatorlar), _0)
-    sotuv_qqs = xarid_qqs = aylanma_soliq = _0
+    sotuv_qqs = xarid_qqs = aylanma_soliq = buyurtma_qqs = dokon_qqs = _0
     qf = r.qqs_foiz if r else _0
     af = r.aylanma_foiz if r else _0
     if r is not None and r.rejim == "qqs":
-        sotuv_qqs = qqs_ajrat(buyurtma, qf) + sum((qqs_ajrat(s, qf) for s, t in qatorlar if t == "standart"), _0)
+        buyurtma_qqs = qqs_ajrat(buyurtma, qf)
+        dokon_qqs = sum((qqs_ajrat(s, qf) for s, t in qatorlar if t == "standart"), _0)
+        sotuv_qqs = buyurtma_qqs + dokon_qqs
         xarid_qqs = Decimal(
             await db.scalar(
                 select(func.coalesce(func.sum(SoliqEsf.qqs), 0)).where(
@@ -577,6 +582,8 @@ async def oy_soliq(db: AsyncSession, oy: date) -> OySoliq:
         buyurtma=buyurtma,
         dokon=dokon,
         sotuv_qqs=sotuv_qqs,
+        buyurtma_qqs=buyurtma_qqs,
+        dokon_qqs=dokon_qqs,
         xarid_qqs=xarid_qqs,
         tolanadigan_qqs=tolanadigan,
         aylanma_soliq=aylanma_soliq,
@@ -601,3 +608,7 @@ async def kitob(db: AsyncSession, oy: date, tur: str) -> list[SoliqEsf]:
             )
         ).scalars()
     )
+
+
+async def rejim_boshi(db: AsyncSession) -> date | None:
+    return await db.scalar(select(func.min(SoliqRejim.amal_boshi)))

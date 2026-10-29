@@ -18,3 +18,8 @@ async def oy_soliq(db: AsyncSession, oy: date) -> services.OySoliq:
 async def ishlov(db: AsyncSession) -> services.Ishlov:
     """Fon ishi: ESF navbatini yuborish, holat so'rash, kiruvchilarni olish."""
     return await services.ishlov(db)
+
+
+async def rejim_boshi(db: AsyncSession) -> date | None:
+    """Birinchi soliq rejimi sanasi (rejim yozilmagan bo'lsa None)."""
+    return await services.rejim_boshi(db)

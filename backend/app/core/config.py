@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     #: Obunachi holati (faol/to'xtatilgan, modullar) jarayon ichida shuncha soniya keshlanadi
     TENANT_CACHE_SECONDS: int = 30
     #: `single` rejimda yoqilgan modullar (`multi` da — obunachi tarifidan)
-    ENABLED_MODULES: list[str] = ["mes", "ombor", "kassa", "moliya", "soliq", "kroy"]
+    ENABLED_MODULES: list[str] = ["mes", "ombor", "kassa", "moliya", "soliq", "buxgalteriya", "kroy"]
 
     # === First admin user (created on startup) ===
     ADMIN_NAME: str = "admin"

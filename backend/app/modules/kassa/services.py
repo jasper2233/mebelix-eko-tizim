@@ -623,6 +623,7 @@ class OrderQator:
     smena_id: int | None
     storno_of_id: int | None
     izoh: str
+    guruh: str | None = None
 
 
 async def orderlar_davr(
@@ -654,6 +655,7 @@ async def orderlar_davr(
             o.smena_id,
             o.storno_of_id,
             o.izoh,
+            o.guruh,
         )
         for o in (await db.execute(q)).scalars()
     ]

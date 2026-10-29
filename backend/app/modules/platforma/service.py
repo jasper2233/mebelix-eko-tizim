@@ -19,7 +19,7 @@ FAOL = "faol"
 TOXTATILGAN = "toxtatilgan"
 
 #: Tarifda yoqiladigan modullar (TZ §2.4, 4-qoida)
-MODULLAR = ("mes", "ombor", "kassa", "moliya", "soliq", "kroy")
+MODULLAR = ("mes", "ombor", "kassa", "moliya", "soliq", "buxgalteriya", "kroy")
 
 
 @dataclass(frozen=True)

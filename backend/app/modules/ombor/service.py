@@ -132,3 +132,17 @@ async def sotuv_qatorlari(db: AsyncSession, dan: date, gacha: date) -> list[tupl
 async def soliq_saqla(db: AsyncSession, item_id: int, mxik: str | None, birlik_kod: str | None, qqs_turi: str) -> bool:
     """Pozitsiyaning soliq maydonlari; topilmasa False."""
     return await moliya_oqish.soliq_saqla(db, item_id, mxik, birlik_kod, qqs_turi) is not None
+
+
+# ── Buxgalteriya (EKO 7) uchun ──
+Harakat = moliya_oqish.Harakat
+
+
+async def bux_harakatlar(db: AsyncSession) -> list[Harakat]:
+    """Qiymatli ombor harakatlari: ombor qiymatiga ta'siri ishorali (kirim +, chiqim/sarf −)."""
+    return await moliya_oqish.harakatlar(db)
+
+
+async def boshlangich_qiymat(db: AsyncSession) -> Decimal:
+    """Tizimga o'tishdagi ombor qiymati (buxgalteriyada boshlang'ich qoldiq)."""
+    return await moliya_oqish.boshlangich_qiymat(db)

@@ -2,7 +2,7 @@
 ta'minotchi kirimlari (kreditorlik), ombor qiymati. Faqat o'qiydi."""
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import case, func, select
@@ -86,8 +86,87 @@ async def buyurtma_tannarxi(db: AsyncSession, order_ids: list[int]) -> dict[int,
 
 
 async def ombor_qiymati(db: AsyncSession) -> Decimal:
-    """Qolgan partiyalar tannarxda."""
-    return Decimal(await db.scalar(select(func.coalesce(func.sum(StockLot.qty_left * StockLot.unit_cost), 0))) or 0)
+    """Qolgan partiyalar tannarxda + partiyasi hali yo'q qoldiq xarid narxida (ombor hisoboti uni «Boshlang'ich»
+    partiya deb ko'rsatadi: birinchi harakatda shu narx bilan partiya ochiladi — `stock._ensure_initial_lot`)."""
+    lots = Decimal(await db.scalar(select(func.coalesce(func.sum(StockLot.qty_left * StockLot.unit_cost), 0))) or 0)
+    return lots + await _partiyasiz(db)
+
+
+async def _partiyasiz(db: AsyncSession) -> Decimal:
+    lotli = select(StockLot.item_id)
+    return Decimal(
+        await db.scalar(
+            select(
+                func.coalesce(func.sum(CatalogItem.quantity * func.coalesce(CatalogItem.purchase_price, 0)), 0)
+            ).where(CatalogItem.quantity > 0, CatalogItem.id.not_in(lotli))
+        )
+        or 0
+    )
+
+
+@dataclass
+class Harakat:
+    """Buxgalteriya uchun qiymatli harakat: ombor qiymatiga ta'siri `qiymat` (ishorali)."""
+
+    id: int
+    kind: str
+    sana: datetime
+    qiymat: Decimal
+    order_id: int | None
+    doc_id: int | None
+    #: Hujjat turi; storno uchun — asl hujjat turi (`kirim` / `chiqim` / `sex`)
+    doc_kind: str | None
+    #: Kirimda — yetkazib beruvchi
+    kontragent: str
+    note: str
+
+
+async def harakatlar(db: AsyncSession) -> list[Harakat]:
+    """Qiymatli harakatlar (`sexga`, `boshlangich` — qiymatsiz, kirmaydi)."""
+    docs = {d.id: d for d in (await db.execute(select(StockDoc).where(StockDoc.status == "confirmed"))).scalars()}
+    out = []
+    rows = (
+        await db.execute(
+            select(StockMovement)
+            .where(StockMovement.amount.is_not(None), StockMovement.kind.not_in(("sexga", "boshlangich")))
+            .order_by(StockMovement.id)
+        )
+    ).scalars()
+    for m in rows:
+        d = docs.get(m.doc_id or 0)
+        kind = d.kind if d else None
+        if d is not None and d.kind == "storno":
+            asl = docs.get(int(str(d.head.get("asl_id", 0)) or 0))
+            kind = asl.kind if asl else None
+            d = asl or d
+        sign = Decimal(1) if m.qty > 0 else Decimal(-1)
+        out.append(
+            Harakat(
+                m.id,
+                m.kind,
+                m.created_at,
+                sign * abs(m.amount or Decimal(0)),
+                m.order_id,
+                m.doc_id,
+                kind,
+                str((d.head.get("supplier") if d else "") or ""),
+                m.note,
+            )
+        )
+    return out
+
+
+async def boshlangich_qiymat(db: AsyncSession) -> Decimal:
+    """Tizimga o'tishdagi ombor qiymati: «Boshlang'ich» partiyalar (dastlabki miqdor) + partiyasiz qoldiq."""
+    lots = Decimal(
+        await db.scalar(
+            select(func.coalesce(func.sum(StockLot.qty * StockLot.unit_cost), 0)).where(
+                StockLot.source == "Boshlang'ich"
+            )
+        )
+        or 0
+    )
+    return lots + await _partiyasiz(db)
 
 
 async def qoralamalar(db: AsyncSession, dan: date, gacha: date) -> list[str]:

@@ -39,6 +39,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 6.0 Tarif darvozasi (obuna): ombor/kassa/moliya/kroy/soliq yo'llari `require_module`, menyu tarifdan | tayyor | pastda |
 | 6a Soliq (backend): rejim tarixi (QQS / aylanma), rekvizitlar, MXIK, ESF + navbat + sinov operatori, QQS kitobi, P&L | tayyor, lokal sinalgan | pastda |
 | 6b Soliq (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
+| 7a Buxgalteriya (backend): schyotlar rejasi, avtomatik provodkalar, aylanma-saldo, nazorat | tayyor, lokal sinalgan | pastda |
+| 7b Buxgalteriya (ekran) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -427,4 +429,26 @@ xarid kitobi, CSV, A4), Sozlamalar (rejim tarixi, korxona rekvizitlari, buyurtma
 QQS turi). Tepada doim «ESF operatori: lokal SINOV — soliq tizimiga hech narsa yuborilmaydi». Sidebar «Soliq» —
 direktor va moliyachi, tarifida `soliq` bo'lsa. Moliya P&L jadvalida «Sotuvdagi QQS», «Sof tushum» va «Aylanmadan
 soliq» qatorlari.
+
+### 7a — Buxgalteriya (backend), 1C siz
+
+`app/modules/buxgalteriya`, tarif moduli `buxgalteriya`. Jadvallar: `bux_schyot` (BHMS 21 asosida 30 ta asosiy schyot —
+buxgalter to'ldiradi/tasdiqlaydi), `bux_qoida` (kalit → schyot: `hisob:naqd` 5010, `xarajat:*` 9420, `xarajat:<modda>`…),
+`bux_yozuv` (provodka; jurnal — UPDATE/DELETE trigger bilan taqiqlangan).
+- **Avtomatik provodkalar manba jurnallaridan**: kassa orderlari (storno ham, o'tkazma juftligi), ombor harakatlari
+  qiymati (1010 ↔ 6010 / 9120 / 2010 / 2510 / 9390–9430), yetkazilgan buyurtma (4010–9010, tannarx 9110–2010),
+  do'kon sotuvi (4010–9020), oy soliqi (9010/9020–6410 QQS, 9810–6410 aylanma), boshlang'ich qoldiqlar (… –8710).
+- **Sinxron = farq**: har manba guruhi va subkonto bo'yicha «bo'lishi kerak − yozilgan» yoziladi. Takror sinxron
+  hech narsa yozmaydi; manba o'zgarsa (summa, bekor, qoida) — tuzatish provodkasi; yopilgan oyga — bugungi sana.
+  Fon ishi har 5 daqiqada, hisobot oldidan ham.
+- Hisobotlar: aylanma-saldo vedomosti (4010/6010 — mijoz/kontragent bo'yicha kengaytirilgan saldo, CSV), schyot
+  kartochkasi, provodkalar jurnali. Qo'lda provodka (ish haqi, asosiy vosita) va uning stornosi (ikki kalit).
+- **Nazorat**: 5010/5710/5110 = kassa qoldiqlari, 1010 = ombor qiymati, 4010 = Moliya debitor (qarz − avans),
+  6010 = Moliya kreditor; oy natijasi (9xxx) = Moliya P&L sof foydasi (ombor tuzatishlari P&L da yo'q).
+- Tuzatildi: «ombor qiymati» endi partiyasi hali ochilmagan qoldiqni ham xarid narxida hisoblaydi (ombor hisoboti
+  kabi) — ilgari Moliya balansida kam chiqardi.
+- Orakl `bux_oracle.py` 23/23 (seed ombor ma'lumotlari bilan: 1010 = 116 524 210 = ombor qiymati).
+
+Ochiq: xarid QQS i (4410) tannarxdan ajratilmaydi; ish haqi va asosiy vositalar — hozircha qo'lda provodka;
+schyot nomlari va qoidalarni buxgalter tasdiqlaydi; hisoblash hajm o'sganda faqat ochiq oylar bo'yicha qilinadi.
 
