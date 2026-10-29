@@ -234,8 +234,7 @@ Ochiq: MX bo'lagining jismoniy yorlig'i — K2 paketidagi qoldiq (`waste_item`, 
 - `project.status` webhook → `kroy_loyiha.holat` (0–3).
 - MX da topilgan xato (MX klonida tuzatildi, `D:\EKO TIZIM\mx-kroy` `eko-integratsiya` tarmog'i): `requirements.txt`
   da `cryptography` yo'q edi — `MEBELIX_JWT_PUBLIC_KEY` bilan HAR qanday RS256 token «Algorithm not supported»;
-  ochiq kalit endi bir qatorda (`
-`) ham qabul qilinadi.
+  ochiq kalit endi bir qatorda (`\n` bilan) ham qabul qilinadi.
 - Sinov: MX klon (8010, o'z SQLite bazasi) ↔ MES (8005): loyiha yaratildi, SSO bilan 200, tokensiz/soxta 401,
   ko'ruvchi tahriri 403, `project.created/updated/status` webhooklari inboxda; brauzerda tugma MX ni kirgan holda ochdi.
 
