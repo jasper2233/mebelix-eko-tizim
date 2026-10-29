@@ -28,7 +28,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.3b Sexdan so'rov, rulon tugadi (terminal), qoldiq bo'laklari | tayyor, lokal sinalgan | pastda |
 | 3a MX Kroy: qoldiq ombori API (K3), webhook inbox (K4) | tayyor, HTTP bilan sinalgan | pastda |
 | 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | tayyor, MX klon bilan sinalgan | pastda |
-| 3c MX Kroy: kroy paketi qabul (K2), arra «list chiqdi» → MX, katalog sinxroni (K5) | navbatda | |
+| 3c MX Kroy: kroy paketi qabul (K2) | tayyor, MX klon bilan sinalgan | pastda |
+| 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, katalog sinxroni (K5), outbox | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -241,4 +242,29 @@ Ochiq: MX bo'lagining jismoniy yorlig'i — K2 paketidagi qoldiq (`waste_item`, 
 Ulash (prod): MES `.env` — `MX_URL`, `MX_PUBLIC_URL`, `MX_SSO_PRIVATE_KEY`, `KROY_API_TOKEN`; MX `.env` —
 `MEBELIX_JWT_PUBLIC_KEY`, `MEBELIX_AUTH_REQUIRED=1`, `MES_WEBHOOK_URL={MES}/api/v1/integ/kroy/webhook`,
 `MES_WEBHOOK_TOKEN`=`MES_API_TOKEN`=`KROY_API_TOKEN`; MX sozlamasi «Источник склада: База MES», `{MES}/api/v1/ombor/kroy`.
+
+### 3c — MX Kroy paketi (K2)
+
+- Paket `.project` faylining o'rnini bosadi va AYNAN o'sha yo'ldan o'tadi (`orders/files.py: load_project`):
+  qayta yuklash qoidasi (postda skan bo'lsa rad), qo'lda marshrutlar saqlanadi, eski natija `.stale`, rezerv.
+  `services/giblab/mx_paket.py` paketni `ParsedProject` + `CutmapResult` + `WasteItem` ro'yxatiga o'giradi;
+  `ingest_project` ga tayyor xarita, qoldiqlar, `raw_kind=KROY_PAKET`, `write_scx=False` beriladi. Ikkinchi ingest yo'q.
+- Qat'iy tekshiruv: format/versiya, `source.mes_order_number` = buyurtma raqami, har nusxa QR MES qoidasiga
+  (`instance_qr`) aynan mos, stanok fayli sha256. Nusxa ↔ katak — paketdagi `instance_no` bo'yicha.
+- Marshrut MES qoidasi bilan: ARRA (xaritada joyi bor), KROMKA (qirralar soni), PRISADKA — XNC dasturi VA
+  CNC stanok fayli kelgan detalga (`forced_passes`, shartnomaning «machining» qoidasi). Stanok fayllari
+  `uploads/projects/{id}/stanok/{stanok}/` (`FileKind.STANOK`, meta: format, stanok, sha256, detallar).
+- Sarf (`consumption`) → `order.material_usage` (CS/CN → list, EL → kromka, CL → `linear` metr, boshqasi → dona).
+  Rezerv: fayldagi kod katalog kodiga AYNAN teng bo'lsa moslash avtomatik (koef 1, bir marta yoziladi).
+- Ikki yo'l: «Kroyni olish» (buyurtma sahifasi; MES `GET {MX}/projects/{pid}/mes-package?pp=enabled`) va MX
+  yuboradi `POST /api/v1/integ/kroy/orders/{id}/kroy-package` (xizmat tokeni; 201 `{order_id, order_number, redirect_url}`).
+- Yo'l-yo'lakay topilgan xatolar: (1) rezerv qayta qurilganda berilgan miqdor yangi ehtiyojgacha KESILARDI va
+  kroydan chiqib ketgan material yo'qolardi — endi to'liq ko'chadi, «kerak 0, berilgan N» qatori, berish
+  varaqasida «ortiqcha» (kechki solishtirish ushlagan); (2) to'liq berilgan (`sarflandi`) rezervli buyurtmaga kroy
+  qayta yuklansa berilgan hammasi yo'qolardi (orakl ushlagan). MX klonida: `pp=all` nesting stanoklarida 422.
+- Sinov: MX klonidagi haqiqiy paket (2 list, 3 detal × 2 shkaf = 12 nusxa) → MES: QR, katak, marshrut, sarf,
+  kromka rezervi; MES xarita sahifasi paket xaritasini chizdi (konsol xatosiz); orakllar berish 53/53.
+
+Ochiq: qaytarish oqimi (ortiqcha berilgan materialni sexdan omborga skan bilan); MX bo'lagi (`kroy_intake`) ↔
+paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES o'zi oladi.
 

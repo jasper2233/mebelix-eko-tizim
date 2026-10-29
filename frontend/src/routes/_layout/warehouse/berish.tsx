@@ -364,7 +364,16 @@ function Varaqa({ orderId }: { orderId: number }) {
                       num(l.qoldi) > 0 && "font-semibold",
                     )}
                   >
-                    {tayyor ? "✓" : fmtQty(l.qoldi)}
+                    {num(l.berilgan) > num(l.kerak) && l.item_id != null ? (
+                      // Kroy berilgandan keyin o'zgargan: ortig'i sexda — omborga qaytarilishi kerak
+                      <span className="text-xs font-semibold text-amber-700">
+                        ortiqcha {fmtQty(num(l.berilgan) - num(l.kerak))}
+                      </span>
+                    ) : tayyor ? (
+                      "✓"
+                    ) : (
+                      fmtQty(l.qoldi)
+                    )}
                   </TableCell>
                   <TableCell className="text-xs">
                     <Qayerdan l={l} tayyor={tayyor} />

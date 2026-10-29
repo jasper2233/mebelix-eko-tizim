@@ -16,7 +16,7 @@ from app.models import Order, OrderFile, Part, PartInstance, PartRoute, Post, Pr
 from app.models.enums import FileKind, PostCode, RouteSource
 
 from ..settings_service import CUSTOM_PART_SUFFIX, get_setting
-from .cutmap import build_cutmap
+from .cutmap import CutmapResult, InstanceCell, build_cutmap
 from .models import TAIL_CODES, ParsedPart, ParsedProject, ParseError, paths_json
 from .parser import parse_project
 from .routes import build_manual_route, resolve_post
@@ -302,7 +302,7 @@ async def wipe_previous_parse(db: AsyncSession, order: Order, upload_root: Path)
     # Fayllarda yo'l ham kerak (diskdan o'chirish uchun) — avval yo'llar, keyin bulk UPDATE
     file_where = (
         OrderFile.order_id == order.id,
-        OrderFile.kind.in_([FileKind.PROJECT, FileKind.SCX]),
+        OrderFile.kind.in_([FileKind.PROJECT, FileKind.SCX, FileKind.KROY_PAKET, FileKind.STANOK]),
         OrderFile.is_deleted == False,  # noqa: E712
     )
     paths = (await db.execute(select(OrderFile.path).where(*file_where))).scalars().all()
@@ -333,7 +333,7 @@ def drop_stale_files(stale: list[str], upload_root: Path) -> None:
 
 
 # Sarf birligi: list va kromkada faylda `unit` yo'q, furnitura esa doim 'шт' beradi.
-_USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona"}
+_USAGE_UNITS = {"sheet": "list", "band": "metr", "hardware": "dona", "linear": "metr"}
 
 
 def _build_and_write_scx(
@@ -495,6 +495,45 @@ async def purge_replaced_scx(db: AsyncSession, order_id: int, old_paths: list[st
             (upload_root / path).unlink(missing_ok=True)
 
 
+def _binding(cell_bindings: list[InstanceCell], n: int) -> InstanceCell | None:
+    """`n`-nusxaning katagi. MX paketi nusxa raqamini o'zi aytadi (`instance_no`) — joyi yo'q nusxa
+    ketma-ketlikni buzmaydi; GibLab xaritasida tartib bo'yicha."""
+    if any(b.instance_no is not None for b in cell_bindings):
+        return next((b for b in cell_bindings if b.instance_no == n), None)
+    return cell_bindings[n - 1] if n - 1 < len(cell_bindings) else None
+
+
+def _add_waste_items(
+    db: AsyncSession, order: Order, cutmap: CutmapResult | None, waste_items: list[dict[str, Any]] | None
+) -> None:
+    """FOYDALI atxotlar — chek va treking uchun yozuv (`ATX-` QR)."""
+    if waste_items is not None:
+        # Paket: har JISMONIY qoldiq alohida (andoza `mult > 1` bo'lsa har list uchun), ID MX dan
+        for w in waste_items:
+            db.add(WasteItem(order_id=order.id, **w))
+    elif cutmap:
+        atx_n = 0
+        for mat in cutmap.model.get("materials", []):
+            for sh in mat.get("sheets", []):
+                for cell in sh.get("parts", []):
+                    if not (cell.get("waste") and cell.get("business")):
+                        continue
+                    atx_n += 1
+                    # Katakka raqam yoziladi (order.cutmap JSONB ga tushadi) —
+                    # frontend shu raqam orqali WasteItem'ni topadi.
+                    cell["atx"] = atx_n
+                    db.add(
+                        WasteItem(
+                            order_id=order.id,
+                            material_name=str(mat.get("name") or "")[:150],
+                            sheet_no=int(sh.get("no") or 0),
+                            length=float(cell.get("w") or 0),
+                            width=float(cell.get("h") or 0),
+                            qr_text=f"ATX-{order.number}-{atx_n}",
+                        )
+                    )
+
+
 async def ingest_project(
     db: AsyncSession,
     order: Order,
@@ -502,8 +541,17 @@ async def ingest_project(
     raw_content: bytes,
     original_filename: str,
     upload_root: Path,
+    *,
+    raw_kind: FileKind = FileKind.PROJECT,
+    cutmap: CutmapResult | None = None,
+    waste_items: list[dict[str, Any]] | None = None,
+    write_scx: bool = True,
 ) -> dict[str, Any]:
-    """Create all DB rows + files for a parsed PROCESSED project. Caller commits."""
+    """Create all DB rows + files for a parsed PROCESSED project. Caller commits.
+
+    MX Kroy paketi (EKO 3c, `mx_paket.py`) ham shu yo'ldan o'tadi: kesish xaritasi va foydali qoldiqlar
+    paketda TAYYOR keladi (`cutmap`, `waste_items`), xom fayl — `KROY_PAKET`, SCX yaratilmaydi (stanok
+    fayllarini MX beradi). Detal, nusxa, marshrut, nostandart qoidasi — `.project` bilan aynan bir xil."""
     # Nostandart qoidasi sozlamadan BIR MARTA o'qiladi: sikl ichida har detal uchun
     # so'rov qilinsa yuzlab ortiqcha SELECT chiqardi.
     nostandart = _nostandart_qoidasi(await get_setting(db, CUSTOM_PART_SUFFIX))
@@ -533,7 +581,8 @@ async def ingest_project(
     packaging = order.needs_packaging
 
     # Kesish xaritasi CS blobini ochadi va katakchalarni hisoblaydi — sof CPU, thread'da.
-    cutmap = await run_in_threadpool(build_cutmap, project) if any(c.data_blob for c in project.cut_ops) else None
+    if cutmap is None and any(c.data_blob for c in project.cut_ops):
+        cutmap = await run_in_threadpool(build_cutmap, project)
 
     # --- store the raw project file ---
     project_dir = upload_root / "projects" / str(order.id)
@@ -543,7 +592,7 @@ async def ingest_project(
     db.add(
         OrderFile(
             order_id=order.id,
-            kind=FileKind.PROJECT,
+            kind=raw_kind,
             path=str(project_path.relative_to(upload_root)),
             filename=original_filename,
             size=len(raw_content),
@@ -616,7 +665,7 @@ async def ingest_project(
             cell_bindings = bindings_by_key.get(pp.key, [])
             qrs = pp.serial_qrs(order.number)
             for n in range(1, pp.count + 1):
-                binding = cell_bindings[n - 1] if n - 1 < len(cell_bindings) else None
+                binding = _binding(cell_bindings, n)
                 db.add(
                     PartInstance(
                         order_id=order.id,
@@ -672,8 +721,9 @@ async def ingest_project(
             # SCX: har nusxaga bitta TO'LIQ fayl (old + orqa Face=6
             # birlashgan, nom/ID = QR — Nanxing skaneri to'g'ridan-to'g'ri topadi).
             # plate: qo'shqavat detalda (32mm) eksport qalinligi plita bo'yicha
-            plate = _plate_thickness.get(pp.material_name or "")
-            await write_and_register_scx(db, order.id, part.id, pp, qrs, upload_root, plate_thickness=plate)
+            if write_scx:
+                plate = _plate_thickness.get(pp.material_name or "")
+                await write_and_register_scx(db, order.id, part.id, pp, qrs, upload_root, plate_thickness=plate)
 
     # --- order metadata ---
     # `code` — tsexning `goods.xls` katalogidagi SKU. Parser uni o'qiydi, lekin bu yerda
@@ -709,27 +759,7 @@ async def ingest_project(
     # FOYDALI atxotlar (GibLab `business="true"`) — chek va treking uchun yozuv.
     # QR prefiksi "ATX-": skan dvijoki detal QR'i bilan adashtirmasin. Raqamlash
     # material/list tartibida — chekdagi raqam xaritadagi bilan mos keladi.
-    if cutmap:
-        atx_n = 0
-        for mat in cutmap.model.get("materials", []):
-            for sh in mat.get("sheets", []):
-                for cell in sh.get("parts", []):
-                    if not (cell.get("waste") and cell.get("business")):
-                        continue
-                    atx_n += 1
-                    # Katakka raqam yoziladi (order.cutmap JSONB ga tushadi) —
-                    # frontend shu raqam orqali WasteItem'ni topadi.
-                    cell["atx"] = atx_n
-                    db.add(
-                        WasteItem(
-                            order_id=order.id,
-                            material_name=str(mat.get("name") or "")[:150],
-                            sheet_no=int(sh.get("no") or 0),
-                            length=float(cell.get("w") or 0),
-                            width=float(cell.get("h") or 0),
-                            qr_text=f"ATX-{order.number}-{atx_n}",
-                        )
-                    )
+    _add_waste_items(db, order, cutmap, waste_items)
 
     # Kesish xaritasi qurilgan bo'lsa: unda joyi yo'q detallarni texnolog bilishi shart.
     # Uch sabab bo'ladi — (a) listdan kesilmaydigan profil, (b) GibLab uni ataylab

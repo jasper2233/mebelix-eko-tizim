@@ -111,7 +111,7 @@ for _code, _post in PROCESS_POSTS.items():
 
 @dataclass
 class ParsedMaterial:
-    kind: str  # "sheet" | "band" | "hardware"
+    kind: str  # "sheet" | "band" | "hardware" | "linear" (MX paketi: pogonaj profil, metrda)
     name: str
     code: str | None = None
     thickness: float | None = None
@@ -311,6 +311,9 @@ class ParsedPart:
     # dizayner chiqarib tashlagan). Ro'yxatda turishi joylashtirilganini bildirmaydi (docs/10 §3.1).
     placed: bool = True
     xnc_ops: list[XncOp] = field(default_factory=list)
+    #: MX paketi: ishlov dasturi (XNC) va uning stanok fayli bor — PRISADKA qadami ochiladi, garchi
+    #: `xnc_ops` (GibLab XML) bo'lmasa ham (`MES_PAKET_V1.md` §1 «machining» qoidasi)
+    forced_passes: int = 0
 
     @property
     def key(self) -> str:
@@ -371,7 +374,10 @@ class ParsedPart:
         # BITTA skan — yuzlar soni emas: SCX ikkala yuzni (old + orqa `_2`) bitta faylga
         # birlashtiradi (scx.py, Face="6"), stanok bitta yurgizishda ag'darib ishlaydi. Ilgari
         # old+orqa = 2 talab qilinar, prisadkachi bitta detalni «0/2 — 2 ta detal» deb ko'rardi.
-        return int(any(op.bores or op.edge_bores or op.grooves or any(op.mills) for op in self.xnc_ops))
+        return max(
+            int(any(op.bores or op.edge_bores or op.grooves or any(op.mills) for op in self.xnc_ops)),
+            self.forced_passes,
+        )
 
 
 @dataclass

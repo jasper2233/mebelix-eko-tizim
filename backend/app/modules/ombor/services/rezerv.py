@@ -106,19 +106,33 @@ async def _free(db: AsyncSession, items: dict[int, CatalogItem]) -> dict[int, De
 
 
 async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
-    """Buyurtma rezervini (qayta) quradi. Eski tirik rezerv bekor qilinadi, to'lov saqlanadi (TZ §4.3 8-band)."""
-    old = await _tirik(db, order.id)
-    #: Eski rezervdan sexga allaqachon berilgani — yangisida qayta berilmasin (pozitsiya bo'yicha)
+    """Buyurtma rezervini (qayta) quradi. Eski tirik rezerv bekor qilinadi, to'lov saqlanadi (TZ §4.3 8-band).
+    To'liq berilgan (`sarflandi`) rezerv ham almashtiriladi — aks holda kroy qayta yuklanganda berilgan
+    material hisobdan tushib qolardi (orakl topgan, EKO 3c)."""
+    old = await _tirik(db, order.id) or (
+        await db.execute(
+            select(Rezerv)
+            .where(Rezerv.order_id == order.id, Rezerv.holat == SARFLANDI, Rezerv.is_deleted == False)  # noqa: E712
+            .order_by(Rezerv.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    #: Eski rezervdan sexga allaqachon berilgani (pozitsiya bo'yicha) — TO'LIQ ko'chadi: yangi kroyga
+    #: kamroq kerak bo'lsa ham berilgani kesilmaydi (ortig'i sexda — omborchi qaytaradi), yangi kroyda
+    #: umuman yo'q material ham «kerak 0, berilgan N» qatori bo'lib qoladi. Aks holda ortiqcha
+    #: berilgan material izsiz yo'qolardi (kechki solishtirish «berilgan ≠ sarf» deb ushlagan, EKO 3c)
     berilgan: dict[int, Decimal] = {}
+    manba: dict[int, RezervLine] = {}
     if old is not None:
         for ln in (
             await db.execute(select(RezervLine).where(RezervLine.rezerv_id == old.id, RezervLine.berilgan_qty > 0))
         ).scalars():
             assert ln.item_id is not None
             berilgan[ln.item_id] = berilgan.get(ln.item_id, Decimal(0)) + ln.berilgan_qty
+            manba.setdefault(ln.item_id, ln)
         old.holat = BEKOR
         await db.flush()
-    if not order.material_usage:
+    if not order.material_usage and not berilgan:
         return None
 
     # Bir xil material bir necha marta kelishi mumkin — kalit bo'yicha jamlanadi
@@ -139,6 +153,7 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
             )
         ).scalars()
     }
+    await _auto_map(db, agg, maps)
     items = await _lock_items(db, (mm.item_id for mm in maps.values()))
     free = await _free(db, items)
 
@@ -160,12 +175,52 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
             fayl_birlik=str(row["birlik"])[:10],
         )
         if mm is not None and mm.item_id in items:
-            line.berilgan_qty = min(berilgan.pop(mm.item_id, Decimal(0)), line.fayl_qty * mm.koef)
+            line.berilgan_qty = berilgan.pop(mm.item_id, Decimal(0))
             _cover(line, mm, free)
         db.add(line)
+    for item_id, b in berilgan.items():
+        src = manba[item_id]
+        db.add(
+            RezervLine(
+                rezerv_id=rez.id,
+                kind=src.kind,
+                tashqi_kalit=src.tashqi_kalit,
+                tashqi_nom=src.tashqi_nom,
+                fayl_qty=Decimal(0),
+                fayl_birlik=src.fayl_birlik,
+                item_id=item_id,
+                kerak_qty=Decimal(0),
+                qoplangan_qty=b,
+                berilgan_qty=b,
+            )
+        )
     await db.flush()
     await check_payment(db, order)
     return rez
+
+
+async def _auto_map(
+    db: AsyncSession, agg: dict[tuple[str, str], dict[str, object]], maps: dict[tuple[str, str], MaterialMap]
+) -> None:
+    """Fayldagi kod KATALOG kodining o'zi bo'lsa (MX Kroy paketi katalog kodlari bilan keladi, EKO 3c) —
+    moslash qo'lda kutilmaydi: koef 1 bilan bir marta yoziladi (Ta'minot sahifasida ko'rinadi, o'zgartirsa bo'ladi)."""
+    yoq = {key for (kind, key) in agg if (kind, key) not in maps}
+    if not yoq:
+        return
+    kat = {
+        c.code: c.id
+        for c in (
+            await db.execute(
+                select(CatalogItem).where(CatalogItem.code.in_(yoq), CatalogItem.is_deleted == False)  # noqa: E712
+            )
+        ).scalars()
+    }
+    for kind, key in agg:
+        if (kind, key) not in maps and key in kat:
+            mm = MaterialMap(kind=kind, tashqi_kalit=key, item_id=kat[key], koef=Decimal(1))
+            db.add(mm)
+            maps[(kind, key)] = mm
+    await db.flush()
 
 
 def _cover(line: RezervLine, mm: MaterialMap, free: dict[int, Decimal]) -> None:

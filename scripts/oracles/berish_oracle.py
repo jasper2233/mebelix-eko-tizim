@@ -18,6 +18,8 @@ Pozitsiyalar: A (list, `M`), K (kromka, metr, rulon 100 m), C (furnitura, dona �
        arra so'rovi list berilgach yopiladi. Qayta qurilgan rezervda direktor ruxsati saqlanadi.
    13) qoldiq bo'lagi (`ATX-`): qabul → katalogga o'zi bog'lanadi (manba rezervidan), takror qabul — o'sha;
        o'z buyurtmasiga — rad; boshqasiga — ishlatildi; ishlatilganini chiqitga — rad; noma'lum yorliq — rad.
+   14) kroy o'zgardi (material berilgandan keyin): K 20 berilgan, yangi kroyga 5 kerak — berilgani 20 qoladi
+       (ortig'i sexda); list yangi kroyda yo'q — «kerak 0, berilgan 1» qatori; solishtirishda sarf farqi yo'q.
 Yurgizish (lokal sinov bazasi, katalog yuklangan, prod EMAS):
     cd backend && uv run python ../scripts/oracles/berish_oracle.py
 """
@@ -33,7 +35,7 @@ from app.models import Client, Order, WasteItem
 from app.models.enums import OrderStatus
 from app.modules.ombor.models import CatalogItem, MaterialBirlik, RezervLine, StockMovement
 from app.modules.ombor.schemas.stock import DocIn, DocLineIn
-from app.modules.ombor.services import berish, birlik, bolak, rezerv, sorov
+from app.modules.ombor.services import berish, birlik, bolak, rezerv, solishtirish, sorov
 from app.modules.ombor.services.stock import DocError, adjust_quantity, confirm, save_draft
 
 natija: list[bool] = []
@@ -266,6 +268,19 @@ async def main() -> None:
         b2 = await bolak.qabul(db, "ATX-BR-1-2", None)
         tek("chiqitga", (await bolak.chiqit(db, b2.id)).joy, "chiqit")
         await rad("noma'lum yorliq", bolak.qabul(db, "ATX-YOQ-1", None), "yo'q")
+
+        print("14) kroy o'zgardi")
+        o2.material_usage = [{"name": "Kromka", "code": "KK", "kind": "band", "count": 5, "unit": "metr"}]
+        await db.flush()
+        await rezerv.reserve_for_order(db, o2)
+        lk = await line(db, o2.id, k.id)
+        tek("K: kerak 5, berilgan 20 (ortig'i sexda)", (lk.kerak_qty, lk.berilgan_qty), (D(5), D(20)))
+        la = await line(db, o2.id, a.id)
+        tek("list kroydan chiqdi: kerak 0, berilgan 1", (la.kerak_qty, la.berilgan_qty), (D(0), D(1)))
+        sarf_farq = [
+            f for f in await solishtirish.solishtir(db) if f.tur == "sarf" and f.kalit.startswith(f"buyurtma {o2.id} ")
+        ]
+        tek("solishtirish: o2 sarf farqi yo'q", sarf_farq, [])
 
         await db.rollback()  # sinov ma'lumoti bazada qolmaydi
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")

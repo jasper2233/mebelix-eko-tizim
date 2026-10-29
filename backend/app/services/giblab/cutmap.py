@@ -37,6 +37,8 @@ class InstanceCell:
     part_key: str  # productCode_partCode
     pattern_no: int  # 1-based, global across materials
     cell_index: int  # 1-based within the pattern
+    #: Nusxa raqami (MX paketi aytadi); GibLab xaritasida None — tartib bo'yicha bog'lanadi
+    instance_no: int | None = None
 
 
 @dataclass

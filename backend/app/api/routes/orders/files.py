@@ -2,6 +2,9 @@
 
 import io
 import zipfile
+from collections.abc import Awaitable, Callable
+from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
@@ -12,7 +15,7 @@ from app.api.deps import SessionDep, StaffReadUser, TexnologUser, client_ip
 from app.core.config import settings, upload_root
 from app.core.exceptions import ForbiddenException, NotFoundException
 from app.crud import log_action
-from app.models import OrderFile, Post
+from app.models import Order, OrderFile, Post
 from app.models.enums import FileKind, OrderStatus, PostCode
 from app.modules.ombor import service as ombor
 from app.schemas.common import Message
@@ -30,6 +33,7 @@ from app.services.giblab.ingest import (
     snapshot_custom_routes,
     wipe_previous_parse,
 )
+from app.services.giblab.models import ParsedProject
 
 from ._common import _first_n, _get_order, _get_visible_order, _require_editable, stamp_route_machines
 
@@ -84,6 +88,35 @@ async def upload_order_project(
             ),
         )
 
+    return await load_project(
+        db,
+        order,
+        project,
+        content,
+        file.filename or "project.project",
+        user_id=current_user.id,
+        ip=client_ip(request),
+        message=f"Project fayl {'qayta ' if qayta_yuklash else ''}yuklandi: {file.filename}",
+    )
+
+
+async def load_project(
+    db: SessionDep,
+    order: Order,
+    project: ParsedProject,
+    content: bytes,
+    filename: str,
+    *,
+    user_id: int | None,
+    ip: str | None,
+    message: str,
+    after_ingest: Callable[[Path], Awaitable[None]] | None = None,
+    **ingest_kw: Any,
+) -> ProjectUploadResult:
+    """Kroy natijasini buyurtmaga yozadi — `.project` yuklash va MX Kroy paketi (EKO 3c) uchun YAGONA yo'l:
+    qo'lda marshrutlar saqlanadi, eski natija `.stale` ga, ingest, marshrutlar tiklanadi, rezerv quriladi,
+    log, commit. Ingest yiqilsa hamma narsa (fayllar ham) orqaga qaytadi. `after_ingest(root)` — shu
+    tranzaksiyada qo'shimcha yozuv (paketning stanok fayllari)."""
     root = upload_root()
     # Qo'lda chizilgan marshrutlar fayldan kelmaydi — qayta yuklashda ular bilan birga
     # yo'qolib ketmasligi uchun detal kodi bo'yicha saqlab turiladi.
@@ -93,7 +126,9 @@ async def upload_order_project(
     # qaytar, fayllar esa qaytmasdi.
     stale_files = await wipe_previous_parse(db, order, root)
     try:
-        summary = await ingest_project(db, order, project, content, file.filename or "project.project", root)
+        summary = await ingest_project(db, order, project, content, filename, root, **ingest_kw)
+        if after_ingest is not None:
+            await after_ingest(root)
         restored, lost = await restore_custom_routes(db, order, saved_routes)
         if order.status == OrderStatus.PRODUCTION:
             # Qayta yuklash marshrutlarni `machine_id=None` bilan yaratadi — ish markazi tanlovi
@@ -127,12 +162,12 @@ async def upload_order_project(
         db,
         module="orders",
         action="project_uploaded",
-        user_id=current_user.id,
+        user_id=user_id,
         entity_type="order",
         entity_id=order.id,
-        message=f"Project fayl {'qayta ' if qayta_yuklash else ''}yuklandi: {file.filename}",
+        message=message,
         meta=summary,
-        ip=client_ip(request),
+        ip=ip,
     )
     await db.commit()
     drop_stale_files(stale_files, root)

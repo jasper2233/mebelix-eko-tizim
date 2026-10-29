@@ -2910,7 +2910,7 @@ export type EndpointStat = {
 /**
  * FileKind
  */
-export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis';
+export type FileKind = 'project' | 'scx' | 'label_pdf' | 'document' | 'bazis' | 'kroy_paket' | 'stanok';
 
 /**
  * Finding
@@ -4255,7 +4255,7 @@ export type MaterialMapIn = {
     /**
      * Kind
      */
-    kind: 'sheet' | 'band' | 'hardware';
+    kind: 'sheet' | 'band' | 'hardware' | 'linear';
     /**
      * Tashqi Kalit
      */
@@ -11728,6 +11728,39 @@ export type KroyWebhookResponses = {
     200: unknown;
 };
 
+export type KroyPackagePushData = {
+    /**
+     * Body
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/orders/{order_id}/kroy-package';
+};
+
+export type KroyPackagePushErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyPackagePushError = KroyPackagePushErrors[keyof KroyPackagePushErrors];
+
+export type KroyPackagePushResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type KroyHolatData = {
     body?: never;
     path?: never;
@@ -11773,6 +11806,36 @@ export type KroyOchishResponses = {
 };
 
 export type KroyOchishResponse = KroyOchishResponses[keyof KroyOchishResponses];
+
+export type KroyOlishData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/orders/{order_id}/kroy-olish';
+};
+
+export type KroyOlishErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyOlishError = KroyOlishErrors[keyof KroyOlishErrors];
+
+export type KroyOlishResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProjectUploadResult;
+};
+
+export type KroyOlishResponse = KroyOlishResponses[keyof KroyOlishResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

@@ -50,7 +50,7 @@ class ShortageRead(BaseModel):
 
 
 class MaterialMapIn(BaseModel):
-    kind: Literal["sheet", "band", "hardware"]
+    kind: Literal["sheet", "band", "hardware", "linear"]
     tashqi_kalit: str = Field(min_length=1, max_length=200)
     item_id: int
     #: Fayl birligidan katalog birligiga ko'paytiruvchi (bir xil birlikda 1)

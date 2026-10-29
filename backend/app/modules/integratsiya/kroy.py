@@ -83,7 +83,7 @@ def _request(method: str, path: str, body: dict[str, Any] | None) -> tuple[int, 
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {_token('mes', 'MES', ['admin'], 300)}"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=15) as r:  # noqa: S310 — manzil sozlamadan
+        with urllib.request.urlopen(req, timeout=120) as r:  # noqa: S310 — manzil sozlamadan; paket katta bo'lishi mumkin
             return r.status, json.loads(r.read() or b"null")
     except urllib.error.HTTPError as e:
         try:
@@ -96,6 +96,10 @@ def _request(method: str, path: str, body: dict[str, Any] | None) -> tuple[int, 
 
 async def _mx(method: str, path: str, body: dict[str, Any] | None = None) -> tuple[int, Any]:
     return await asyncio.to_thread(_request, method, path, body)
+
+
+async def mx_get(path: str) -> tuple[int, Any]:
+    return await _mx("GET", path)
 
 
 async def order_body(db: AsyncSession, order: Order) -> dict[str, Any]:

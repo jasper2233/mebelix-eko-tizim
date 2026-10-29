@@ -209,6 +209,11 @@ class FileKind(StrEnum):
     #: buyurtmada 3 tagacha). `OrderFile.part_id` emas, `meta["product_code"]`
     #: bilan mahsulotga bog'lanadi: `.b3d` sarlavhasidagi `Code` = `Product.code`.
     BAZIS = "bazis"
+    #: MX Kroy paketi (JSON, EKO 3c K2) — `.project` o'rnida kroy manbai. `PROJECT` emas: SCX qayta
+    #: yaratish va boshqa joylar PROJECT faylini GibLab XML deb qayta o'qiydi
+    KROY_PAKET = "kroy_paket"
+    #: MX tayyorlagan stanok fayli (arra / CNC postprotsessor). `meta`: format_id, stanok, guruh, sha256
+    STANOK = "stanok"
 
 
 class SessionStatus(StrEnum):
