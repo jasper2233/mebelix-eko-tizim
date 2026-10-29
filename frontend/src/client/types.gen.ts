@@ -585,6 +585,62 @@ export type BodyUploadRoomPhoto = {
 };
 
 /**
+ * BolakRead
+ *
+ * Qoldiq bo'lagi (kroydan ortgan foydali list bo'lagi).
+ */
+export type BolakRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Barkod
+     */
+    barkod: string;
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Item Name
+     */
+    item_name?: string | null;
+    /**
+     * Material Nom
+     */
+    material_nom: string;
+    /**
+     * Uzunlik
+     */
+    uzunlik: string;
+    /**
+     * Eni
+     */
+    eni: string;
+    /**
+     * Manba Order Id
+     */
+    manba_order_id: number;
+    /**
+     * Manba Order
+     */
+    manba_order?: string | null;
+    /**
+     * Joy
+     */
+    joy: string;
+    /**
+     * Order Id
+     */
+    order_id: number | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * BridgeAgentCreate
  */
 export type BridgeAgentCreate = {
@@ -3409,6 +3465,16 @@ export type KalibStart = {
      * L Ref
      */
     L_ref: number;
+};
+
+/**
+ * KodIn
+ */
+export type KodIn = {
+    /**
+     * Kod
+     */
+    kod: string;
 };
 
 /**
@@ -11165,6 +11231,93 @@ export type BirlikOmborgaResponses = {
 };
 
 export type BirlikOmborgaResponse = BirlikOmborgaResponses[keyof BirlikOmborgaResponses];
+
+export type ListBolaklarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Joy
+         */
+        joy?: string;
+    };
+    url: '/api/v1/ombor/bolaklar';
+};
+
+export type ListBolaklarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListBolaklarError = ListBolaklarErrors[keyof ListBolaklarErrors];
+
+export type ListBolaklarResponses = {
+    /**
+     * Response List Bolaklar
+     *
+     * Successful Response
+     */
+    200: Array<BolakRead>;
+};
+
+export type ListBolaklarResponse = ListBolaklarResponses[keyof ListBolaklarResponses];
+
+export type QabulBolakData = {
+    body: KodIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/bolak/qabul';
+};
+
+export type QabulBolakErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type QabulBolakError = QabulBolakErrors[keyof QabulBolakErrors];
+
+export type QabulBolakResponses = {
+    /**
+     * Successful Response
+     */
+    200: BolakRead;
+};
+
+export type QabulBolakResponse = QabulBolakResponses[keyof QabulBolakResponses];
+
+export type ChiqitBolakData = {
+    body?: never;
+    path: {
+        /**
+         * Bolak Id
+         */
+        bolak_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/bolak/{bolak_id}/chiqit';
+};
+
+export type ChiqitBolakErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ChiqitBolakError = ChiqitBolakErrors[keyof ChiqitBolakErrors];
+
+export type ChiqitBolakResponses = {
+    /**
+     * Successful Response
+     */
+    200: BolakRead;
+};
+
+export type ChiqitBolakResponse = ChiqitBolakResponses[keyof ChiqitBolakResponses];
 
 export type ReadSexMaterialData = {
     body?: never;

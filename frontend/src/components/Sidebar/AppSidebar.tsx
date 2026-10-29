@@ -20,6 +20,7 @@ import {
   Ruler,
   ScanLine,
   ScrollText,
+  Shapes,
   SlidersHorizontal,
   TriangleAlert,
   Tv,
@@ -208,6 +209,14 @@ export const NAV_ITEMS: (Item & {
         path: "/warehouse/berish",
         match: (_s: Record<string, unknown>, p: string) =>
           p === "/warehouse/berish" || p === "/warehouse/yorliq",
+      },
+      // Kroydan ortgan foydali list bo'laklari (`ATX-` yorliqlari)
+      {
+        icon: Shapes,
+        title: "Qoldiq bo'laklari",
+        path: "/warehouse/bolaklar",
+        match: (_s: Record<string, unknown>, p: string) =>
+          p === "/warehouse/bolaklar",
       },
       {
         icon: FileText,

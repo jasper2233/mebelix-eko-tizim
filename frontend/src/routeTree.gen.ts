@@ -34,6 +34,7 @@ import { Route as LayoutOrdersIndexRouteImport } from './routes/_layout/orders/i
 import { Route as LayoutOrdersOrderIdRouteImport } from './routes/_layout/orders/$orderId'
 import { Route as LayoutWarehouseIndexRouteImport } from './routes/_layout/warehouse/index'
 import { Route as LayoutWarehouseBerishRouteImport } from './routes/_layout/warehouse/berish'
+import { Route as LayoutWarehouseBolaklarRouteImport } from './routes/_layout/warehouse/bolaklar'
 import { Route as LayoutWarehouseDocRouteImport } from './routes/_layout/warehouse/doc'
 import { Route as LayoutWarehouseDocsRouteImport } from './routes/_layout/warehouse/docs'
 import { Route as LayoutWarehouseHisobotRouteImport } from './routes/_layout/warehouse/hisobot'
@@ -170,6 +171,11 @@ const LayoutWarehouseBerishRoute = LayoutWarehouseBerishRouteImport.update({
   path: '/warehouse/berish',
   getParentRoute: () => LayoutRoute,
 } as any)
+const LayoutWarehouseBolaklarRoute = LayoutWarehouseBolaklarRouteImport.update({
+  id: '/warehouse/bolaklar',
+  path: '/warehouse/bolaklar',
+  getParentRoute: () => LayoutRoute,
+} as any)
 const LayoutWarehouseDocRoute = LayoutWarehouseDocRouteImport.update({
   id: '/warehouse/doc',
   path: '/warehouse/doc',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/berish': typeof LayoutWarehouseBerishRoute
+  '/warehouse/bolaklar': typeof LayoutWarehouseBolaklarRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/warehouse/berish': typeof LayoutWarehouseBerishRoute
+  '/warehouse/bolaklar': typeof LayoutWarehouseBolaklarRoute
   '/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -326,6 +334,7 @@ export interface FileRoutesById {
   '/_layout/cutmap/$orderId': typeof LayoutCutmapOrderIdRoute
   '/_layout/orders/$orderId': typeof LayoutOrdersOrderIdRoute
   '/_layout/warehouse/berish': typeof LayoutWarehouseBerishRoute
+  '/_layout/warehouse/bolaklar': typeof LayoutWarehouseBolaklarRoute
   '/_layout/warehouse/doc': typeof LayoutWarehouseDocRoute
   '/_layout/warehouse/docs': typeof LayoutWarehouseDocsRoute
   '/_layout/warehouse/hisobot': typeof LayoutWarehouseHisobotRoute
@@ -365,6 +374,7 @@ export interface FileRouteTypes {
     | '/cutmap/$orderId'
     | '/orders/$orderId'
     | '/warehouse/berish'
+    | '/warehouse/bolaklar'
     | '/warehouse/doc'
     | '/warehouse/docs'
     | '/warehouse/hisobot'
@@ -402,6 +412,7 @@ export interface FileRouteTypes {
     | '/cutmap/$orderId'
     | '/orders/$orderId'
     | '/warehouse/berish'
+    | '/warehouse/bolaklar'
     | '/warehouse/doc'
     | '/warehouse/docs'
     | '/warehouse/hisobot'
@@ -440,6 +451,7 @@ export interface FileRouteTypes {
     | '/_layout/cutmap/$orderId'
     | '/_layout/orders/$orderId'
     | '/_layout/warehouse/berish'
+    | '/_layout/warehouse/bolaklar'
     | '/_layout/warehouse/doc'
     | '/_layout/warehouse/docs'
     | '/_layout/warehouse/hisobot'
@@ -641,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutWarehouseBerishRouteImport
       parentRoute: typeof LayoutRoute
     }
+    '/_layout/warehouse/bolaklar': {
+      id: '/_layout/warehouse/bolaklar'
+      path: '/warehouse/bolaklar'
+      fullPath: '/warehouse/bolaklar'
+      preLoaderRoute: typeof LayoutWarehouseBolaklarRouteImport
+      parentRoute: typeof LayoutRoute
+    }
     '/_layout/warehouse/doc': {
       id: '/_layout/warehouse/doc'
       path: '/warehouse/doc'
@@ -739,6 +758,7 @@ interface LayoutRouteChildren {
   LayoutCutmapOrderIdRoute: typeof LayoutCutmapOrderIdRoute
   LayoutOrdersOrderIdRoute: typeof LayoutOrdersOrderIdRoute
   LayoutWarehouseBerishRoute: typeof LayoutWarehouseBerishRoute
+  LayoutWarehouseBolaklarRoute: typeof LayoutWarehouseBolaklarRoute
   LayoutWarehouseDocRoute: typeof LayoutWarehouseDocRoute
   LayoutWarehouseDocsRoute: typeof LayoutWarehouseDocsRoute
   LayoutWarehouseHisobotRoute: typeof LayoutWarehouseHisobotRoute
@@ -772,6 +792,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutCutmapOrderIdRoute: LayoutCutmapOrderIdRoute,
   LayoutOrdersOrderIdRoute: LayoutOrdersOrderIdRoute,
   LayoutWarehouseBerishRoute: LayoutWarehouseBerishRoute,
+  LayoutWarehouseBolaklarRoute: LayoutWarehouseBolaklarRoute,
   LayoutWarehouseDocRoute: LayoutWarehouseDocRoute,
   LayoutWarehouseDocsRoute: LayoutWarehouseDocsRoute,
   LayoutWarehouseHisobotRoute: LayoutWarehouseHisobotRoute,

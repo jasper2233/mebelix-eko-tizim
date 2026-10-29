@@ -25,7 +25,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.2 Rezerv (backend) | tayyor, lokal sinalgan | pastda |
 | 2.2b Rezerv (interfeys) | tayyor, brauzerda sinalgan | pastda |
 | 2.3a Barkodlar, sexga berish, sexdagi rulonlar | tayyor, brauzerda sinalgan | pastda |
-| 2.3b Tablodan material so'rash, qoldiq bo'laklari, TMO | navbatda | |
+| 2.3b Sexdan so'rov, rulon tugadi (terminal), qoldiq bo'laklari | tayyor, lokal sinalgan | pastda |
+| 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno) | navbatda | |
 
 ### 1a — nima qo'shildi
 
@@ -150,4 +151,19 @@ tablodan so'raydi **yoki** omborchi oldindan yetkazadi (ikkalasi ham).
   `rezerv_line.berilgan_qty`; band = qoplangan − berilgan; hamma qator berilsa rezerv `sarflandi`;
   rezerv qayta qurilsa berilgani saqlanadi.
 - Orakl: `scripts/oracles/berish_oracle.py` 39/39; boshqa ombor orakllari o'zgarmay o'tadi.
+
+### 2.3b — sexdan so'rov va qoldiq bo'laklari
+
+- `material_sorov`: arra/kromka/oval terminali «Material so'rash» (`MaterialButton`, buyurtma ochiq
+  bo'lganda o'ng pastda). Buyurtma+post bo'yicha bitta ochiq so'rov; post materiali to'liq berilsa o'zi
+  yopiladi, omborchi qo'lda ham yopadi. Omborchi «Material berish» sahifasida ko'radi (15 s yangilanadi).
+  So'rov majburiy emas — omborchi oldindan berishi ham bir xil yo'l.
+- Kromkachi terminaldan «Rulon tugadi» (ikki bosqichli tasdiq) — `POST /ombor/sex/rulon/{barkod}/tugadi`.
+- `ombor_bolak`: MES `waste_item` (`ATX-…` yorlig'i) omborga qabul qilinadi (`/warehouse/bolaklar`),
+  katalogga moslash jadvali yoki manba buyurtma rezervi orqali o'zi bog'lanadi; boshqa buyurtmaga
+  «Material berish» skaneri bilan beriladi; chiqitga chiqariladi. Qoldiqqa (`quantity`) kirmaydi —
+  tannarxi asl buyurtmaga butun list bilan yozilgan. Kroyda bo'lakdan foydalanish — MX Kroy (3-bosqich).
+- Rezerv qayta qurilganda direktor ruxsati saqlanadi (to'lov haqida, material ro'yxati haqida emas).
+- TMO (tayyor mahsulot) jismoniy hisobi MES da allaqachon bor (`/tmo`); uning QIYMAT hisobi
+  (tugallanmagan ishlab chiqarish → tayyor mahsulot) Moliya bosqichiga (5) o'tkazildi.
 
