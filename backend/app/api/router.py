@@ -34,7 +34,7 @@ from app.api.routes.terminal_devices import router as terminal_devices_router
 from app.api.routes.tmo import router as tmo_router
 from app.api.routes.users import router as users_router
 from app.api.routes.ws import router as ws_router
-from app.modules.ombor.routes import berish_router, catalog_router, rezerv_router, stock_router
+from app.modules.ombor.routes import berish_router, catalog_router, rezerv_router, sex_router, stock_router
 
 v1_router = APIRouter(prefix="/v1")
 v1_router.include_router(health_router)
@@ -58,6 +58,7 @@ v1_router.include_router(catalog_router, dependencies=_protected)  # mahsulotlar
 v1_router.include_router(stock_router, dependencies=_protected)  # ombor hujjatlari va FIFO (docs/14 §9)
 v1_router.include_router(rezerv_router, dependencies=_protected)  # rezerv va ta'minot (EKO TZ §4.3)
 v1_router.include_router(berish_router, dependencies=_protected)  # sexga berish, barkodlar (EKO TZ §4.4)
+v1_router.include_router(sex_router, dependencies=_protected)  # sexdan so'rov, rulon tugadi (EKO TZ §4.4)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)
 v1_router.include_router(terminal_devices_router, dependencies=_protected)

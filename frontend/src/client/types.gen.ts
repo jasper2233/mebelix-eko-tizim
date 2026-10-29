@@ -347,6 +347,10 @@ export type BerishLine = {
      */
     line_id: number;
     /**
+     * Kind
+     */
+    kind: string;
+    /**
      * Item Id
      */
     item_id: number | null;
@@ -5998,6 +6002,35 @@ export type SexLogRow = {
 };
 
 /**
+ * SexMaterial
+ *
+ * Terminal (arra/kromka) uchun: shu postning materiali va ochiq so'rov.
+ */
+export type SexMaterial = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number: string;
+    /**
+     * Holat
+     */
+    holat: string | null;
+    /**
+     * Tosiq
+     */
+    tosiq: string | null;
+    /**
+     * Lines
+     */
+    lines: Array<BerishLine>;
+    sorov: SorovRead | null;
+};
+
+/**
  * ShiftStart
  *
  * Smenani boshlash — IKKI yo'l, natijasi bir xil.
@@ -6117,6 +6150,58 @@ export type SlowRequest = {
      */
     frozen_ms: number | null;
     freeze: FreezeMatch | null;
+};
+
+/**
+ * SorovIn
+ */
+export type SorovIn = {
+    /**
+     * Post
+     */
+    post: string;
+    /**
+     * Izoh
+     */
+    izoh?: string;
+};
+
+/**
+ * SorovRead
+ */
+export type SorovRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Order Number
+     */
+    order_number?: string | null;
+    /**
+     * Post
+     */
+    post: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Created By
+     */
+    created_by?: string | null;
 };
 
 /**
@@ -11080,6 +11165,149 @@ export type BirlikOmborgaResponses = {
 };
 
 export type BirlikOmborgaResponse = BirlikOmborgaResponses[keyof BirlikOmborgaResponses];
+
+export type ReadSexMaterialData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query: {
+        /**
+         * Post
+         */
+        post: string;
+    };
+    url: '/api/v1/ombor/sex/{order_id}';
+};
+
+export type ReadSexMaterialErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSexMaterialError = ReadSexMaterialErrors[keyof ReadSexMaterialErrors];
+
+export type ReadSexMaterialResponses = {
+    /**
+     * Successful Response
+     */
+    200: SexMaterial;
+};
+
+export type ReadSexMaterialResponse = ReadSexMaterialResponses[keyof ReadSexMaterialResponses];
+
+export type CreateMaterialSorovData = {
+    body: SorovIn;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/sex/{order_id}/sorov';
+};
+
+export type CreateMaterialSorovErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateMaterialSorovError = CreateMaterialSorovErrors[keyof CreateMaterialSorovErrors];
+
+export type CreateMaterialSorovResponses = {
+    /**
+     * Successful Response
+     */
+    200: SorovRead;
+};
+
+export type CreateMaterialSorovResponse = CreateMaterialSorovResponses[keyof CreateMaterialSorovResponses];
+
+export type SexRulonTugadiData = {
+    body?: never;
+    path: {
+        /**
+         * Barkod
+         */
+        barkod: string;
+    };
+    query?: never;
+    url: '/api/v1/ombor/sex/rulon/{barkod}/tugadi';
+};
+
+export type SexRulonTugadiErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SexRulonTugadiError = SexRulonTugadiErrors[keyof SexRulonTugadiErrors];
+
+export type SexRulonTugadiResponses = {
+    /**
+     * Successful Response
+     */
+    200: BirlikRead;
+};
+
+export type SexRulonTugadiResponse = SexRulonTugadiResponses[keyof SexRulonTugadiResponses];
+
+export type ListMaterialSorovlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/sorovlar';
+};
+
+export type ListMaterialSorovlarResponses = {
+    /**
+     * Response List Material Sorovlar
+     *
+     * Successful Response
+     */
+    200: Array<SorovRead>;
+};
+
+export type ListMaterialSorovlarResponse = ListMaterialSorovlarResponses[keyof ListMaterialSorovlarResponses];
+
+export type CloseMaterialSorovData = {
+    body?: never;
+    path: {
+        /**
+         * Sorov Id
+         */
+        sorov_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/sorov/{sorov_id}/yopish';
+};
+
+export type CloseMaterialSorovErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CloseMaterialSorovError = CloseMaterialSorovErrors[keyof CloseMaterialSorovErrors];
+
+export type CloseMaterialSorovResponses = {
+    /**
+     * Successful Response
+     */
+    200: SorovRead;
+};
+
+export type CloseMaterialSorovResponse = CloseMaterialSorovResponses[keyof CloseMaterialSorovResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;

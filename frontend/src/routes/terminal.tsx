@@ -39,6 +39,7 @@ import {
 } from "@/components/Terminal/DowntimeReason"
 import { KioskOverlays } from "@/components/Terminal/KioskOverlays"
 import { KromkaView } from "@/components/Terminal/KromkaView"
+import { MaterialButton } from "@/components/Terminal/MaterialButton"
 import { OrderPicker } from "@/components/Terminal/OrderPicker"
 import { PostQueueView } from "@/components/Terminal/PostQueueView"
 import {
@@ -707,6 +708,12 @@ function TerminalPage() {
           </div>
         )}
       </header>
+
+      {/* Material: buyurtma ochiq bo'lganda arra/kromka/oval postida (EKO TZ §4.4) */}
+      {mapOrderId !== null &&
+        ["ARRA", "KROMKA", "OVAL"].includes(ctx?.post_code ?? "") && (
+          <MaterialButton orderId={mapOrderId} post={ctx?.post_code ?? ""} />
+        )}
 
       {/* Asosiy maydon — har postning O'Z ekrani: proyekt ro'yxati → post ekrani
           (ARRA'da kesish xaritasi). Umumiy vazifalar jadvali yo'q. */}

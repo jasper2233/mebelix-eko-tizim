@@ -144,6 +144,9 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
 
     days = int(await get_setting(db, REZERV_MUDDAT_KUN))
     rez = Rezerv(order_id=order.id, holat=FAOL, muddat=_now() + timedelta(days=days))
+    if old is not None and old.tasdiq_at is not None:
+        # Direktor ruxsati to'lov haqida, material ro'yxati haqida emas — qayta qurishda saqlanadi
+        rez.tasdiq_by_id, rez.tasdiq_at = old.tasdiq_by_id, old.tasdiq_at
     db.add(rez)
     await db.flush()
     for (kind, key), row in sorted(agg.items()):

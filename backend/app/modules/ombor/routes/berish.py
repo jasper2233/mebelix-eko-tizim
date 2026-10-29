@@ -9,18 +9,20 @@ from app.api.deps import SessionDep, WarehouseReadUser, WarehouseUser, client_ip
 from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import Client, Order
-from app.modules.ombor.models import CatalogItem, MaterialBirlik, Rezerv, RezervLine
+from app.modules.ombor.models import CatalogItem, MaterialBirlik, OmborBolak, Rezerv, RezervLine
 from app.modules.ombor.models.birlik import OMBOR, SEX
 from app.modules.ombor.schemas.berish import (
     BerishLine,
     BerishOrder,
     BerishRead,
     BirlikRead,
+    BolakRead,
+    KodIn,
     SkanIn,
     SkanNatija,
     YorliqIn,
 )
-from app.modules.ombor.services import berish, birlik, rezerv
+from app.modules.ombor.services import berish, birlik, bolak, rezerv, sorov
 from app.modules.ombor.services.stock import fmt
 
 router = APIRouter(prefix="/ombor", tags=["ombor"])
@@ -108,6 +110,7 @@ async def _varaqa(db: SessionDep, order: Order) -> BerishRead:
         lines.append(
             BerishLine(
                 line_id=ln.id,
+                kind=ln.kind,
                 item_id=ln.item_id,
                 nom=it.name if it else ln.tashqi_nom,
                 code=it.code if it else None,
@@ -181,16 +184,23 @@ async def berish_skan(
     order = await _order(db, order_id)
     kod = body.kod.strip()
     try:
-        if await birlik.find(db, kod) is not None:
+        if bolak.is_bolak(kod):
+            b = await bolak.ishlat(db, kod, order, current_user.id)
+            natija = berish.Natija(
+                xabar=f"Qoldiq bo'lagi {b.barkod} ({b.material_nom}, {b.uzunlik:.0f}×{b.eni:.0f} mm) "
+                "buyurtmaga berildi."
+            )
+        elif await birlik.find(db, kod) is not None:
             natija = await berish.skan_birlik(db, order, kod, current_user.id)
         else:
             item = await berish.find_item(db, kod)
             if item is None:
                 raise berish.BerishError(f"{kod}: na barkod, na katalog kodi topildi.")
             natija = await berish.ber_dona(db, order, item.id, body.qty or Decimal(1), current_user.id)
-    except berish.BerishError as e:
+    except (berish.BerishError, bolak.BolakError) as e:
         await db.rollback()
         raise _bad(str(e)) from e
+    await sorov.auto_yop(db, order.id, current_user.id)
     log_action(
         db,
         module="ombor",
@@ -315,3 +325,71 @@ async def birlik_omborga(db: SessionDep, current_user: WarehouseUser, barkod: st
     )
     await db.commit()
     return _birlik(u, await db.get(CatalogItem, u.item_id))
+
+
+async def _bolak_read(db: SessionDep, b: OmborBolak) -> BolakRead:
+    item = await db.get(CatalogItem, b.item_id) if b.item_id else None
+    manba = await db.get(Order, b.manba_order_id)
+    return BolakRead.model_validate(b).model_copy(
+        update={"item_name": item.name if item else None, "manba_order": manba.number if manba else None}
+    )
+
+
+@router.get("/bolaklar", response_model=list[BolakRead], operation_id="list_bolaklar")
+async def list_bolaklar(db: SessionDep, _: WarehouseReadUser, joy: str = "ombor") -> list[BolakRead]:
+    """Qoldiq bo'laklari (kroydan ortgan foydali list bo'laklari) — material va o'lcham bo'yicha."""
+    rows = (
+        await db.execute(
+            select(OmborBolak, CatalogItem.name, Order.number)
+            .outerjoin(CatalogItem, CatalogItem.id == OmborBolak.item_id)
+            .join(Order, Order.id == OmborBolak.manba_order_id)
+            .where(OmborBolak.joy == joy, OmborBolak.is_deleted == False)  # noqa: E712
+            .order_by(OmborBolak.material_nom, OmborBolak.uzunlik.desc(), OmborBolak.eni.desc())
+            .limit(2000)
+        )
+    ).all()
+    return [BolakRead.model_validate(b).model_copy(update={"item_name": nm, "manba_order": no}) for b, nm, no in rows]
+
+
+@router.post("/bolak/qabul", response_model=BolakRead, operation_id="qabul_bolak")
+async def qabul_bolak(db: SessionDep, current_user: WarehouseUser, body: KodIn, request: Request) -> BolakRead:
+    """`ATX-…` yorlig'i skanerlandi — bo'lak omborga qabul qilinadi (takror skan xavfsiz)."""
+    try:
+        b = await bolak.qabul(db, body.kod, current_user.id)
+    except bolak.BolakError as e:
+        await db.rollback()
+        raise _bad(str(e)) from e
+    log_action(
+        db,
+        module="ombor",
+        action="bolak_qabul",
+        user_id=current_user.id,
+        entity_type="ombor_bolak",
+        entity_id=b.id,
+        message=f"{b.barkod}: {b.material_nom} {b.uzunlik:.0f}×{b.eni:.0f} omborga",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return await _bolak_read(db, b)
+
+
+@router.post("/bolak/{bolak_id}/chiqit", response_model=BolakRead, operation_id="chiqit_bolak")
+async def chiqit_bolak(db: SessionDep, current_user: WarehouseUser, bolak_id: int, request: Request) -> BolakRead:
+    """Bo'lak yaroqsiz — chiqitga."""
+    try:
+        b = await bolak.chiqit(db, bolak_id)
+    except bolak.BolakError as e:
+        await db.rollback()
+        raise _bad(str(e)) from e
+    log_action(
+        db,
+        module="ombor",
+        action="bolak_chiqit",
+        user_id=current_user.id,
+        entity_type="ombor_bolak",
+        entity_id=b.id,
+        message=f"{b.barkod}: chiqitga",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return await _bolak_read(db, b)

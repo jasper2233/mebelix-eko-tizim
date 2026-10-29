@@ -27,6 +27,8 @@ class BerishLine(BaseModel):
     """Berish varaqasining qatori — bitta material."""
 
     line_id: int
+    #: `sheet` | `band` | `hardware` — qaysi postga tegishli (arra listni, kromka lentani oladi)
+    kind: str
     item_id: int | None
     nom: str
     code: str | None
@@ -77,6 +79,57 @@ class SkanNatija(BaseModel):
     xabar: str
     ogohlantirish: list[str]
     varaqa: BerishRead
+
+
+class SorovRead(BaseModel):
+    id: int
+    order_id: int
+    order_number: str | None = None
+    post: str
+    izoh: str
+    holat: str
+    created_at: datetime
+    created_by: str | None = None
+
+
+class SorovIn(BaseModel):
+    post: str = Field(pattern=r"^(ARRA|KROMKA|OVAL)$")
+    izoh: str = Field(default="", max_length=200)
+
+
+class SexMaterial(BaseModel):
+    """Terminal (arra/kromka) uchun: shu postning materiali va ochiq so'rov."""
+
+    order_id: int
+    order_number: str
+    holat: str | None
+    tosiq: str | None
+    lines: list[BerishLine]
+    sorov: SorovRead | None
+
+
+class BolakRead(BaseModel):
+    """Qoldiq bo'lagi (kroydan ortgan foydali list bo'lagi)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    barkod: str
+    item_id: int | None
+    item_name: str | None = None
+    material_nom: str
+    uzunlik: Decimal
+    eni: Decimal
+    manba_order_id: int
+    manba_order: str | None = None
+    #: `ombor` | `ishlatildi` | `chiqit`
+    joy: str
+    order_id: int | None
+    created_at: datetime
+
+
+class KodIn(BaseModel):
+    kod: str = Field(min_length=1, max_length=120)
 
 
 class YorliqIn(BaseModel):

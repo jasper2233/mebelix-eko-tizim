@@ -14,6 +14,10 @@ Pozitsiyalar: A (list, `M`), K (kromka, metr, rulon 100 m), C (furnitura, dona �
    10) buyurtma 2 rezervi qayta qurilsa berilgan K saqlanadi.
    11) K 130: buyurtma 4 100 m band qiladi, buyurtma 3 (120 m) faqat 30 m qoplangan — rulon 2 (100)
        skanerlansa 30 m beriladi (ogohlantirish bilan), qolgan 70 m sexda; bandsiz rulon — rad.
+   12) so'rovlar: takror so'rov — o'sha; kromkasi to'liq berilgan post so'rovi o'zi yopiladi,
+       arra so'rovi list berilgach yopiladi. Qayta qurilgan rezervda direktor ruxsati saqlanadi.
+   13) qoldiq bo'lagi (`ATX-`): qabul → katalogga o'zi bog'lanadi (manba rezervidan), takror qabul — o'sha;
+       o'z buyurtmasiga — rad; boshqasiga — ishlatildi; ishlatilganini chiqitga — rad; noma'lum yorliq — rad.
 Yurgizish (lokal sinov bazasi, katalog yuklangan, prod EMAS):
     cd backend && uv run python ../scripts/oracles/berish_oracle.py
 """
@@ -25,11 +29,11 @@ from decimal import Decimal as D
 from sqlalchemy import func, select
 
 from app.core.db import local_session
-from app.models import Client, Order
+from app.models import Client, Order, WasteItem
 from app.models.enums import OrderStatus
 from app.modules.ombor.models import CatalogItem, MaterialBirlik, RezervLine, StockMovement
 from app.modules.ombor.schemas.stock import DocIn, DocLineIn
-from app.modules.ombor.services import berish, birlik, rezerv
+from app.modules.ombor.services import berish, birlik, bolak, rezerv, sorov
 from app.modules.ombor.services.stock import DocError, adjust_quantity, confirm, save_draft
 
 natija: list[bool] = []
@@ -59,7 +63,7 @@ async def rad(nom: str, coro, bor: str) -> None:
     try:
         await coro
         tek(nom, "o'tib ketdi", f"rad: {bor}")
-    except (berish.BerishError, DocError) as e:
+    except (berish.BerishError, bolak.BolakError, DocError) as e:
         tek(nom, bor in str(e), True)
         if bor not in str(e):
             print("     xabar:", e)
@@ -77,7 +81,9 @@ async def main() -> None:
     async with local_session() as db:
         q = select(CatalogItem).order_by(CatalogItem.id)
         a = (await db.execute(q.where(CatalogItem.catalog == "M", CatalogItem.unit == "list").limit(1))).scalar_one()
-        k, k2 = (await db.execute(q.where(CatalogItem.group_code == "KM", CatalogItem.catalog == "F").limit(2))).scalars()
+        k, k2 = (
+            await db.execute(q.where(CatalogItem.group_code == "KM", CatalogItem.catalog == "F").limit(2))
+        ).scalars()
         c = (await db.execute(q.where(CatalogItem.catalog == "F", CatalogItem.unit == "dona").limit(1))).scalar_one()
         for it in (a, k, k2, c):
             it.quantity = D(0)
@@ -99,7 +105,9 @@ async def main() -> None:
         tek("K: rulonlar", [u.hajm for u in uk], [D(100), D(100), D(50)])
         tek("barkod EK0000NNN", ua[0].barkod, f"EK{ua[0].id:07d}")
         tek("C birliksiz", len(await units(db, c.id)), 0)
-        await rad("A 2.5 list", kirim(db, [DocLineIn(item_id=a.id, name=a.name, qty=D("2.5"), price=D(1))]), "butun son")
+        await rad(
+            "A 2.5 list", kirim(db, [DocLineIn(item_id=a.id, name=a.name, qty=D("2.5"), price=D(1))]), "butun son"
+        )
         await rad("rulon uzunligi yo'q", kirim(db, [DocLineIn(item_id=k2.id, name=k2.name, qty=D(50))]), "necha metr")
 
         client = Client(full_name="Berish Sinov")
@@ -107,7 +115,9 @@ async def main() -> None:
         await db.flush()
 
         def order(n: str, usage: list[dict]) -> Order:
-            o = Order(number=n, client_id=client.id, status=OrderStatus.TECHNICAL_REVIEW, amount=D(1), material_usage=usage)
+            o = Order(
+                number=n, client_id=client.id, status=OrderStatus.TECHNICAL_REVIEW, amount=D(1), material_usage=usage
+            )
             db.add(o)
             return o
 
@@ -224,6 +234,38 @@ async def main() -> None:
         tek("ogohlantirish: band", any("boshqa buyurtmalarga band" in w for w in n.ogohlantirish), True)
         tek("rulon 2 sexda 70", (uk[1].joy, uk[1].qoldiq), ("sex", D(70)))
         await rad("bandsiz qoldiq yo'q", berish.skan_birlik(db, o3, uk[2].barkod, None), "Ta'minot kerak")
+
+        print("12) so'rovlar")
+        s1 = await sorov.sora(db, o2.id, "ARRA", None, "", None)
+        s1b = await sorov.sora(db, o2.id, "ARRA", None, "tezroq", None)
+        tek("takror so'rov — o'sha", (s1b.id, s1b.izoh), (s1.id, "tezroq"))
+        s2 = await sorov.sora(db, o2.id, "KROMKA", None, "", None)
+        await sorov.auto_yop(db, o2.id, None)
+        tek("kromka so'rovi yopildi, arra ochiq", (s2.holat, s1.holat), ("yetkazildi", "yangi"))
+        tek("o2 ruxsati qayta qurishda saqlangan", await rezerv.production_block_reason(db, o2), None)
+        await berish.skan_birlik(db, o2, yangi[0].barkod, None)
+        await sorov.auto_yop(db, o2.id, None)
+        tek("arra so'rovi yopildi", s1.holat, "yetkazildi")
+
+        print("13) qoldiq bo'laklari")
+        w1 = WasteItem(
+            order_id=o1.id, material_name="List", sheet_no=1, length=1200.0, width=600.0, qr_text="ATX-BR-1-1"
+        )
+        w2 = WasteItem(
+            order_id=o1.id, material_name="List", sheet_no=2, length=800.0, width=400.0, qr_text="ATX-BR-1-2"
+        )
+        db.add_all([w1, w2])
+        await db.flush()
+        b1 = await bolak.qabul(db, "ATX-BR-1-1", None)
+        tek("bo'lak katalogga bog'landi", (b1.item_id, b1.joy, b1.uzunlik), (a.id, "ombor", D(1200)))
+        tek("takror qabul — o'sha", (await bolak.qabul(db, "ATX-BR-1-1", None)).id, b1.id)
+        await rad("o'z buyurtmasiga", bolak.ishlat(db, "ATX-BR-1-1", o1, None), "o'z kroyidan")
+        b = await bolak.ishlat(db, "ATX-BR-1-1", o2, None)
+        tek("o2 ga ishlatildi", (b.joy, b.order_id), ("ishlatildi", o2.id))
+        await rad("ishlatilganini chiqitga", bolak.chiqit(db, b1.id), "allaqachon")
+        b2 = await bolak.qabul(db, "ATX-BR-1-2", None)
+        tek("chiqitga", (await bolak.chiqit(db, b2.id)).joy, "chiqit")
+        await rad("noma'lum yorliq", bolak.qabul(db, "ATX-YOQ-1", None), "yo'q")
 
         await db.rollback()  # sinov ma'lumoti bazada qolmaydi
     print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")

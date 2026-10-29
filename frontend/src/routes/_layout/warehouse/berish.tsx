@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { CheckCircle2, ScanLine, TriangleAlert } from "lucide-react"
+import { BellRing, CheckCircle2, ScanLine, TriangleAlert } from "lucide-react"
 import { useRef, useState } from "react"
 
 import {
@@ -66,9 +66,25 @@ function BerishPage() {
 }
 
 function Navbat() {
+  const queryClient = useQueryClient()
+  const { currentUser } = useCurrentUser()
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["ombor", "berish"],
     queryFn: async () => (await OmborService.listBerishOrders()).data,
+    refetchInterval: 30_000,
+  })
+  // Sexdan so'rovlar (EKO TZ §4.4): arrachi/kromkachi terminaldan «Material so'rash» bosgan
+  const { data: sorovlar } = useQuery({
+    queryKey: ["ombor", "sorovlar"],
+    queryFn: async () => (await OmborService.listMaterialSorovlar()).data,
+    refetchInterval: 15_000,
+  })
+  const yopish = useMutation({
+    mutationFn: (id: number) =>
+      OmborService.closeMaterialSorov({ path: { sorov_id: id } }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["ombor", "sorovlar"] }),
+    onError: handleError,
   })
   const [tanlangan, setTanlangan] = useState<number | null>(null)
   if (isError) return <QueryError onRetry={refetch} />
@@ -76,31 +92,80 @@ function Navbat() {
   const rows = data ?? []
   const joriy = tanlangan ?? rows.find((r) => !r.tosiq)?.order_id ?? null
   return (
-    <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
-      <section className={cn(cardSurface, "flex flex-col gap-1 p-2")}>
-        {rows.length === 0 && (
-          <p className="p-3 text-sm text-muted-foreground">
-            Berishni kutayotgan buyurtma yo'q
-          </p>
-        )}
-        {rows.map((r) => (
-          <NavbatRow
-            key={r.order_id}
-            r={r}
-            active={r.order_id === joriy}
-            onClick={() => setTanlangan(r.order_id)}
-          />
-        ))}
-      </section>
-      {joriy != null ? (
-        <Varaqa orderId={joriy} />
-      ) : (
-        <section className={cn(cardSurface, "p-6 text-muted-foreground")}>
-          Buyurtmani tanlang
+    <div className="flex flex-col gap-4">
+      {(sorovlar ?? []).length > 0 && (
+        <section className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3">
+          <h2 className="mb-2 flex items-center gap-2 font-semibold text-amber-900">
+            <BellRing className="size-4" /> Sexdan so'rovlar ({sorovlar?.length}
+            )
+          </h2>
+          <div className="flex flex-col gap-1">
+            {sorovlar?.map((s) => (
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+              >
+                <button
+                  type="button"
+                  className="font-semibold underline"
+                  onClick={() => setTanlangan(s.order_id)}
+                >
+                  {s.order_number}
+                </button>
+                <span>{POST_NOM[s.post] ?? s.post}</span>
+                <span className="text-muted-foreground">
+                  {formatDateTime(s.created_at)}
+                  {s.created_by ? ` · ${s.created_by}` : ""}
+                </span>
+                {s.izoh && <span>«{s.izoh}»</span>}
+                {isWarehouseWriter(currentUser) && (
+                  <LoadingButton
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto"
+                    loading={yopish.isPending && yopish.variables === s.id}
+                    onClick={() => yopish.mutate(s.id)}
+                  >
+                    Yetkazildi
+                  </LoadingButton>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
       )}
+      <div className="grid gap-4 lg:grid-cols-[18rem_1fr]">
+        <section className={cn(cardSurface, "flex flex-col gap-1 p-2")}>
+          {rows.length === 0 && (
+            <p className="p-3 text-sm text-muted-foreground">
+              Berishni kutayotgan buyurtma yo'q
+            </p>
+          )}
+          {rows.map((r) => (
+            <NavbatRow
+              key={r.order_id}
+              r={r}
+              active={r.order_id === joriy}
+              onClick={() => setTanlangan(r.order_id)}
+            />
+          ))}
+        </section>
+        {joriy != null ? (
+          <Varaqa orderId={joriy} />
+        ) : (
+          <section className={cn(cardSurface, "p-6 text-muted-foreground")}>
+            Buyurtmani tanlang
+          </section>
+        )}
+      </div>
     </div>
   )
+}
+
+const POST_NOM: Record<string, string> = {
+  ARRA: "Arra — list",
+  KROMKA: "Kromka — lenta",
+  OVAL: "Oval kromka — lenta",
 }
 
 function NavbatRow({
@@ -174,6 +239,7 @@ function Varaqa({ orderId }: { orderId: number }) {
         queryKey: ["ombor", "berish"],
         exact: true,
       })
+      queryClient.invalidateQueries({ queryKey: ["ombor", "sorovlar"] })
       setXabar({ ok: true, text: res.xabar, warn: res.ogohlantirish })
       setKod("")
       setSoni("")
