@@ -268,6 +268,9 @@ export const isWarehouseOnly = (u?: RoleUser | null) => u?.role === "skladchi"
 /** Kassa (EKO TZ §7, backend `KassaUser`): kassir va direktor */
 export const isKassa = (u?: RoleUser | null) =>
   Boolean(u?.is_superuser || u?.role === "kassir" || u?.role === "director")
+/** Moliya (EKO TZ §8, backend `MoliyaUser`): direktor va moliyachi */
+export const isMoliya = (u?: RoleUser | null) =>
+  Boolean(u?.is_superuser || u?.role === "moliyachi" || u?.role === "director")
 /** Faqat kassa — kirgach to'g'ri `/kassa` ga tushadi (`_layout` guard'i) */
 export const isKassaOnly = (u?: RoleUser | null) => u?.role === "kassir"
 

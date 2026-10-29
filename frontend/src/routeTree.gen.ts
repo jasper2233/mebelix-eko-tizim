@@ -22,6 +22,7 @@ import { Route as LayoutDefectsRouteImport } from './routes/_layout/defects'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
 import { Route as LayoutKassaRouteImport } from './routes/_layout/kassa'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
+import { Route as LayoutMoliyaRouteImport } from './routes/_layout/moliya'
 import { Route as LayoutPrintersRouteImport } from './routes/_layout/printers'
 import { Route as LayoutReportsRouteImport } from './routes/_layout/reports'
 import { Route as LayoutSettingsRouteImport } from './routes/_layout/settings'
@@ -110,6 +111,11 @@ const LayoutKassaRoute = LayoutKassaRouteImport.update({
 const LayoutLogsRoute = LayoutLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutMoliyaRoute = LayoutMoliyaRouteImport.update({
+  id: '/moliya',
+  path: '/moliya',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutPrintersRoute = LayoutPrintersRouteImport.update({
@@ -252,6 +258,7 @@ export interface FileRoutesByFullPath {
   '/employees': typeof LayoutEmployeesRoute
   '/kassa': typeof LayoutKassaRoute
   '/logs': typeof LayoutLogsRoute
+  '/moliya': typeof LayoutMoliyaRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/employees': typeof LayoutEmployeesRoute
   '/kassa': typeof LayoutKassaRoute
   '/logs': typeof LayoutLogsRoute
+  '/moliya': typeof LayoutMoliyaRoute
   '/printers': typeof LayoutPrintersRoute
   '/reports': typeof LayoutReportsRoute
   '/settings': typeof LayoutSettingsRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/_layout/employees': typeof LayoutEmployeesRoute
   '/_layout/kassa': typeof LayoutKassaRoute
   '/_layout/logs': typeof LayoutLogsRoute
+  '/_layout/moliya': typeof LayoutMoliyaRoute
   '/_layout/printers': typeof LayoutPrintersRoute
   '/_layout/reports': typeof LayoutReportsRoute
   '/_layout/settings': typeof LayoutSettingsRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/kassa'
     | '/logs'
+    | '/moliya'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/employees'
     | '/kassa'
     | '/logs'
+    | '/moliya'
     | '/printers'
     | '/reports'
     | '/settings'
@@ -451,6 +462,7 @@ export interface FileRouteTypes {
     | '/_layout/employees'
     | '/_layout/kassa'
     | '/_layout/logs'
+    | '/_layout/moliya'
     | '/_layout/printers'
     | '/_layout/reports'
     | '/_layout/settings'
@@ -579,6 +591,13 @@ declare module '@tanstack/react-router' {
       path: '/logs'
       fullPath: '/logs'
       preLoaderRoute: typeof LayoutLogsRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/moliya': {
+      id: '/_layout/moliya'
+      path: '/moliya'
+      fullPath: '/moliya'
+      preLoaderRoute: typeof LayoutMoliyaRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/printers': {
@@ -767,6 +786,7 @@ interface LayoutRouteChildren {
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
   LayoutKassaRoute: typeof LayoutKassaRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
+  LayoutMoliyaRoute: typeof LayoutMoliyaRoute
   LayoutPrintersRoute: typeof LayoutPrintersRoute
   LayoutReportsRoute: typeof LayoutReportsRoute
   LayoutSettingsRoute: typeof LayoutSettingsRoute
@@ -802,6 +822,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutEmployeesRoute: LayoutEmployeesRoute,
   LayoutKassaRoute: LayoutKassaRoute,
   LayoutLogsRoute: LayoutLogsRoute,
+  LayoutMoliyaRoute: LayoutMoliyaRoute,
   LayoutPrintersRoute: LayoutPrintersRoute,
   LayoutReportsRoute: LayoutReportsRoute,
   LayoutSettingsRoute: LayoutSettingsRoute,

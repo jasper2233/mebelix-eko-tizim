@@ -2,7 +2,7 @@
 
 import { type Client, type ClientMeta, formDataBodySerializer, type Options as Options2, type RequestResult, type TDataShape, urlSearchParamsBodySerializer } from './client';
 import { client } from './client.gen';
-import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AgentLatestReleaseData, AgentLatestReleaseResponses, ApplyKalibSessionData, ApplyKalibSessionErrors, ApplyKalibSessionResponses, ApproveOrderRezervData, ApproveOrderRezervErrors, ApproveOrderRezervResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BerishQaytarData, BerishQaytarErrors, BerishQaytarResponses, BerishSkanData, BerishSkanErrors, BerishSkanResponses, BirlikOmborgaData, BirlikOmborgaErrors, BirlikOmborgaResponses, BirlikTugadiData, BirlikTugadiErrors, BirlikTugadiResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, BulkUpdateCatalogItemsData, BulkUpdateCatalogItemsErrors, BulkUpdateCatalogItemsResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, CancelWasteItemLabelData, CancelWasteItemLabelErrors, CancelWasteItemLabelResponses, ChiqitBolakData, ChiqitBolakErrors, ChiqitBolakResponses, CloseMaterialSorovData, CloseMaterialSorovErrors, CloseMaterialSorovResponses, CloseOrderShareData, CloseOrderShareErrors, CloseOrderShareResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, ConfirmStockDocData, ConfirmStockDocErrors, ConfirmStockDocResponses, ConfirmStockInventoryData, ConfirmStockInventoryErrors, ConfirmStockInventoryResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateCatalogItemData, CreateCatalogItemErrors, CreateCatalogItemResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateDowntimeReasonData, CreateDowntimeReasonErrors, CreateDowntimeReasonResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateMaterialSorovData, CreateMaterialSorovErrors, CreateMaterialSorovResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateTerminalDeviceData, CreateTerminalDeviceErrors, CreateTerminalDeviceResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteCatalogItemsData, DeleteCatalogItemsErrors, DeleteCatalogItemsResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteOrderBazisData, DeleteOrderBazisErrors, DeleteOrderBazisResponses, DeleteOrderData, DeleteOrderErrors, DeleteOrderResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockDocData, DeleteStockDocErrors, DeleteStockDocResponses, DeleteTerminalDeviceData, DeleteTerminalDeviceErrors, DeleteTerminalDeviceResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DownloadAgentExeData, DownloadAgentExeResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndKalibSessionData, EndKalibSessionErrors, EndKalibSessionResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, ExcludeKalibPointData, ExcludeKalibPointErrors, ExcludeKalibPointResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, ImportCatalogItemsData, ImportCatalogItemsErrors, ImportCatalogItemsResponses, KassaChiqimData, KassaChiqimErrors, KassaChiqimResponses, KassaHolatData, KassaHolatResponses, KassaKirimData, KassaKirimErrors, KassaKirimResponses, KassaNavbatData, KassaNavbatErrors, KassaNavbatResponses, KassaOrderlarData, KassaOrderlarErrors, KassaOrderlarResponses, KassaOtkazmaData, KassaOtkazmaErrors, KassaOtkazmaResponses, KassaSmenalarData, KassaSmenalarErrors, KassaSmenalarResponses, KassaSmenaOchData, KassaSmenaOchErrors, KassaSmenaOchResponses, KassaSmenaYopData, KassaSmenaYopErrors, KassaSmenaYopResponses, KassaStornoData, KassaStornoErrors, KassaStornoResponses, KassaTurkumlarData, KassaTurkumlarResponses, KroyHolatData, KroyHolatResponses, KroyIntakeCancelData, KroyIntakeCancelErrors, KroyIntakeCancelResponses, KroyIntakeData, KroyIntakeErrors, KroyIntakeResponses, KroyOchishData, KroyOchishErrors, KroyOchishResponses, KroyOlishData, KroyOlishErrors, KroyOlishResponses, KroyPackagePushData, KroyPackagePushErrors, KroyPackagePushResponses, KroyRemnantsData, KroyRemnantsErrors, KroyRemnantsResponses, KroyReservationsData, KroyReservationsErrors, KroyReservationsResponses, KroyWebhookData, KroyWebhookErrors, KroyWebhookResponses, ListBerishOrdersData, ListBerishOrdersResponses, ListBirliklarData, ListBirliklarErrors, ListBirliklarResponses, ListBolaklarData, ListBolaklarErrors, ListBolaklarResponses, ListMaterialSorovlarData, ListMaterialSorovlarResponses, LockWithDowntimeReasonData, LockWithDowntimeReasonErrors, LockWithDowntimeReasonResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MapProjectMaterialData, MapProjectMaterialErrors, MapProjectMaterialResponses, MarkDefectData, MarkDefectErrors, MarkDefectResponses, OpenOrderShareData, OpenOrderShareErrors, OpenOrderShareResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PairTerminalDeviceData, PairTerminalDeviceErrors, PairTerminalDeviceResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, PrintWasteItemLabelData, PrintWasteItemLabelErrors, PrintWasteItemLabelResponses, PushAndonEventsData, PushAndonEventsErrors, PushAndonEventsResponses, PushBridgeLogsData, PushBridgeLogsErrors, PushBridgeLogsResponses, QabulBolakData, QabulBolakErrors, QabulBolakResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadAuditSummaryData, ReadAuditSummaryErrors, ReadAuditSummaryResponses, ReadBerishVaraqaData, ReadBerishVaraqaErrors, ReadBerishVaraqaResponses, ReadBirlikData, ReadBirlikErrors, ReadBirlikResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadBridgeLogsData, ReadBridgeLogsErrors, ReadBridgeLogsResponses, ReadCatalogAllData, ReadCatalogAllResponses, ReadCatalogGroupsData, ReadCatalogGroupsResponses, ReadCatalogItemsData, ReadCatalogItemsErrors, ReadCatalogItemsResponses, ReadCbRateData, ReadCbRateResponses, ReadClientData, ReadClientDetailData, ReadClientDetailErrors, ReadClientDetailResponses, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadDefectReasonsData, ReadDefectReasonsResponses, ReadDefectsData, ReadDefectsErrors, ReadDefectsResponses, ReadDowntimeReasonsData, ReadDowntimeReasonsResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadIdealCycleData, ReadIdealCycleKromkaData, ReadIdealCycleKromkaResponses, ReadIdealCycleResponses, ReadIdealCycleRoverData, ReadIdealCycleRoverResponses, ReadIdleLimitData, ReadIdleLimitResponses, ReadKalibSessionData, ReadKalibSessionErrors, ReadKalibSessionResponses, ReadKalibSessionsData, ReadKalibSessionsResponses, ReadKromkaCalibrationData, ReadKromkaCalibrationResponses, ReadKromkaMeasurementFeedData, ReadKromkaMeasurementFeedResponses, ReadKromkaMeasurementsData, ReadKromkaMeasurementsResponses, ReadMachineActivityData, ReadMachineActivityErrors, ReadMachineActivityResponses, ReadMachinesData, ReadMachinesOverviewData, ReadMachinesOverviewResponses, ReadMachinesResponses, ReadOeeStartData, ReadOeeStartResponses, ReadOrderBazisData, ReadOrderBazisErrors, ReadOrderBazisModelData, ReadOrderBazisModelErrors, ReadOrderBazisModelResponses, ReadOrderBazisResponses, ReadOrderBazisThumbData, ReadOrderBazisThumbErrors, ReadOrderBazisThumbResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrderRezervData, ReadOrderRezervErrors, ReadOrderRezervResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPendingDefectCountData, ReadPendingDefectCountResponses, ReadPendingDowntimesData, ReadPendingDowntimesResponses, ReadPostsData, ReadPostsResponses, ReadPublicModelData, ReadPublicModelErrors, ReadPublicModelResponses, ReadPublicOrderData, ReadPublicOrderErrors, ReadPublicOrderResponses, ReadPublicThumbData, ReadPublicThumbErrors, ReadPublicThumbResponses, ReadSexMaterialData, ReadSexMaterialErrors, ReadSexMaterialResponses, ReadStockDocData, ReadStockDocErrors, ReadStockDocResponses, ReadStockDocsData, ReadStockDocsErrors, ReadStockDocsResponses, ReadStockItemHistoryData, ReadStockItemHistoryErrors, ReadStockItemHistoryResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockReportData, ReadStockReportErrors, ReadStockReportResponses, ReadStockSexLogData, ReadStockSexLogErrors, ReadStockSexLogResponses, ReadSupplyNeedsData, ReadSupplyNeedsResponses, ReadSystemPerfData, ReadSystemPerfEndpointData, ReadSystemPerfEndpointErrors, ReadSystemPerfEndpointResponses, ReadSystemPerfErrors, ReadSystemPerfResponses, ReadSystemSettingsData, ReadSystemSettingsResponses, ReadSystemStatusData, ReadSystemStatusResponses, ReadTabloMachineData, ReadTabloMachineErrors, ReadTabloMachineResponses, ReadTabloMachinesData, ReadTabloMachinesResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalDefectReasonsData, ReadTerminalDefectReasonsResponses, ReadTerminalDevicesData, ReadTerminalDevicesResponses, ReadTerminalDowntimeReasonsData, ReadTerminalDowntimeReasonsResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadWarehousePricingData, ReadWarehousePricingResponses, ReadWorkScheduleData, ReadWorkScheduleResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RebuildOrderRezervData, RebuildOrderRezervErrors, RebuildOrderRezervResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RegenerateTerminalDeviceCodeData, RegenerateTerminalDeviceCodeErrors, RegenerateTerminalDeviceCodeResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReopenPachkaData, ReopenPachkaErrors, ReopenPachkaResponses, ReportDashboardData, ReportDashboardResponses, ReportMachineTimeData, ReportMachineTimeErrors, ReportMachineTimeResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResetSystemDbStatsData, ResetSystemDbStatsResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, ReviewDefectData, ReviewDefectErrors, ReviewDefectResponses, RollbackKalApplyData, RollbackKalApplyErrors, RollbackKalApplyResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, SaveStockDocData, SaveStockDocErrors, SaveStockDocResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, SetDowntimeReasonData, SetDowntimeReasonErrors, SetDowntimeReasonResponses, SetKalibEtalonData, SetKalibEtalonErrors, SetKalibEtalonResponses, SexRulonTugadiData, SexRulonTugadiErrors, SexRulonTugadiResponses, StartKalibSessionData, StartKalibSessionErrors, StartKalibSessionResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, StornoStockDocData, StornoStockDocErrors, StornoStockDocResponses, TouchUserActivityData, TouchUserActivityResponses, TraceInstancesData, TraceInstancesErrors, TraceInstancesResponses, UnmarkDefectData, UnmarkDefectErrors, UnmarkDefectResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateCatalogItemData, UpdateCatalogItemErrors, UpdateCatalogItemResponses, UpdateClientCreditData, UpdateClientCreditErrors, UpdateClientCreditResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateDefectReasonsData, UpdateDefectReasonsErrors, UpdateDefectReasonsResponses, UpdateDowntimeReasonData, UpdateDowntimeReasonErrors, UpdateDowntimeReasonResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateIdealCycleData, UpdateIdealCycleErrors, UpdateIdealCycleKromkaData, UpdateIdealCycleKromkaErrors, UpdateIdealCycleKromkaResponses, UpdateIdealCycleResponses, UpdateIdealCycleRoverData, UpdateIdealCycleRoverErrors, UpdateIdealCycleRoverResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOeeStartData, UpdateOeeStartErrors, UpdateOeeStartResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateSystemSettingData, UpdateSystemSettingErrors, UpdateSystemSettingResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UpdateWarehousePricingData, UpdateWarehousePricingErrors, UpdateWarehousePricingResponses, UpdateWorkScheduleData, UpdateWorkScheduleErrors, UpdateWorkScheduleResponses, UploadOrderBazisData, UploadOrderBazisErrors, UploadOrderBazisResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses, YorliqBirlikData, YorliqBirlikErrors, YorliqBirlikResponses } from './types.gen';
+import type { AcceptIntoTmoData, AcceptIntoTmoErrors, AcceptIntoTmoResponses, AgentLatestReleaseData, AgentLatestReleaseResponses, ApplyKalibSessionData, ApplyKalibSessionErrors, ApplyKalibSessionResponses, ApproveOrderRezervData, ApproveOrderRezervErrors, ApproveOrderRezervResponses, AssignOrderMachinesData, AssignOrderMachinesErrors, AssignOrderMachinesResponses, BerishQaytarData, BerishQaytarErrors, BerishQaytarResponses, BerishSkanData, BerishSkanErrors, BerishSkanResponses, BirlikOmborgaData, BirlikOmborgaErrors, BirlikOmborgaResponses, BirlikTugadiData, BirlikTugadiErrors, BirlikTugadiResponses, BridgeScanData, BridgeScanErrors, BridgeScanResponses, BulkUpdateCatalogItemsData, BulkUpdateCatalogItemsErrors, BulkUpdateCatalogItemsResponses, CancelInstanceLabelData, CancelInstanceLabelErrors, CancelInstanceLabelResponses, CancelOrderData, CancelOrderErrors, CancelOrderResponses, CancelScanData, CancelScanErrors, CancelScanResponses, CancelWasteItemLabelData, CancelWasteItemLabelErrors, CancelWasteItemLabelResponses, ChiqitBolakData, ChiqitBolakErrors, ChiqitBolakResponses, CloseMaterialSorovData, CloseMaterialSorovErrors, CloseMaterialSorovResponses, CloseOrderShareData, CloseOrderShareErrors, CloseOrderShareResponses, ClosePachkaData, ClosePachkaErrors, ClosePachkaResponses, ConfirmOrderData, ConfirmOrderErrors, ConfirmOrderResponses, ConfirmStockDocData, ConfirmStockDocErrors, ConfirmStockDocResponses, ConfirmStockInventoryData, ConfirmStockInventoryErrors, ConfirmStockInventoryResponses, CreateBridgeAgentData, CreateBridgeAgentErrors, CreateBridgeAgentResponses, CreateCatalogItemData, CreateCatalogItemErrors, CreateCatalogItemResponses, CreateClientData, CreateClientErrors, CreateClientResponses, CreateDowntimeReasonData, CreateDowntimeReasonErrors, CreateDowntimeReasonResponses, CreateEmployeeData, CreateEmployeeErrors, CreateEmployeeResponses, CreateMachineData, CreateMachineErrors, CreateMachineResponses, CreateMaterialSorovData, CreateMaterialSorovErrors, CreateMaterialSorovResponses, CreateOrderData, CreateOrderErrors, CreateOrderResponses, CreatePachkaData, CreatePachkaErrors, CreatePachkaResponses, CreateTerminalDeviceData, CreateTerminalDeviceErrors, CreateTerminalDeviceResponses, CreateUserData, CreateUserErrors, CreateUserResponses, DeleteBridgeAgentData, DeleteBridgeAgentErrors, DeleteBridgeAgentResponses, DeleteCatalogItemsData, DeleteCatalogItemsErrors, DeleteCatalogItemsResponses, DeleteClientData, DeleteClientErrors, DeleteClientResponses, DeleteEmployeeData, DeleteEmployeeErrors, DeleteEmployeeResponses, DeleteMachineData, DeleteMachineErrors, DeleteMachineResponses, DeleteOrderBazisData, DeleteOrderBazisErrors, DeleteOrderBazisResponses, DeleteOrderData, DeleteOrderErrors, DeleteOrderResponses, DeleteRoomPhotoData, DeleteRoomPhotoErrors, DeleteRoomPhotoResponses, DeleteStockDocData, DeleteStockDocErrors, DeleteStockDocResponses, DeleteTerminalDeviceData, DeleteTerminalDeviceErrors, DeleteTerminalDeviceResponses, DeleteUserData, DeleteUserErrors, DeleteUserMeData, DeleteUserMeResponses, DeleteUserResponses, DeliverOrderData, DeliverOrderErrors, DeliverOrderResponses, DownloadAgentExeData, DownloadAgentExeResponses, DownloadOrderFileData, DownloadOrderFileErrors, DownloadOrderFileResponses, DownloadOrderScxZipData, DownloadOrderScxZipErrors, DownloadOrderScxZipResponses, DownloadTerminalFileData, DownloadTerminalFileErrors, DownloadTerminalFileResponses, EditOrderMatrixData, EditOrderMatrixErrors, EditOrderMatrixResponses, EndKalibSessionData, EndKalibSessionErrors, EndKalibSessionResponses, EndTerminalSessionData, EndTerminalSessionErrors, EndTerminalSessionResponses, ExcludeKalibPointData, ExcludeKalibPointErrors, ExcludeKalibPointResponses, HealthApiV1HealthGetData, HealthApiV1HealthGetResponses, ImportCatalogItemsData, ImportCatalogItemsErrors, ImportCatalogItemsResponses, KassaChiqimData, KassaChiqimErrors, KassaChiqimResponses, KassaHolatData, KassaHolatResponses, KassaKirimData, KassaKirimErrors, KassaKirimResponses, KassaNavbatData, KassaNavbatErrors, KassaNavbatResponses, KassaOrderlarData, KassaOrderlarErrors, KassaOrderlarResponses, KassaOtkazmaData, KassaOtkazmaErrors, KassaOtkazmaResponses, KassaSmenalarData, KassaSmenalarErrors, KassaSmenalarResponses, KassaSmenaOchData, KassaSmenaOchErrors, KassaSmenaOchResponses, KassaSmenaYopData, KassaSmenaYopErrors, KassaSmenaYopResponses, KassaStornoData, KassaStornoErrors, KassaStornoResponses, KassaTurkumlarData, KassaTurkumlarResponses, KroyHolatData, KroyHolatResponses, KroyIntakeCancelData, KroyIntakeCancelErrors, KroyIntakeCancelResponses, KroyIntakeData, KroyIntakeErrors, KroyIntakeResponses, KroyOchishData, KroyOchishErrors, KroyOchishResponses, KroyOlishData, KroyOlishErrors, KroyOlishResponses, KroyPackagePushData, KroyPackagePushErrors, KroyPackagePushResponses, KroyRemnantsData, KroyRemnantsErrors, KroyRemnantsResponses, KroyReservationsData, KroyReservationsErrors, KroyReservationsResponses, KroyWebhookData, KroyWebhookErrors, KroyWebhookResponses, ListBerishOrdersData, ListBerishOrdersResponses, ListBirliklarData, ListBirliklarErrors, ListBirliklarResponses, ListBolaklarData, ListBolaklarErrors, ListBolaklarResponses, ListMaterialSorovlarData, ListMaterialSorovlarResponses, LockWithDowntimeReasonData, LockWithDowntimeReasonErrors, LockWithDowntimeReasonResponses, LoginAccessTokenData, LoginAccessTokenErrors, LoginAccessTokenResponses, LoginWithBadgeData, LoginWithBadgeErrors, LoginWithBadgeResponses, LogoutData, LogoutResponses, MapProjectMaterialData, MapProjectMaterialErrors, MapProjectMaterialResponses, MarkDefectData, MarkDefectErrors, MarkDefectResponses, MoliyaAktData, MoliyaAktErrors, MoliyaAktResponses, MoliyaBalansData, MoliyaBalansResponses, MoliyaBoshData, MoliyaBoshResponses, MoliyaByudjetData, MoliyaByudjetErrors, MoliyaByudjetResponses, MoliyaDavrlarData, MoliyaDavrlarResponses, MoliyaDavrOchishSorovData, MoliyaDavrOchishSorovErrors, MoliyaDavrOchishSorovResponses, MoliyaDavrOchishTasdiqData, MoliyaDavrOchishTasdiqErrors, MoliyaDavrOchishTasdiqResponses, MoliyaDavrYopData, MoliyaDavrYopErrors, MoliyaDavrYopResponses, MoliyaDebitorlarData, MoliyaDebitorlarResponses, MoliyaHisoblarData, MoliyaHisoblarResponses, MoliyaHisobSaqlaData, MoliyaHisobSaqlaErrors, MoliyaHisobSaqlaResponses, MoliyaJurnalCsvData, MoliyaJurnalCsvErrors, MoliyaJurnalCsvResponses, MoliyaKalendarData, MoliyaKalendarErrors, MoliyaKalendarResponses, MoliyaKreditorlarData, MoliyaKreditorlarResponses, MoliyaMijozShartData, MoliyaMijozShartErrors, MoliyaMijozShartResponses, MoliyaModdalarData, MoliyaModdalarResponses, MoliyaModdaQoshData, MoliyaModdaQoshErrors, MoliyaModdaQoshResponses, MoliyaModdaSaqlaData, MoliyaModdaSaqlaErrors, MoliyaModdaSaqlaResponses, MoliyaPnlData, MoliyaPnlErrors, MoliyaPnlResponses, MoliyaPulOqimiData, MoliyaPulOqimiErrors, MoliyaPulOqimiResponses, MoliyaRejalarData, MoliyaRejalarResponses, MoliyaRejaQoshData, MoliyaRejaQoshErrors, MoliyaRejaQoshResponses, MoliyaRejaSaqlaData, MoliyaRejaSaqlaErrors, MoliyaRejaSaqlaResponses, MoliyaSozlamalarData, MoliyaSozlamalarResponses, MoliyaSozlamalarSaqlaData, MoliyaSozlamalarSaqlaErrors, MoliyaSozlamalarSaqlaResponses, OpenOrderShareData, OpenOrderShareErrors, OpenOrderShareResponses, PairBridgeAgentData, PairBridgeAgentErrors, PairBridgeAgentResponses, PairTerminalDeviceData, PairTerminalDeviceErrors, PairTerminalDeviceResponses, PrintEmployeeBadgeData, PrintEmployeeBadgeErrors, PrintEmployeeBadgeResponses, PrintInstanceLabelData, PrintInstanceLabelErrors, PrintInstanceLabelResponses, PrintWasteItemLabelData, PrintWasteItemLabelErrors, PrintWasteItemLabelResponses, PushAndonEventsData, PushAndonEventsErrors, PushAndonEventsResponses, PushBridgeLogsData, PushBridgeLogsErrors, PushBridgeLogsResponses, QabulBolakData, QabulBolakErrors, QabulBolakResponses, ReadAuditLogsData, ReadAuditLogsErrors, ReadAuditLogsResponses, ReadAuditSummaryData, ReadAuditSummaryErrors, ReadAuditSummaryResponses, ReadBerishVaraqaData, ReadBerishVaraqaErrors, ReadBerishVaraqaResponses, ReadBirlikData, ReadBirlikErrors, ReadBirlikResponses, ReadBridgeAgentsData, ReadBridgeAgentsResponses, ReadBridgeLogsData, ReadBridgeLogsErrors, ReadBridgeLogsResponses, ReadCatalogAllData, ReadCatalogAllResponses, ReadCatalogGroupsData, ReadCatalogGroupsResponses, ReadCatalogItemsData, ReadCatalogItemsErrors, ReadCatalogItemsResponses, ReadCbRateData, ReadCbRateResponses, ReadClientData, ReadClientDetailData, ReadClientDetailErrors, ReadClientDetailResponses, ReadClientErrors, ReadClientResponses, ReadClientsData, ReadClientsErrors, ReadClientsResponses, ReadDefectReasonsData, ReadDefectReasonsResponses, ReadDefectsData, ReadDefectsErrors, ReadDefectsResponses, ReadDowntimeReasonsData, ReadDowntimeReasonsResponses, ReadEmployeesData, ReadEmployeesErrors, ReadEmployeesResponses, ReadIdealCycleData, ReadIdealCycleKromkaData, ReadIdealCycleKromkaResponses, ReadIdealCycleResponses, ReadIdealCycleRoverData, ReadIdealCycleRoverResponses, ReadIdleLimitData, ReadIdleLimitResponses, ReadKalibSessionData, ReadKalibSessionErrors, ReadKalibSessionResponses, ReadKalibSessionsData, ReadKalibSessionsResponses, ReadKromkaCalibrationData, ReadKromkaCalibrationResponses, ReadKromkaMeasurementFeedData, ReadKromkaMeasurementFeedResponses, ReadKromkaMeasurementsData, ReadKromkaMeasurementsResponses, ReadMachineActivityData, ReadMachineActivityErrors, ReadMachineActivityResponses, ReadMachinesData, ReadMachinesOverviewData, ReadMachinesOverviewResponses, ReadMachinesResponses, ReadOeeStartData, ReadOeeStartResponses, ReadOrderBazisData, ReadOrderBazisErrors, ReadOrderBazisModelData, ReadOrderBazisModelErrors, ReadOrderBazisModelResponses, ReadOrderBazisResponses, ReadOrderBazisThumbData, ReadOrderBazisThumbErrors, ReadOrderBazisThumbResponses, ReadOrderCutmapData, ReadOrderCutmapErrors, ReadOrderCutmapResponses, ReadOrderData, ReadOrderErrors, ReadOrderMatrixData, ReadOrderMatrixErrors, ReadOrderMatrixResponses, ReadOrderResponses, ReadOrderRezervData, ReadOrderRezervErrors, ReadOrderRezervResponses, ReadOrdersData, ReadOrdersErrors, ReadOrdersResponses, ReadOrderStatusCountsData, ReadOrderStatusCountsResponses, ReadPendingDefectCountData, ReadPendingDefectCountResponses, ReadPendingDowntimesData, ReadPendingDowntimesResponses, ReadPostsData, ReadPostsResponses, ReadPublicModelData, ReadPublicModelErrors, ReadPublicModelResponses, ReadPublicOrderData, ReadPublicOrderErrors, ReadPublicOrderResponses, ReadPublicThumbData, ReadPublicThumbErrors, ReadPublicThumbResponses, ReadSexMaterialData, ReadSexMaterialErrors, ReadSexMaterialResponses, ReadStockDocData, ReadStockDocErrors, ReadStockDocResponses, ReadStockDocsData, ReadStockDocsErrors, ReadStockDocsResponses, ReadStockItemHistoryData, ReadStockItemHistoryErrors, ReadStockItemHistoryResponses, ReadStockMovesData, ReadStockMovesErrors, ReadStockMovesResponses, ReadStockReportData, ReadStockReportErrors, ReadStockReportResponses, ReadStockSexLogData, ReadStockSexLogErrors, ReadStockSexLogResponses, ReadSupplyNeedsData, ReadSupplyNeedsResponses, ReadSystemPerfData, ReadSystemPerfEndpointData, ReadSystemPerfEndpointErrors, ReadSystemPerfEndpointResponses, ReadSystemPerfErrors, ReadSystemPerfResponses, ReadSystemSettingsData, ReadSystemSettingsResponses, ReadSystemStatusData, ReadSystemStatusResponses, ReadTabloMachineData, ReadTabloMachineErrors, ReadTabloMachineResponses, ReadTabloMachinesData, ReadTabloMachinesResponses, ReadTabloMatrixData, ReadTabloMatrixResponses, ReadTabloOrderData, ReadTabloOrderErrors, ReadTabloOrderResponses, ReadTerminalContextData, ReadTerminalContextResponses, ReadTerminalCutmapData, ReadTerminalCutmapErrors, ReadTerminalCutmapResponses, ReadTerminalDefectReasonsData, ReadTerminalDefectReasonsResponses, ReadTerminalDevicesData, ReadTerminalDevicesResponses, ReadTerminalDowntimeReasonsData, ReadTerminalDowntimeReasonsResponses, ReadTerminalEmployeesData, ReadTerminalEmployeesResponses, ReadTerminalKromkaData, ReadTerminalKromkaErrors, ReadTerminalKromkaResponses, ReadTerminalOrdersData, ReadTerminalOrdersResponses, ReadTerminalPostQueueData, ReadTerminalPostQueueErrors, ReadTerminalPostQueueResponses, ReadTerminalPrisadkaData, ReadTerminalPrisadkaErrors, ReadTerminalPrisadkaResponses, ReadTmoOrderData, ReadTmoOrderErrors, ReadTmoOrderResponses, ReadUpakovkaOrderData, ReadUpakovkaOrderErrors, ReadUpakovkaOrderResponses, ReadUserByIdData, ReadUserByIdErrors, ReadUserByIdResponses, ReadUserMeData, ReadUserMeResponses, ReadUsersData, ReadUsersErrors, ReadUsersResponses, ReadWarehousePricingData, ReadWarehousePricingResponses, ReadWorkScheduleData, ReadWorkScheduleResponses, ReadyApiV1ReadyGetData, ReadyApiV1ReadyGetResponses, RebuildOrderRezervData, RebuildOrderRezervErrors, RebuildOrderRezervResponses, RecordScanData, RecordScanErrors, RecordScanResponses, RefreshAccessTokenData, RefreshAccessTokenResponses, RegenerateBadgeData, RegenerateBadgeErrors, RegenerateBadgeResponses, RegenerateBridgeCodeData, RegenerateBridgeCodeErrors, RegenerateBridgeCodeResponses, RegenerateOrderScxData, RegenerateOrderScxErrors, RegenerateOrderScxResponses, RegenerateTerminalDeviceCodeData, RegenerateTerminalDeviceCodeErrors, RegenerateTerminalDeviceCodeResponses, RemoveFromPachkaData, RemoveFromPachkaErrors, RemoveFromPachkaResponses, RenderInstanceLabelData, RenderInstanceLabelErrors, RenderInstanceLabelResponses, ReopenPachkaData, ReopenPachkaErrors, ReopenPachkaResponses, ReportDashboardData, ReportDashboardResponses, ReportMachineTimeData, ReportMachineTimeErrors, ReportMachineTimeResponses, ReportMaterialsData, ReportMaterialsErrors, ReportMaterialsResponses, ReportOrdersData, ReportOrdersErrors, ReportOrdersResponses, ReportProductivityData, ReportProductivityErrors, ReportProductivityResponses, ResetSystemDbStatsData, ResetSystemDbStatsResponses, ResolveTerminalQrData, ResolveTerminalQrErrors, ResolveTerminalQrResponses, ReviewDefectData, ReviewDefectErrors, ReviewDefectResponses, RollbackKalApplyData, RollbackKalApplyErrors, RollbackKalApplyResponses, SaveOrderSurveyData, SaveOrderSurveyErrors, SaveOrderSurveyResponses, SaveStockDocData, SaveStockDocErrors, SaveStockDocResponses, ScanIntoPachkaData, ScanIntoPachkaErrors, ScanIntoPachkaResponses, SetDowntimeReasonData, SetDowntimeReasonErrors, SetDowntimeReasonResponses, SetKalibEtalonData, SetKalibEtalonErrors, SetKalibEtalonResponses, SexRulonTugadiData, SexRulonTugadiErrors, SexRulonTugadiResponses, StartKalibSessionData, StartKalibSessionErrors, StartKalibSessionResponses, StartOrderProductionData, StartOrderProductionErrors, StartOrderProductionResponses, StartTerminalSessionData, StartTerminalSessionErrors, StartTerminalSessionResponses, StornoStockDocData, StornoStockDocErrors, StornoStockDocResponses, TouchUserActivityData, TouchUserActivityResponses, TraceInstancesData, TraceInstancesErrors, TraceInstancesResponses, UnmarkDefectData, UnmarkDefectErrors, UnmarkDefectResponses, UpdateBridgeAgentData, UpdateBridgeAgentErrors, UpdateBridgeAgentResponses, UpdateCatalogItemData, UpdateCatalogItemErrors, UpdateCatalogItemResponses, UpdateClientCreditData, UpdateClientCreditErrors, UpdateClientCreditResponses, UpdateClientData, UpdateClientErrors, UpdateClientResponses, UpdateDefectReasonsData, UpdateDefectReasonsErrors, UpdateDefectReasonsResponses, UpdateDowntimeReasonData, UpdateDowntimeReasonErrors, UpdateDowntimeReasonResponses, UpdateEmployeeData, UpdateEmployeeErrors, UpdateEmployeeResponses, UpdateIdealCycleData, UpdateIdealCycleErrors, UpdateIdealCycleKromkaData, UpdateIdealCycleKromkaErrors, UpdateIdealCycleKromkaResponses, UpdateIdealCycleResponses, UpdateIdealCycleRoverData, UpdateIdealCycleRoverErrors, UpdateIdealCycleRoverResponses, UpdateMachineData, UpdateMachineErrors, UpdateMachineResponses, UpdateOeeStartData, UpdateOeeStartErrors, UpdateOeeStartResponses, UpdateOrderData, UpdateOrderErrors, UpdateOrderResponses, UpdatePasswordMeData, UpdatePasswordMeErrors, UpdatePasswordMeResponses, UpdatePostData, UpdatePostErrors, UpdatePostResponses, UpdateSystemSettingData, UpdateSystemSettingErrors, UpdateSystemSettingResponses, UpdateUserData, UpdateUserErrors, UpdateUserMeData, UpdateUserMeErrors, UpdateUserMeResponses, UpdateUserResponses, UpdateWarehousePricingData, UpdateWarehousePricingErrors, UpdateWarehousePricingResponses, UpdateWorkScheduleData, UpdateWorkScheduleErrors, UpdateWorkScheduleResponses, UploadOrderBazisData, UploadOrderBazisErrors, UploadOrderBazisResponses, UploadOrderProjectData, UploadOrderProjectErrors, UploadOrderProjectResponses, UploadRoomPhotoData, UploadRoomPhotoErrors, UploadRoomPhotoResponses, YorliqBirlikData, YorliqBirlikErrors, YorliqBirlikResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -2436,7 +2436,7 @@ export class KassaService {
     /**
      * Kassa Storno
      *
-     * Xato orderni teskari order bilan bekor qilish (Moliya, faqat direktor, ikki kalit).
+     * Xato orderni teskari order bilan bekor qilish (Moliya: direktor yoki moliyachi, ikki kalit).
      */
     public static kassaStorno<ThrowOnError extends boolean = true>(options: Options<KassaStornoData, ThrowOnError>): RequestResult<KassaStornoResponses, KassaStornoErrors, ThrowOnError> {
         return (options.client ?? client).post<KassaStornoResponses, KassaStornoErrors, ThrowOnError>({
@@ -2453,12 +2453,356 @@ export class KassaService {
     
     /**
      * Kassa Turkumlar
+     *
+     * Faol xarajat moddalari (Moliya sozlamasida yuritiladi).
      */
     public static kassaTurkumlar<ThrowOnError extends boolean = true>(options?: Options<KassaTurkumlarData, ThrowOnError>): RequestResult<KassaTurkumlarResponses, unknown, ThrowOnError> {
         return (options?.client ?? client).get<KassaTurkumlarResponses, unknown, ThrowOnError>({
             responseType: 'json',
             security: [{ scheme: 'bearer', type: 'http' }],
             url: '/api/v1/kassa/turkumlar',
+            ...options
+        });
+    }
+}
+
+export class MoliyaService {
+    /**
+     * Moliya Bosh
+     */
+    public static moliyaBosh<ThrowOnError extends boolean = true>(options?: Options<MoliyaBoshData, ThrowOnError>): RequestResult<MoliyaBoshResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaBoshResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/bosh',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Pnl
+     *
+     * Foyda va zarar. Yopilgan oy — qotgan nusxadan.
+     */
+    public static moliyaPnl<ThrowOnError extends boolean = true>(options?: Options<MoliyaPnlData, ThrowOnError>): RequestResult<MoliyaPnlResponses, MoliyaPnlErrors, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaPnlResponses, MoliyaPnlErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/pnl',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Pul Oqimi
+     */
+    public static moliyaPulOqimi<ThrowOnError extends boolean = true>(options?: Options<MoliyaPulOqimiData, ThrowOnError>): RequestResult<MoliyaPulOqimiResponses, MoliyaPulOqimiErrors, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaPulOqimiResponses, MoliyaPulOqimiErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/pul-oqimi',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Debitorlar
+     */
+    public static moliyaDebitorlar<ThrowOnError extends boolean = true>(options?: Options<MoliyaDebitorlarData, ThrowOnError>): RequestResult<MoliyaDebitorlarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaDebitorlarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/debitorlar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Mijoz Shart
+     */
+    public static moliyaMijozShart<ThrowOnError extends boolean = true>(options: Options<MoliyaMijozShartData, ThrowOnError>): RequestResult<MoliyaMijozShartResponses, MoliyaMijozShartErrors, ThrowOnError> {
+        return (options.client ?? client).put<MoliyaMijozShartResponses, MoliyaMijozShartErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/mijoz/{client_id}/shart',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Akt
+     *
+     * Solishtirma dalolatnoma (akt sverki).
+     */
+    public static moliyaAkt<ThrowOnError extends boolean = true>(options: Options<MoliyaAktData, ThrowOnError>): RequestResult<MoliyaAktResponses, MoliyaAktErrors, ThrowOnError> {
+        return (options.client ?? client).get<MoliyaAktResponses, MoliyaAktErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/akt/{client_id}',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Kreditorlar
+     */
+    public static moliyaKreditorlar<ThrowOnError extends boolean = true>(options?: Options<MoliyaKreditorlarData, ThrowOnError>): RequestResult<MoliyaKreditorlarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaKreditorlarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/kreditorlar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Kalendar
+     */
+    public static moliyaKalendar<ThrowOnError extends boolean = true>(options?: Options<MoliyaKalendarData, ThrowOnError>): RequestResult<MoliyaKalendarResponses, MoliyaKalendarErrors, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaKalendarResponses, MoliyaKalendarErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/kalendar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Byudjet
+     */
+    public static moliyaByudjet<ThrowOnError extends boolean = true>(options?: Options<MoliyaByudjetData, ThrowOnError>): RequestResult<MoliyaByudjetResponses, MoliyaByudjetErrors, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaByudjetResponses, MoliyaByudjetErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/byudjet',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Balans
+     */
+    public static moliyaBalans<ThrowOnError extends boolean = true>(options?: Options<MoliyaBalansData, ThrowOnError>): RequestResult<MoliyaBalansResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaBalansResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/balans',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Jurnal Csv
+     *
+     * Orderlar jurnali CSV (Excel uchun `;` ajratgich va BOM).
+     */
+    public static moliyaJurnalCsv<ThrowOnError extends boolean = true>(options: Options<MoliyaJurnalCsvData, ThrowOnError>): RequestResult<MoliyaJurnalCsvResponses, MoliyaJurnalCsvErrors, ThrowOnError> {
+        return (options.client ?? client).get<MoliyaJurnalCsvResponses, MoliyaJurnalCsvErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/jurnal.csv',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Rejalar
+     */
+    public static moliyaRejalar<ThrowOnError extends boolean = true>(options?: Options<MoliyaRejalarData, ThrowOnError>): RequestResult<MoliyaRejalarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaRejalarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/rejalar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Reja Qosh
+     */
+    public static moliyaRejaQosh<ThrowOnError extends boolean = true>(options: Options<MoliyaRejaQoshData, ThrowOnError>): RequestResult<MoliyaRejaQoshResponses, MoliyaRejaQoshErrors, ThrowOnError> {
+        return (options.client ?? client).post<MoliyaRejaQoshResponses, MoliyaRejaQoshErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/rejalar',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Reja Saqla
+     */
+    public static moliyaRejaSaqla<ThrowOnError extends boolean = true>(options: Options<MoliyaRejaSaqlaData, ThrowOnError>): RequestResult<MoliyaRejaSaqlaResponses, MoliyaRejaSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<MoliyaRejaSaqlaResponses, MoliyaRejaSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/rejalar/{reja_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Moddalar
+     */
+    public static moliyaModdalar<ThrowOnError extends boolean = true>(options?: Options<MoliyaModdalarData, ThrowOnError>): RequestResult<MoliyaModdalarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaModdalarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/moddalar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Modda Qosh
+     */
+    public static moliyaModdaQosh<ThrowOnError extends boolean = true>(options: Options<MoliyaModdaQoshData, ThrowOnError>): RequestResult<MoliyaModdaQoshResponses, MoliyaModdaQoshErrors, ThrowOnError> {
+        return (options.client ?? client).post<MoliyaModdaQoshResponses, MoliyaModdaQoshErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/moddalar',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Modda Saqla
+     */
+    public static moliyaModdaSaqla<ThrowOnError extends boolean = true>(options: Options<MoliyaModdaSaqlaData, ThrowOnError>): RequestResult<MoliyaModdaSaqlaResponses, MoliyaModdaSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<MoliyaModdaSaqlaResponses, MoliyaModdaSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/moddalar/{modda_id}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Hisoblar
+     */
+    public static moliyaHisoblar<ThrowOnError extends boolean = true>(options?: Options<MoliyaHisoblarData, ThrowOnError>): RequestResult<MoliyaHisoblarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaHisoblarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/hisoblar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Hisob Saqla
+     */
+    public static moliyaHisobSaqla<ThrowOnError extends boolean = true>(options: Options<MoliyaHisobSaqlaData, ThrowOnError>): RequestResult<MoliyaHisobSaqlaResponses, MoliyaHisobSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<MoliyaHisobSaqlaResponses, MoliyaHisobSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/hisoblar/{kod}',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Sozlamalar
+     */
+    public static moliyaSozlamalar<ThrowOnError extends boolean = true>(options?: Options<MoliyaSozlamalarData, ThrowOnError>): RequestResult<MoliyaSozlamalarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaSozlamalarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/sozlamalar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Sozlamalar Saqla
+     */
+    public static moliyaSozlamalarSaqla<ThrowOnError extends boolean = true>(options: Options<MoliyaSozlamalarSaqlaData, ThrowOnError>): RequestResult<MoliyaSozlamalarSaqlaResponses, MoliyaSozlamalarSaqlaErrors, ThrowOnError> {
+        return (options.client ?? client).put<MoliyaSozlamalarSaqlaResponses, MoliyaSozlamalarSaqlaErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/sozlamalar',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Davrlar
+     */
+    public static moliyaDavrlar<ThrowOnError extends boolean = true>(options?: Options<MoliyaDavrlarData, ThrowOnError>): RequestResult<MoliyaDavrlarResponses, unknown, ThrowOnError> {
+        return (options?.client ?? client).get<MoliyaDavrlarResponses, unknown, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/davrlar',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Davr Yop
+     */
+    public static moliyaDavrYop<ThrowOnError extends boolean = true>(options: Options<MoliyaDavrYopData, ThrowOnError>): RequestResult<MoliyaDavrYopResponses, MoliyaDavrYopErrors, ThrowOnError> {
+        return (options.client ?? client).post<MoliyaDavrYopResponses, MoliyaDavrYopErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/davrlar/{oy}/yopish',
+            ...options
+        });
+    }
+    
+    /**
+     * Moliya Davr Ochish Sorov
+     */
+    public static moliyaDavrOchishSorov<ThrowOnError extends boolean = true>(options: Options<MoliyaDavrOchishSorovData, ThrowOnError>): RequestResult<MoliyaDavrOchishSorovResponses, MoliyaDavrOchishSorovErrors, ThrowOnError> {
+        return (options.client ?? client).post<MoliyaDavrOchishSorovResponses, MoliyaDavrOchishSorovErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/davrlar/{oy}/ochish-sorov',
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+    }
+    
+    /**
+     * Moliya Davr Ochish Tasdiq
+     *
+     * Ikki kalit: so'rovni yozgan xodim emas, boshqasi tasdiqlaydi.
+     */
+    public static moliyaDavrOchishTasdiq<ThrowOnError extends boolean = true>(options: Options<MoliyaDavrOchishTasdiqData, ThrowOnError>): RequestResult<MoliyaDavrOchishTasdiqResponses, MoliyaDavrOchishTasdiqErrors, ThrowOnError> {
+        return (options.client ?? client).post<MoliyaDavrOchishTasdiqResponses, MoliyaDavrOchishTasdiqErrors, ThrowOnError>({
+            responseType: 'json',
+            security: [{ scheme: 'bearer', type: 'http' }],
+            url: '/api/v1/moliya/davrlar/{oy}/ochish-tasdiq',
             ...options
         });
     }

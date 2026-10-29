@@ -96,6 +96,8 @@ class Debitor(BaseModel):
     kun: int | None
     muddat_kun: int
     muddati_otgan: bool
+    #: Qarzning muddati o'tgan qismi (buyurtma bo'yicha: yetkazilgandan muddatdan ko'p kun o'tgan)
+    muddati_otgan_summa: Decimal
     limit: Decimal | None
     limitdan_oshgan: bool
     shartnoma_no: str

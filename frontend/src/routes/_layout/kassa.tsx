@@ -563,7 +563,7 @@ function SmenaOrderlari({ smenaId }: { smenaId: number | null }) {
                 o.tur === "kirim" ? "text-emerald-700" : "text-red-700",
               )}
             >
-              {o.tur === "kirim" ? "+" : "−"}
+              {(o.tur === "kirim") === num(o.summa) >= 0 ? "+" : "−"}
               {formatMoney(Math.abs(num(o.summa)))}
             </div>
           </div>

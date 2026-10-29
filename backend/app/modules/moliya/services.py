@@ -279,7 +279,9 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
         c = clients.get(cid)
         if c is None:
             continue
-        sotuv = tol = qarz = avans = _0
+        sh = shart.get(cid)
+        muddat = sh.muddat_kun if sh is not None and sh.muddat_kun is not None else std
+        sotuv = tol = qarz = avans = otgan = _0
         eng_eski: date | None = None
         for o, p in rows:
             tol += p
@@ -290,14 +292,14 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
                     qarz += q
                     d = _mahalliy(o.delivered_at)
                     eng_eski = d if eng_eski is None or d < eng_eski else eng_eski
+                    if (today - d).days > muddat:
+                        otgan += q
                 elif q < 0:
                     avans += -q
             else:
                 avans += p
         if qarz <= 0 and avans <= 0:
             continue
-        sh = shart.get(cid)
-        muddat = sh.muddat_kun if sh is not None and sh.muddat_kun is not None else std
         kun = (today - eng_eski).days if eng_eski else None
         out.append(
             Debitor(
@@ -310,7 +312,8 @@ async def debitorlar(db: AsyncSession) -> list[Debitor]:
                 avans=avans,
                 kun=kun,
                 muddat_kun=muddat,
-                muddati_otgan=kun is not None and kun > muddat,
+                muddati_otgan=otgan > 0,
+                muddati_otgan_summa=otgan,
                 limit=c.kredit_limit,
                 limitdan_oshgan=c.kredit_limit is not None and qarz > c.kredit_limit,
                 shartnoma_no=sh.shartnoma_no if sh else "",
@@ -559,7 +562,7 @@ async def bosh(db: AsyncSession) -> Bosh:
             Vazifa(
                 matn=f"{len(otgan)} mijozning qarzi muddatidan o'tgan",
                 izoh=", ".join(d.mijoz for d in otgan[:3]) + ("…" if len(otgan) > 3 else ""),
-                summa=sum((d.qarz for d in otgan), _0),
+                summa=sum((d.muddati_otgan_summa for d in otgan), _0),
                 bolim="debitorlar",
             )
         )
@@ -589,7 +592,7 @@ async def bosh(db: AsyncSession) -> Bosh:
         pul=sum((h.qoldiq for h in hisoblar), _0),
         debitorlik=sum((d.qarz for d in deb), _0),
         debitor_soni=sum(1 for d in deb if d.qarz > 0),
-        muddati_otgan=sum((d.qarz for d in otgan), _0),
+        muddati_otgan=sum((d.muddati_otgan_summa for d in otgan), _0),
         olingan_avans=sum((d.avans for d in deb), _0),
         kreditorlik=sum((k.qarz for k in await kreditorlar(db)), _0),
         rejali_30=sum((r.summa for r in kal if r.manba == "reja" and r.tur == "chiqim"), _0),

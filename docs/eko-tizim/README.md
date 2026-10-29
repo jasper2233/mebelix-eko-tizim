@@ -35,7 +35,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 4a Kassa (backend): smena, PKO/RKO, aralash to'lov, qarz, qaytarish, o'tkazma, storno, rezerv | tayyor, lokal sinalgan | pastda |
 | 4b Kassa (kassir ekrani) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 5a Moliya (backend): P&L, pul oqimi, debitor/kreditor, kalendar, byudjet, balans, akt sverki, davr yopish | tayyor, lokal sinalgan | pastda |
-| 5b Moliya (ekran) | navbatda | |
+| 5b Moliya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -368,4 +368,19 @@ yig'iladi — kassa orderlari, ombor hujjatlari va sarf harakatlari, buyurtmalar
 
 Ochiq: dollar kursi tarixi (TZ §8 «Kurs») — hozir ombor kirimidagi kurs ishlatiladi; ta'minotchi alohida
 ma'lumotnoma emas (nom bo'yicha), og'ir hisobotlarni fonga o'tkazish (TZ §10) — hajm o'sganda.
+
+### 5b — Moliya ekrani `/moliya`
+
+Bo'limlar (`?b=`): Bosh sahifa (pul hisoblar bo'yicha, mijozlar qarzi va muddati o'tgan qismi, bizning qarz,
+rejali to'lovlar, vazifalar — bosilsa bo'limga o'tadi, 30 kunlik pul oqimi grafigi, oy P&L), Mijozlar qarzi
+(shartnoma, muddat, limit; akt sverki A4 chop), Bizning qarz, To'lov kalendari (45 kun + rejali to'lovlar),
+Orderlar jurnali (sana oralig'i, qidiruv, CSV, storno — sabab bilan, ikki kalit backendda), Smenalar (sanash
+farqlari), Hisobotlar (P&L, byudjet, pul oqimi moddalar bo'yicha, 12 oy grafigi, hisoblar va kassirlar, balans),
+Davr yopish (yopish, qayta ochish so'rovi va tasdig'i), Sozlamalar (hisob boshlang'ichi va komissiya, eng kam avans,
+to'lov muddati, xarajat moddalari va oylik limit). Sidebar «Moliya» — direktor va moliyachi.
+Grafik ranglari — dataviz palitrasi (kirim ko'k, chiqim to'q sariq), legenda va hover.
+Storno qatori pulga ta'siri bilan ko'rsatiladi (chiqim stornosi «+»). Muddati o'tgan qarz — buyurtma bo'yicha
+(faqat muddatdan o'tgan buyurtmalar summasi), mijozning butun qarzi emas.
+Demo: debitor muddati 10 → 30 kun (qizil belgi yo'qoladi), akt sverki, xarajat stornosi (P&L dan chiqadi),
+sentyabrni yopish, o'sha xodim qayta ochishni tasdiqlay olmaydi.
 

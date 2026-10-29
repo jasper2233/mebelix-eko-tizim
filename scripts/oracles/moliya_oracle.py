@@ -200,8 +200,8 @@ async def main() -> None:
         deb = [d for d in await m.debitorlar(db) if d.client_id == cl.id]
         tek(
             "qarz / avans / muddati o'tgan",
-            [(d.qarz, d.avans, d.kun, d.muddati_otgan) for d in deb],
-            [(D(400_000), D(500_000), 15, True)],
+            [(d.qarz, d.avans, d.kun, d.muddati_otgan, d.muddati_otgan_summa) for d in deb],
+            [(D(400_000), D(500_000), 15, True, D(400_000))],
         )
         await m.mijoz_shart_saqla(db, cl.id, "SH-7", 30, D(300_000))
         d = [d for d in await m.debitorlar(db) if d.client_id == cl.id][0]

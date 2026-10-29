@@ -15,6 +15,7 @@ import {
   Hammer,
   Home,
   IdCard,
+  Landmark,
   Layers,
   LayoutDashboard,
   MonitorCog,
@@ -45,6 +46,7 @@ import {
   isKassaOnly,
   isManagement,
   isManager,
+  isMoliya,
   isProductionStaff,
   isWarehouseOnly,
   isWarehouseStaff,
@@ -87,6 +89,7 @@ export const NAV_ITEMS: (Item & {
     show: (u) => !isWarehouseOnly(u) && !isKassaOnly(u),
   },
   { icon: Banknote, title: "Kassa", path: "/kassa", show: isKassa },
+  { icon: Landmark, title: "Moliya", path: "/moliya", show: isMoliya },
   {
     icon: ClipboardList,
     title: "Buyurtmalar",

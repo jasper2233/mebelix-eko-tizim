@@ -21,6 +21,81 @@ export type AgentRelease = {
 };
 
 /**
+ * Akt
+ *
+ * Solishtirma dalolatnoma: debet — yetkazilgan buyurtma va qaytarilgan pul, kredit — to'lov.
+ * Saldo musbat — mijoz qarzdor, manfiy — biz qarzdormiz (avans).
+ */
+export type Akt = {
+    /**
+     * Client Id
+     */
+    client_id: number;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Dan
+     */
+    dan: string;
+    /**
+     * Gacha
+     */
+    gacha: string;
+    /**
+     * Boshlangich
+     */
+    boshlangich: string;
+    /**
+     * Qatorlar
+     */
+    qatorlar: Array<AktQator>;
+    /**
+     * Debet
+     */
+    debet: string;
+    /**
+     * Kredit
+     */
+    kredit: string;
+    /**
+     * Yakuniy
+     */
+    yakuniy: string;
+};
+
+/**
+ * AktQator
+ */
+export type AktQator = {
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Hujjat
+     */
+    hujjat: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Debet
+     */
+    debet: string;
+    /**
+     * Kredit
+     */
+    kredit: string;
+    /**
+     * Saldo
+     */
+    saldo: string;
+};
+
+/**
  * AmalNatija
  */
 export type AmalNatija = {
@@ -252,6 +327,48 @@ export type BadgeLoginResponse = {
      * Post Name
      */
     post_name: string;
+};
+
+/**
+ * Balans
+ */
+export type Balans = {
+    /**
+     * Pul
+     */
+    pul: string;
+    /**
+     * Debitorlik
+     */
+    debitorlik: string;
+    /**
+     * Ombor
+     */
+    ombor: string;
+    /**
+     * Berilgan Avans
+     */
+    berilgan_avans: string;
+    /**
+     * Aktiv
+     */
+    aktiv: string;
+    /**
+     * Kreditorlik
+     */
+    kreditorlik: string;
+    /**
+     * Olingan Avans
+     */
+    olingan_avans: string;
+    /**
+     * Passiv
+     */
+    passiv: string;
+    /**
+     * Sof
+     */
+    sof: string;
 };
 
 /**
@@ -683,6 +800,53 @@ export type BolakRead = {
 };
 
 /**
+ * Bosh
+ */
+export type Bosh = {
+    /**
+     * Hisoblar
+     */
+    hisoblar: Array<HisobOqim>;
+    /**
+     * Pul
+     */
+    pul: string;
+    /**
+     * Debitorlik
+     */
+    debitorlik: string;
+    /**
+     * Debitor Soni
+     */
+    debitor_soni: number;
+    /**
+     * Muddati Otgan
+     */
+    muddati_otgan: string;
+    /**
+     * Olingan Avans
+     */
+    olingan_avans: string;
+    /**
+     * Kreditorlik
+     */
+    kreditorlik: string;
+    /**
+     * Rejali 30
+     */
+    rejali_30: string;
+    /**
+     * Vazifalar
+     */
+    vazifalar: Array<Vazifa>;
+    /**
+     * Kunlar
+     */
+    kunlar: Array<KunOqim>;
+    pnl: PnL;
+};
+
+/**
  * BridgeAgentCreate
  */
 export type BridgeAgentCreate = {
@@ -823,6 +987,58 @@ export type BridgeScanRequest = {
      * Client Event Id
      */
     client_event_id: string;
+};
+
+/**
+ * BuyurtmaFoyda
+ */
+export type BuyurtmaFoyda = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Tannarx
+     */
+    tannarx: string;
+    /**
+     * Foyda
+     */
+    foyda: string;
+};
+
+/**
+ * ByudjetQator
+ */
+export type ByudjetQator = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Limit
+     */
+    limit: string | null;
+    /**
+     * Fakt
+     */
+    fakt: string;
+    /**
+     * Foiz
+     */
+    foiz: number | null;
 };
 
 /**
@@ -2087,6 +2303,58 @@ export type DashboardToday = {
 };
 
 /**
+ * DavrRead
+ */
+export type DavrRead = {
+    /**
+     * Oy
+     */
+    oy: string;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Yopgan
+     */
+    yopgan: string | null;
+    /**
+     * Yopilgan At
+     */
+    yopilgan_at: string | null;
+    /**
+     * Ochish Sorov
+     */
+    ochish_sorov: string | null;
+    /**
+     * Ochish Sabab
+     */
+    ochish_sabab: string;
+    /**
+     * Ochgan
+     */
+    ochgan: string | null;
+    /**
+     * Ochilgan At
+     */
+    ochilgan_at: string | null;
+    /**
+     * Sof
+     */
+    sof: string | null;
+};
+
+/**
+ * DavrSababIn
+ */
+export type DavrSababIn = {
+    /**
+     * Sabab
+     */
+    sabab: string;
+};
+
+/**
  * DbStatement
  */
 export type DbStatement = {
@@ -2110,6 +2378,68 @@ export type DbStatement = {
      * Query
      */
     query: string;
+};
+
+/**
+ * Debitor
+ */
+export type Debitor = {
+    /**
+     * Client Id
+     */
+    client_id: number;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Telefon
+     */
+    telefon: string | null;
+    /**
+     * Sotuv
+     */
+    sotuv: string;
+    /**
+     * Tolangan
+     */
+    tolangan: string;
+    /**
+     * Qarz
+     */
+    qarz: string;
+    /**
+     * Avans
+     */
+    avans: string;
+    /**
+     * Kun
+     */
+    kun: number | null;
+    /**
+     * Muddat Kun
+     */
+    muddat_kun: number;
+    /**
+     * Muddati Otgan
+     */
+    muddati_otgan: boolean;
+    /**
+     * Muddati Otgan Summa
+     */
+    muddati_otgan_summa: string;
+    /**
+     * Limit
+     */
+    limit: string | null;
+    /**
+     * Limitdan Oshgan
+     */
+    limitdan_oshgan: boolean;
+    /**
+     * Shartnoma No
+     */
+    shartnoma_no: string;
 };
 
 /**
@@ -3053,6 +3383,32 @@ export type HealthCheck = {
 };
 
 /**
+ * HisobOqim
+ */
+export type HisobOqim = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Kirim
+     */
+    kirim: string;
+    /**
+     * Chiqim
+     */
+    chiqim: string;
+    /**
+     * Qoldiq
+     */
+    qoldiq: string;
+};
+
+/**
  * HisobRead
  */
 export type HisobRead = {
@@ -3072,6 +3428,50 @@ export type HisobRead = {
      * Qoldiq
      */
     qoldiq: string;
+};
+
+/**
+ * HisobSozlama
+ */
+export type HisobSozlama = {
+    /**
+     * Kod
+     */
+    kod: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Boshlangich
+     */
+    boshlangich: string;
+    /**
+     * Komissiya Foiz
+     */
+    komissiya_foiz: string;
+    /**
+     * Qoldiq
+     */
+    qoldiq: string;
+};
+
+/**
+ * HisobSozlamaIn
+ */
+export type HisobSozlamaIn = {
+    /**
+     * Boshlangich
+     */
+    boshlangich?: number | string | null;
+    /**
+     * Komissiya Foiz
+     */
+    komissiya_foiz?: number | string | null;
 };
 
 /**
@@ -3390,6 +3790,40 @@ export type KalSet = {
 };
 
 /**
+ * KalendarQator
+ */
+export type KalendarQator = {
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Tur
+     */
+    tur: 'kirim' | 'chiqim';
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Manba
+     */
+    manba: string;
+    /**
+     * Muddati Otgan
+     */
+    muddati_otgan: boolean;
+    /**
+     * Havola Id
+     */
+    havola_id?: number | null;
+};
+
+/**
  * KalibDetail
  */
 export type KalibDetail = {
@@ -3660,6 +4094,28 @@ export type KassaOrderRead = {
 };
 
 /**
+ * KassirOqim
+ */
+export type KassirOqim = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Soni
+     */
+    soni: number;
+    /**
+     * Kirim
+     */
+    kirim: string;
+    /**
+     * Chiqim
+     */
+    chiqim: string;
+};
+
+/**
  * KirimIn
  */
 export type KirimIn = {
@@ -3705,6 +4161,40 @@ export type KodIn = {
      * Kod
      */
     kod: string;
+};
+
+/**
+ * Kreditor
+ */
+export type Kreditor = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Faktura
+     */
+    faktura: string;
+    /**
+     * Tolangan
+     */
+    tolangan: string;
+    /**
+     * Qarz
+     */
+    qarz: string;
+    /**
+     * Avans
+     */
+    avans: string;
+    /**
+     * Hujjatlar
+     */
+    hujjatlar: number;
+    /**
+     * Muddat
+     */
+    muddat: string | null;
 };
 
 /**
@@ -4018,6 +4508,24 @@ export type KroyOchish = {
      * Number
      */
     number: string;
+};
+
+/**
+ * KunOqim
+ */
+export type KunOqim = {
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Kirim
+     */
+    kirim: string;
+    /**
+     * Chiqim
+     */
+    chiqim: string;
 };
 
 /**
@@ -4687,6 +5195,64 @@ export type Message = {
 };
 
 /**
+ * MijozShartIn
+ */
+export type MijozShartIn = {
+    /**
+     * Shartnoma No
+     */
+    shartnoma_no?: string;
+    /**
+     * Muddat Kun
+     */
+    muddat_kun?: number | null;
+    /**
+     * Kredit Limit
+     */
+    kredit_limit?: number | string | null;
+};
+
+/**
+ * ModdaIn
+ */
+export type ModdaIn = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Oylik Limit
+     */
+    oylik_limit?: number | string | null;
+    /**
+     * Faol
+     */
+    faol?: boolean;
+};
+
+/**
+ * ModdaRead
+ */
+export type ModdaRead = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Oylik Limit
+     */
+    oylik_limit?: string | null;
+    /**
+     * Faol
+     */
+    faol?: boolean;
+    /**
+     * Id
+     */
+    id: number;
+};
+
+/**
  * MoveRead
  */
 export type MoveRead = {
@@ -5265,6 +5831,24 @@ export type OtkazmaIn = {
 };
 
 /**
+ * OyOqim
+ */
+export type OyOqim = {
+    /**
+     * Oy
+     */
+    oy: string;
+    /**
+     * Kirim
+     */
+    kirim: string;
+    /**
+     * Chiqim
+     */
+    chiqim: string;
+};
+
+/**
  * PachkaItemRow
  *
  * Qadoq ichidagi bitta nusxa.
@@ -5426,6 +6010,70 @@ export type PaginatedUserRead = {
      * Count
      */
     count: number;
+};
+
+/**
+ * PnL
+ *
+ * Foyda va zarar: sotuv − FIFO tannarx − xarajatlar (oy, mahalliy vaqt).
+ */
+export type PnL = {
+    /**
+     * Oy
+     */
+    oy: string;
+    /**
+     * Yopiq
+     */
+    yopiq?: boolean;
+    /**
+     * Sotuv Buyurtma
+     */
+    sotuv_buyurtma: string;
+    /**
+     * Sotuv Ombor
+     */
+    sotuv_ombor: string;
+    /**
+     * Sotuv
+     */
+    sotuv: string;
+    /**
+     * Tannarx Buyurtma
+     */
+    tannarx_buyurtma: string;
+    /**
+     * Tannarx Ombor
+     */
+    tannarx_ombor: string;
+    /**
+     * Tannarx
+     */
+    tannarx: string;
+    /**
+     * Yalpi
+     */
+    yalpi: string;
+    /**
+     * Xarajatlar
+     */
+    xarajatlar: Array<Qator>;
+    /**
+     * Kassa Farqi
+     */
+    kassa_farqi: string;
+    /**
+     * Xarajat Jami
+     */
+    xarajat_jami: string;
+    /**
+     * Sof
+     */
+    sof: string;
+    /**
+     * Buyurtmalar
+     */
+    buyurtmalar: Array<BuyurtmaFoyda>;
 };
 
 /**
@@ -5864,6 +6512,76 @@ export type PublicProduct = {
 };
 
 /**
+ * PulOqimi
+ *
+ * O'tkazmalarsiz kirim/chiqim (hisobdan hisobga o'tkazma pul oqimi emas).
+ */
+export type PulOqimi = {
+    /**
+     * Dan
+     */
+    dan: string;
+    /**
+     * Gacha
+     */
+    gacha: string;
+    /**
+     * Kirim
+     */
+    kirim: string;
+    /**
+     * Chiqim
+     */
+    chiqim: string;
+    /**
+     * Saldo
+     */
+    saldo: string;
+    /**
+     * Soni
+     */
+    soni: number;
+    /**
+     * Kirim Moddalar
+     */
+    kirim_moddalar: Array<Qator>;
+    /**
+     * Chiqim Moddalar
+     */
+    chiqim_moddalar: Array<Qator>;
+    /**
+     * Hisoblar
+     */
+    hisoblar: Array<HisobOqim>;
+    /**
+     * Kassirlar
+     */
+    kassirlar: Array<KassirOqim>;
+    /**
+     * Oylar
+     */
+    oylar: Array<OyOqim>;
+};
+
+/**
+ * Qator
+ */
+export type Qator = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Soni
+     */
+    soni?: number;
+};
+
+/**
  * QrOrderRef
  *
  * QR qaysi aktiv buyurtmaga tegishli (/terminal/qr/{qr}/order) — terminal o'sha sahifani ochadi.
@@ -5973,6 +6691,78 @@ export type ReadyOrder = {
      * Waiting Days
      */
     waiting_days: number;
+};
+
+/**
+ * RejaIn
+ */
+export type RejaIn = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur?: 'kirim' | 'chiqim';
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Turkum
+     */
+    turkum?: string;
+    /**
+     * Takror
+     */
+    takror: 'oylik' | 'bir';
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Faol
+     */
+    faol?: boolean;
+};
+
+/**
+ * RejaRead
+ */
+export type RejaRead = {
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Tur
+     */
+    tur?: 'kirim' | 'chiqim';
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Turkum
+     */
+    turkum?: string;
+    /**
+     * Takror
+     */
+    takror: 'oylik' | 'bir';
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Faol
+     */
+    faol?: boolean;
+    /**
+     * Id
+     */
+    id: number;
 };
 
 /**
@@ -6729,6 +7519,20 @@ export type SorovRead = {
      * Created By
      */
     created_by?: string | null;
+};
+
+/**
+ * Sozlamalar
+ */
+export type Sozlamalar = {
+    /**
+     * Eng Kam Avans Foiz
+     */
+    eng_kam_avans_foiz: number;
+    /**
+     * Tolov Muddat Kun
+     */
+    tolov_muddat_kun: number;
 };
 
 /**
@@ -8077,7 +8881,7 @@ export type UserRead = {
 /**
  * UserRole
  */
-export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'skladchi' | 'kassir';
+export type UserRole = 'admin' | 'director' | 'manager' | 'texnolog' | 'terminal' | 'tablo' | 'arrachi' | 'kromkachi' | 'ovalchi' | 'prisadkachi' | 'roverchi' | 'stolyar' | 'boyoqchi' | 'upakovkachi' | 'omborchi' | 'skladchi' | 'kassir' | 'moliyachi';
 
 /**
  * UserUpdate
@@ -8128,6 +8932,28 @@ export type ValidationError = {
     ctx?: {
         [key: string]: unknown;
     };
+};
+
+/**
+ * Vazifa
+ */
+export type Vazifa = {
+    /**
+     * Matn
+     */
+    matn: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Summa
+     */
+    summa?: string | null;
+    /**
+     * Bolim
+     */
+    bolim: string;
 };
 
 /**
@@ -12536,6 +13362,652 @@ export type KassaTurkumlarResponses = {
 };
 
 export type KassaTurkumlarResponse = KassaTurkumlarResponses[keyof KassaTurkumlarResponses];
+
+export type MoliyaBoshData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/bosh';
+};
+
+export type MoliyaBoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: Bosh;
+};
+
+export type MoliyaBoshResponse = MoliyaBoshResponses[keyof MoliyaBoshResponses];
+
+export type MoliyaPnlData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Oy
+         */
+        oy?: string | null;
+    };
+    url: '/api/v1/moliya/pnl';
+};
+
+export type MoliyaPnlErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaPnlError = MoliyaPnlErrors[keyof MoliyaPnlErrors];
+
+export type MoliyaPnlResponses = {
+    /**
+     * Successful Response
+     */
+    200: PnL;
+};
+
+export type MoliyaPnlResponse = MoliyaPnlResponses[keyof MoliyaPnlResponses];
+
+export type MoliyaPulOqimiData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+    };
+    url: '/api/v1/moliya/pul-oqimi';
+};
+
+export type MoliyaPulOqimiErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaPulOqimiError = MoliyaPulOqimiErrors[keyof MoliyaPulOqimiErrors];
+
+export type MoliyaPulOqimiResponses = {
+    /**
+     * Successful Response
+     */
+    200: PulOqimi;
+};
+
+export type MoliyaPulOqimiResponse = MoliyaPulOqimiResponses[keyof MoliyaPulOqimiResponses];
+
+export type MoliyaDebitorlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/debitorlar';
+};
+
+export type MoliyaDebitorlarResponses = {
+    /**
+     * Response Moliya Debitorlar
+     *
+     * Successful Response
+     */
+    200: Array<Debitor>;
+};
+
+export type MoliyaDebitorlarResponse = MoliyaDebitorlarResponses[keyof MoliyaDebitorlarResponses];
+
+export type MoliyaMijozShartData = {
+    body: MijozShartIn;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: never;
+    url: '/api/v1/moliya/mijoz/{client_id}/shart';
+};
+
+export type MoliyaMijozShartErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaMijozShartError = MoliyaMijozShartErrors[keyof MoliyaMijozShartErrors];
+
+export type MoliyaMijozShartResponses = {
+    /**
+     * Response Moliya Mijoz Shart
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: boolean;
+    };
+};
+
+export type MoliyaMijozShartResponse = MoliyaMijozShartResponses[keyof MoliyaMijozShartResponses];
+
+export type MoliyaAktData = {
+    body?: never;
+    path: {
+        /**
+         * Client Id
+         */
+        client_id: number;
+    };
+    query?: {
+        /**
+         * Dan
+         */
+        dan?: string | null;
+        /**
+         * Gacha
+         */
+        gacha?: string | null;
+    };
+    url: '/api/v1/moliya/akt/{client_id}';
+};
+
+export type MoliyaAktErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaAktError = MoliyaAktErrors[keyof MoliyaAktErrors];
+
+export type MoliyaAktResponses = {
+    /**
+     * Successful Response
+     */
+    200: Akt;
+};
+
+export type MoliyaAktResponse = MoliyaAktResponses[keyof MoliyaAktResponses];
+
+export type MoliyaKreditorlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/kreditorlar';
+};
+
+export type MoliyaKreditorlarResponses = {
+    /**
+     * Response Moliya Kreditorlar
+     *
+     * Successful Response
+     */
+    200: Array<Kreditor>;
+};
+
+export type MoliyaKreditorlarResponse = MoliyaKreditorlarResponses[keyof MoliyaKreditorlarResponses];
+
+export type MoliyaKalendarData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Kun
+         */
+        kun?: number;
+    };
+    url: '/api/v1/moliya/kalendar';
+};
+
+export type MoliyaKalendarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaKalendarError = MoliyaKalendarErrors[keyof MoliyaKalendarErrors];
+
+export type MoliyaKalendarResponses = {
+    /**
+     * Response Moliya Kalendar
+     *
+     * Successful Response
+     */
+    200: Array<KalendarQator>;
+};
+
+export type MoliyaKalendarResponse = MoliyaKalendarResponses[keyof MoliyaKalendarResponses];
+
+export type MoliyaByudjetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Oy
+         */
+        oy?: string | null;
+    };
+    url: '/api/v1/moliya/byudjet';
+};
+
+export type MoliyaByudjetErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaByudjetError = MoliyaByudjetErrors[keyof MoliyaByudjetErrors];
+
+export type MoliyaByudjetResponses = {
+    /**
+     * Response Moliya Byudjet
+     *
+     * Successful Response
+     */
+    200: Array<ByudjetQator>;
+};
+
+export type MoliyaByudjetResponse = MoliyaByudjetResponses[keyof MoliyaByudjetResponses];
+
+export type MoliyaBalansData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/balans';
+};
+
+export type MoliyaBalansResponses = {
+    /**
+     * Successful Response
+     */
+    200: Balans;
+};
+
+export type MoliyaBalansResponse = MoliyaBalansResponses[keyof MoliyaBalansResponses];
+
+export type MoliyaJurnalCsvData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Dan
+         */
+        dan: string;
+        /**
+         * Gacha
+         */
+        gacha: string;
+    };
+    url: '/api/v1/moliya/jurnal.csv';
+};
+
+export type MoliyaJurnalCsvErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaJurnalCsvError = MoliyaJurnalCsvErrors[keyof MoliyaJurnalCsvErrors];
+
+export type MoliyaJurnalCsvResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type MoliyaRejalarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/rejalar';
+};
+
+export type MoliyaRejalarResponses = {
+    /**
+     * Response Moliya Rejalar
+     *
+     * Successful Response
+     */
+    200: Array<RejaRead>;
+};
+
+export type MoliyaRejalarResponse = MoliyaRejalarResponses[keyof MoliyaRejalarResponses];
+
+export type MoliyaRejaQoshData = {
+    body: RejaIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/rejalar';
+};
+
+export type MoliyaRejaQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaRejaQoshError = MoliyaRejaQoshErrors[keyof MoliyaRejaQoshErrors];
+
+export type MoliyaRejaQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: RejaRead;
+};
+
+export type MoliyaRejaQoshResponse = MoliyaRejaQoshResponses[keyof MoliyaRejaQoshResponses];
+
+export type MoliyaRejaSaqlaData = {
+    body: RejaIn;
+    path: {
+        /**
+         * Reja Id
+         */
+        reja_id: number;
+    };
+    query?: never;
+    url: '/api/v1/moliya/rejalar/{reja_id}';
+};
+
+export type MoliyaRejaSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaRejaSaqlaError = MoliyaRejaSaqlaErrors[keyof MoliyaRejaSaqlaErrors];
+
+export type MoliyaRejaSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: RejaRead;
+};
+
+export type MoliyaRejaSaqlaResponse = MoliyaRejaSaqlaResponses[keyof MoliyaRejaSaqlaResponses];
+
+export type MoliyaModdalarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/moddalar';
+};
+
+export type MoliyaModdalarResponses = {
+    /**
+     * Response Moliya Moddalar
+     *
+     * Successful Response
+     */
+    200: Array<ModdaRead>;
+};
+
+export type MoliyaModdalarResponse = MoliyaModdalarResponses[keyof MoliyaModdalarResponses];
+
+export type MoliyaModdaQoshData = {
+    body: ModdaIn;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/moddalar';
+};
+
+export type MoliyaModdaQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaModdaQoshError = MoliyaModdaQoshErrors[keyof MoliyaModdaQoshErrors];
+
+export type MoliyaModdaQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModdaRead;
+};
+
+export type MoliyaModdaQoshResponse = MoliyaModdaQoshResponses[keyof MoliyaModdaQoshResponses];
+
+export type MoliyaModdaSaqlaData = {
+    body: ModdaIn;
+    path: {
+        /**
+         * Modda Id
+         */
+        modda_id: number;
+    };
+    query?: never;
+    url: '/api/v1/moliya/moddalar/{modda_id}';
+};
+
+export type MoliyaModdaSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaModdaSaqlaError = MoliyaModdaSaqlaErrors[keyof MoliyaModdaSaqlaErrors];
+
+export type MoliyaModdaSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModdaRead;
+};
+
+export type MoliyaModdaSaqlaResponse = MoliyaModdaSaqlaResponses[keyof MoliyaModdaSaqlaResponses];
+
+export type MoliyaHisoblarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/hisoblar';
+};
+
+export type MoliyaHisoblarResponses = {
+    /**
+     * Response Moliya Hisoblar
+     *
+     * Successful Response
+     */
+    200: Array<HisobSozlama>;
+};
+
+export type MoliyaHisoblarResponse = MoliyaHisoblarResponses[keyof MoliyaHisoblarResponses];
+
+export type MoliyaHisobSaqlaData = {
+    body: HisobSozlamaIn;
+    path: {
+        /**
+         * Kod
+         */
+        kod: string;
+    };
+    query?: never;
+    url: '/api/v1/moliya/hisoblar/{kod}';
+};
+
+export type MoliyaHisobSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaHisobSaqlaError = MoliyaHisobSaqlaErrors[keyof MoliyaHisobSaqlaErrors];
+
+export type MoliyaHisobSaqlaResponses = {
+    /**
+     * Response Moliya Hisob Saqla
+     *
+     * Successful Response
+     */
+    200: Array<HisobSozlama>;
+};
+
+export type MoliyaHisobSaqlaResponse = MoliyaHisobSaqlaResponses[keyof MoliyaHisobSaqlaResponses];
+
+export type MoliyaSozlamalarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/sozlamalar';
+};
+
+export type MoliyaSozlamalarResponses = {
+    /**
+     * Successful Response
+     */
+    200: Sozlamalar;
+};
+
+export type MoliyaSozlamalarResponse = MoliyaSozlamalarResponses[keyof MoliyaSozlamalarResponses];
+
+export type MoliyaSozlamalarSaqlaData = {
+    body: Sozlamalar;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/sozlamalar';
+};
+
+export type MoliyaSozlamalarSaqlaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaSozlamalarSaqlaError = MoliyaSozlamalarSaqlaErrors[keyof MoliyaSozlamalarSaqlaErrors];
+
+export type MoliyaSozlamalarSaqlaResponses = {
+    /**
+     * Successful Response
+     */
+    200: Sozlamalar;
+};
+
+export type MoliyaSozlamalarSaqlaResponse = MoliyaSozlamalarSaqlaResponses[keyof MoliyaSozlamalarSaqlaResponses];
+
+export type MoliyaDavrlarData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/davrlar';
+};
+
+export type MoliyaDavrlarResponses = {
+    /**
+     * Response Moliya Davrlar
+     *
+     * Successful Response
+     */
+    200: Array<DavrRead>;
+};
+
+export type MoliyaDavrlarResponse = MoliyaDavrlarResponses[keyof MoliyaDavrlarResponses];
+
+export type MoliyaDavrYopData = {
+    body?: never;
+    path: {
+        /**
+         * Oy
+         */
+        oy: string;
+    };
+    query?: never;
+    url: '/api/v1/moliya/davrlar/{oy}/yopish';
+};
+
+export type MoliyaDavrYopErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaDavrYopError = MoliyaDavrYopErrors[keyof MoliyaDavrYopErrors];
+
+export type MoliyaDavrYopResponses = {
+    /**
+     * Successful Response
+     */
+    200: DavrRead;
+};
+
+export type MoliyaDavrYopResponse = MoliyaDavrYopResponses[keyof MoliyaDavrYopResponses];
+
+export type MoliyaDavrOchishSorovData = {
+    body: DavrSababIn;
+    path: {
+        /**
+         * Oy
+         */
+        oy: string;
+    };
+    query?: never;
+    url: '/api/v1/moliya/davrlar/{oy}/ochish-sorov';
+};
+
+export type MoliyaDavrOchishSorovErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaDavrOchishSorovError = MoliyaDavrOchishSorovErrors[keyof MoliyaDavrOchishSorovErrors];
+
+export type MoliyaDavrOchishSorovResponses = {
+    /**
+     * Successful Response
+     */
+    200: DavrRead;
+};
+
+export type MoliyaDavrOchishSorovResponse = MoliyaDavrOchishSorovResponses[keyof MoliyaDavrOchishSorovResponses];
+
+export type MoliyaDavrOchishTasdiqData = {
+    body?: never;
+    path: {
+        /**
+         * Oy
+         */
+        oy: string;
+    };
+    query?: never;
+    url: '/api/v1/moliya/davrlar/{oy}/ochish-tasdiq';
+};
+
+export type MoliyaDavrOchishTasdiqErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaDavrOchishTasdiqError = MoliyaDavrOchishTasdiqErrors[keyof MoliyaDavrOchishTasdiqErrors];
+
+export type MoliyaDavrOchishTasdiqResponses = {
+    /**
+     * Successful Response
+     */
+    200: DavrRead;
+};
+
+export type MoliyaDavrOchishTasdiqResponse = MoliyaDavrOchishTasdiqResponses[keyof MoliyaDavrOchishTasdiqResponses];
 
 export type KroyHolatData = {
     body?: never;
