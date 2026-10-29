@@ -329,7 +329,7 @@ async def birlik_omborga(db: SessionDep, current_user: WarehouseUser, barkod: st
 
 async def _bolak_read(db: SessionDep, b: OmborBolak) -> BolakRead:
     item = await db.get(CatalogItem, b.item_id) if b.item_id else None
-    manba = await db.get(Order, b.manba_order_id)
+    manba = await db.get(Order, b.manba_order_id) if b.manba_order_id else None
     return BolakRead.model_validate(b).model_copy(
         update={"item_name": item.name if item else None, "manba_order": manba.number if manba else None}
     )
@@ -342,7 +342,7 @@ async def list_bolaklar(db: SessionDep, _: WarehouseReadUser, joy: str = "ombor"
         await db.execute(
             select(OmborBolak, CatalogItem.name, Order.number)
             .outerjoin(CatalogItem, CatalogItem.id == OmborBolak.item_id)
-            .join(Order, Order.id == OmborBolak.manba_order_id)
+            .outerjoin(Order, Order.id == OmborBolak.manba_order_id)
             .where(OmborBolak.joy == joy, OmborBolak.is_deleted == False)  # noqa: E712
             .order_by(OmborBolak.material_nom, OmborBolak.uzunlik.desc(), OmborBolak.eni.desc())
             .limit(2000)

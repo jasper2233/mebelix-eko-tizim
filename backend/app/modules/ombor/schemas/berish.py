@@ -120,10 +120,15 @@ class BolakRead(BaseModel):
     material_nom: str
     uzunlik: Decimal
     eni: Decimal
-    manba_order_id: int
+    manba_order_id: int | None
     manba_order: str | None = None
-    #: `ombor` | `ishlatildi` | `chiqit`
+    #: `kutish` | `ombor` | `ishlatildi` | `chiqit` | `bekor`
     joy: str
+    qty: int
+    qty_pending: int
+    #: `mes` (ATX yorlig'i) | `mx` (MX Kroy kirimi)
+    manba: str
+    band_raqam: str | None = None
     order_id: int | None
     created_at: datetime
 

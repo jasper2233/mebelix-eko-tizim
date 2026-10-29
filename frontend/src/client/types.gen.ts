@@ -621,7 +621,7 @@ export type BolakRead = {
     /**
      * Manba Order Id
      */
-    manba_order_id: number;
+    manba_order_id: number | null;
     /**
      * Manba Order
      */
@@ -630,6 +630,22 @@ export type BolakRead = {
      * Joy
      */
     joy: string;
+    /**
+     * Qty
+     */
+    qty: number;
+    /**
+     * Qty Pending
+     */
+    qty_pending: number;
+    /**
+     * Manba
+     */
+    manba: string;
+    /**
+     * Band Raqam
+     */
+    band_raqam?: string | null;
     /**
      * Order Id
      */
@@ -11501,6 +11517,188 @@ export type CloseMaterialSorovResponses = {
 };
 
 export type CloseMaterialSorovResponse = CloseMaterialSorovResponses[keyof CloseMaterialSorovResponses];
+
+export type KroyRemnantsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Ids
+         */
+        ids?: string | null;
+        /**
+         * Material
+         */
+        material?: string | null;
+        /**
+         * Code
+         */
+        code?: string | null;
+        /**
+         * Type
+         */
+        type?: string | null;
+        /**
+         * Thickness
+         */
+        thickness?: number | string | null;
+        /**
+         * Status
+         */
+        status?: string | null;
+        /**
+         * Linear
+         */
+        linear?: boolean | null;
+    };
+    url: '/api/v1/ombor/kroy/remnants';
+};
+
+export type KroyRemnantsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyRemnantsError = KroyRemnantsErrors[keyof KroyRemnantsErrors];
+
+export type KroyRemnantsResponses = {
+    /**
+     * Response Kroy Remnants
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type KroyRemnantsResponse = KroyRemnantsResponses[keyof KroyRemnantsResponses];
+
+export type KroyReservationsData = {
+    /**
+     * Body
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/kroy/remnants/reservations';
+};
+
+export type KroyReservationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyReservationsError = KroyReservationsErrors[keyof KroyReservationsErrors];
+
+export type KroyReservationsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type KroyIntakeData = {
+    /**
+     * Body
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/ombor/kroy/remnants/intake';
+};
+
+export type KroyIntakeErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyIntakeError = KroyIntakeErrors[keyof KroyIntakeErrors];
+
+export type KroyIntakeResponses = {
+    /**
+     * Response Kroy Intake
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type KroyIntakeResponse = KroyIntakeResponses[keyof KroyIntakeResponses];
+
+export type KroyIntakeCancelData = {
+    body?: never;
+    path: {
+        /**
+         * Intake Id
+         */
+        intake_id: string;
+    };
+    query?: never;
+    url: '/api/v1/ombor/kroy/remnants/intake/{intake_id}/cancel';
+};
+
+export type KroyIntakeCancelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyIntakeCancelError = KroyIntakeCancelErrors[keyof KroyIntakeCancelErrors];
+
+export type KroyIntakeCancelResponses = {
+    /**
+     * Response Kroy Intake Cancel
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type KroyIntakeCancelResponse = KroyIntakeCancelResponses[keyof KroyIntakeCancelResponses];
+
+export type KroyWebhookData = {
+    /**
+     * Body
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/integ/kroy/webhook';
+};
+
+export type KroyWebhookErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyWebhookError = KroyWebhookErrors[keyof KroyWebhookErrors];
+
+export type KroyWebhookResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type ReadAuditSummaryData = {
     body?: never;

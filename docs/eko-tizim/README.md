@@ -26,6 +26,9 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 2.2b Rezerv (interfeys) | tayyor, brauzerda sinalgan | pastda |
 | 2.3a Barkodlar, sexga berish, sexdagi rulonlar | tayyor, brauzerda sinalgan | pastda |
 | 2.3b Sexdan so'rov, rulon tugadi (terminal), qoldiq bo'laklari | tayyor, lokal sinalgan | pastda |
+| 3a MX Kroy: qoldiq ombori API (K3), webhook inbox (K4) | tayyor, HTTP bilan sinalgan | pastda |
+| 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | navbatda | |
+| 3c MX Kroy: kroy paketi qabul (K2), arra «list chiqdi» → MX, katalog sinxroni (K5) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -195,4 +198,25 @@ qoidalari olindi:
 
 Ochiq (keyingi bosqichlar): MXIK va shtrix-kod katalogda (Soliq, 6), kompaniya → filial → ombor tuzilmasi,
 idempotent inbox/outbox (MX Kroy integratsiyasi, 3), so'rovni avtomatik qayta urinish (hozir 503 + qayta bosish).
+
+### 3a — MX Kroy: qoldiq ombori (K3) va webhook inbox (K4)
+
+MX tomoni tayyor edi (`MebeliX_Kroy/MES_INTEGRATSIYA.md`, `docs/mebelix/MES_QOLDIQ_V1.md`); MES tomoni:
+
+- `ombor_bolak` — YAGONA qoldiq registri, ikki manba: `mes` (MES `ATX-` yorlig'i) va `mx` (MX kirim hujjati).
+  MX bo'lagi `kutish` (qty 0, `qty_pending`) holatida yaratiladi, karta listi arradan chiqqach (`map.done`)
+  ulushi `ombor` ga o'tadi: `jami × done / nusxa`. Karta raqami har MX OPERATSIYASIDA 1 dan boshlanadi —
+  bog'lash `mx_loyiha + mx_op + karta` bo'yicha (faqat loyiha + karta bo'lsa boshqa materialning bo'laklari ochilardi).
+- API `{MES}/api/v1/ombor/kroy` (MX: «Источник склада: База MES», `mes_url` shu): `GET /remnants`
+  (kod, kod bo'lmasa nom — harf/bo'shliqsiz), `POST /remnants/reservations` (`add|remove|set`, boshqa loyiha
+  bandi va `kutish` — 409 `conflicts`), `POST /remnants/intake` (`IN-2026-0001`), `POST /remnants/intake/{id}/cancel`
+  (takror — xavfsiz). Kirish — xizmat tokeni `KROY_API_TOKEN` (MX da `MES_API_TOKEN`/`MES_WEBHOOK_TOKEN`).
+- Webhook `POST /api/v1/integ/kroy/webhook` → `integ_inbox`: MX xabarlarida `event_id` YO'Q — kalit
+  `event_id` yoki `{event}:{sha256(yuklama)}`; takror — `duplicate`, xuddi shu kalit boshqa mazmun — 409;
+  ishlovda xato — 500, hech narsa yozilmaydi (MX navbatida qoladi). Hozir ishlovi: `map.done`;
+  `project.status`, `remnant.move` saqlanadi (K1 da ulanadi).
+- MES ichida bo'lak skaner bilan berilganda MX bandi hurmat qilinadi.
+- Orakl `kroy_http_oracle.py` 20/20 — ishlab turgan serverga MX so'rovlari aynan o'z shaklida.
+
+Ochiq: MX bo'lagining jismoniy yorlig'i — K2 paketidagi qoldiq (`waste_item`, `ATX-`) bilan bog'lanadi.
 

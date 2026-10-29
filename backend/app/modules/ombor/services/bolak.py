@@ -84,13 +84,17 @@ async def qabul(db: AsyncSession, kod: str, user_id: int | None) -> OmborBolak:
 async def ishlat(db: AsyncSession, kod: str, order: Order, user_id: int | None) -> OmborBolak:
     """Bo'lak buyurtmaga berildi (skaner bilan). Omborga qabul qilinmagan bo'lsa — shu yerning o'zida."""
     b = await find(db, kod, lock=True) or await qabul(db, kod, user_id)
-    if b.joy != OMBOR:
-        raise BolakError(f"{b.barkod}: bu bo'lak allaqachon {b.joy}.")
+    if b.joy != OMBOR or b.qty < 1:
+        raise BolakError(f"{b.barkod}: bu bo'lak omborda yo'q ({b.joy}).")
     if b.manba_order_id == order.id:
         raise BolakError(f"{b.barkod}: bu bo'lak shu buyurtmaning o'z kroyidan.")
-    b.joy = ISHLATILDI
+    if b.band_loyiha:
+        raise BolakError(f"{b.barkod}: MX Kroy'da {b.band_raqam or b.band_loyiha} loyihasiga band.")
+    b.qty -= 1
     b.order_id = order.id
-    b.yopilgan_at = datetime.now(UTC)
+    if b.qty == 0 and b.qty_pending == 0:
+        b.joy = ISHLATILDI
+        b.yopilgan_at = datetime.now(UTC)
     await db.flush()
     return b
 
@@ -101,6 +105,9 @@ async def chiqit(db: AsyncSession, bolak_id: int) -> OmborBolak:
         raise BolakError("Bo'lak topilmadi.")
     if b.joy != OMBOR:
         raise BolakError(f"{b.barkod}: bu bo'lak allaqachon {b.joy}.")
+    if b.band_loyiha:
+        raise BolakError(f"{b.barkod}: MX Kroy'da {b.band_raqam or b.band_loyiha} loyihasiga band.")
+    b.qty = 0
     b.joy = CHIQIT
     b.yopilgan_at = datetime.now(UTC)
     await db.flush()

@@ -40,10 +40,13 @@ function BolaklarPage() {
   const queryClient = useQueryClient()
   const { currentUser } = useCurrentUser()
   const canEdit = isWarehouseWriter(currentUser)
-  const key = ["ombor", "bolaklar"]
+  // `kutish` — MX Kroy kirimidagi bo'lak: karta listi arradan chiqishini kutmoqda (`map.done`)
+  const [joy, setJoy] = useState<"ombor" | "kutish">("ombor")
+  const key = ["ombor", "bolaklar", joy]
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: key,
-    queryFn: async () => (await OmborService.listBolaklar()).data,
+    queryFn: async () =>
+      (await OmborService.listBolaklar({ query: { joy } })).data,
   })
   const [kod, setKod] = useState("")
   const [q, setQ] = useState("")
@@ -111,8 +114,28 @@ function BolaklarPage() {
               </LoadingButton>
             </form>
           )}
+          <div className="ml-auto flex rounded-md border p-0.5 text-sm">
+            {(
+              [
+                ["ombor", "Omborda"],
+                ["kutish", "Arradan chiqishi kutilmoqda"],
+              ] as const
+            ).map(([v, t]) => (
+              <button
+                key={v}
+                type="button"
+                className={cn(
+                  "rounded px-3 py-1",
+                  joy === v && "bg-primary text-primary-foreground",
+                )}
+                onClick={() => setJoy(v)}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
           <Input
-            className="ml-auto w-64"
+            className="w-64"
             placeholder="Material bo'yicha qidirish"
             value={q}
             onChange={(e) => setQ(e.target.value)}
@@ -141,6 +164,7 @@ function BolaklarPage() {
                 <TableHead>Yorliq</TableHead>
                 <TableHead>Material</TableHead>
                 <TableHead className="text-right">O'lcham, mm</TableHead>
+                <TableHead className="text-right">Soni</TableHead>
                 <TableHead>Qaysi kroydan</TableHead>
                 <TableHead>Qabul</TableHead>
                 <TableHead />
@@ -148,12 +172,21 @@ function BolaklarPage() {
             </TableHeader>
             <TableBody>
               {rows.length === 0 ? (
-                <EmptyRow colSpan={6}>Omborda qoldiq bo'lagi yo'q</EmptyRow>
+                <EmptyRow colSpan={7}>
+                  {joy === "ombor"
+                    ? "Omborda qoldiq bo'lagi yo'q"
+                    : "Kutilayotgan bo'lak yo'q"}
+                </EmptyRow>
               ) : (
                 rows.map((b) => (
                   <TableRow key={b.id}>
                     <TableCell className="font-mono text-xs">
                       {b.barkod}
+                      {b.manba === "mx" && (
+                        <span className="ml-1 rounded bg-sky-100 px-1 font-sans text-sky-900">
+                          MX Kroy
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {b.item_name ?? b.material_nom}
@@ -166,12 +199,20 @@ function BolaklarPage() {
                     <TableCell className="num text-right font-semibold">
                       {num(b.uzunlik)} × {num(b.eni)}
                     </TableCell>
+                    <TableCell className="num text-right">
+                      {joy === "kutish" ? b.qty_pending : b.qty}
+                      {b.band_raqam && (
+                        <div className="text-xs text-amber-700">
+                          MX band: {b.band_raqam}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>{b.manba_order}</TableCell>
                     <TableCell className="text-xs">
                       {formatDateTime(b.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {canEdit && (
+                      {canEdit && joy === "ombor" && !b.band_raqam && (
                         <LoadingButton
                           size="sm"
                           variant="outline"

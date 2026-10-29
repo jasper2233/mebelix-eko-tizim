@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     #: Ochiq qolib ketgan tranzaksiyani baza o'zi uzadi va qulflarni bo'shatadi (EKO 2.4). 0 = cheklovsiz
     DB_IDLE_TX_TIMEOUT_MS: int = 60000
 
+    # === MX Kroy integratsiyasi (EKO TZ §6, 3-bosqich) ===
+    #: MX → MES xizmat tokeni (qoldiq ombori API va webhook). MX serverida `MES_API_TOKEN` /
+    #: `MES_WEBHOOK_TOKEN` shu qiymat. Bo'sh — integratsiya o'chiq (503)
+    KROY_API_TOKEN: str | None = None
+
     # === Process role (EKO TIZIM TZ §2.2) ===
     API_ROLE: ProcessRole = ProcessRole.ALL
 

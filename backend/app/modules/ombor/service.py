@@ -7,7 +7,10 @@ buyurtma amali va ombor oqibati bitta tranzaksiyada.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
-from app.modules.ombor.services import rezerv, solishtirish
+from app.modules.ombor.services import kroy, rezerv, solishtirish
+from app.modules.ombor.services.kroy_auth import kroy_token
+
+__all__ = ["kroy_token"]
 
 
 async def on_project_loaded(db: AsyncSession, order: Order) -> None:
@@ -28,6 +31,11 @@ async def production_block_reason(db: AsyncSession, order: Order) -> str | None:
 async def on_order_cancelled(db: AsyncSession, order_id: int) -> None:
     """B12: buyurtma bekor qilindi → rezerv bekor, material bo'shaydi."""
     await rezerv.cancel_for_order(db, order_id)
+
+
+async def kroy_map_done(db: AsyncSession, mx_loyiha: str, mx_op: str, karta: int, done: int) -> int:
+    """MX `map.done`: karta listi arradan chiqdi — shu kartaning qoldiq bo'laklari ulushi omborga."""
+    return await kroy.map_done(db, mx_loyiha, mx_op, karta, done)
 
 
 async def reconcile(db: AsyncSession) -> list[solishtirish.Farq]:
