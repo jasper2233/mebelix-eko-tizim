@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -84,7 +85,9 @@ def _order_read(order: Order, client_name: str) -> OrderRead:
 async def _order_read_with_client(db: SessionDep, order: Order) -> OrderRead:
     """Javob uchun mijoz nomini qo'shib beradi (soft-deleted mijozda bo'sh satr)."""
     client = await crud_clients.get(db, id=order.client_id)
-    return _order_read(order, client.full_name if client else "")
+    item = _order_read(order, client.full_name if client else "")
+    item.kassa_tolangan = (await kassa.tolangan(db, [order.id])).get(order.id, Decimal(0))
+    return item
 
 
 #: EKO 4: kassa ishga tushgach to'lov faqat kassa orderi bilan — qo'lda avans pulni ikki marta sanardi
@@ -168,7 +171,11 @@ async def read_orders(
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
     rows = (await db.execute(query.order_by(Order.id.desc()).offset(skip).limit(limit))).all()
-    return Paginated(data=[_order_read(order, client_name) for order, client_name in rows], count=total)
+    paid = await kassa.tolangan(db, [order.id for order, _ in rows])
+    data = [_order_read(order, client_name) for order, client_name in rows]
+    for item in data:
+        item.kassa_tolangan = paid.get(item.id, Decimal(0))
+    return Paginated(data=data, count=total)
 
 
 # NOTE: /{order_id} dan OLDIN turishi shart — aks holda "status-counts" order_id deb o'qiladi.
@@ -215,6 +222,7 @@ async def read_order(db: SessionDep, current_user: StaffReadUser, order_id: int)
     ).scalar_one()
 
     detail = OrderDetail.model_validate(order)
+    detail.kassa_tolangan = (await kassa.tolangan(db, [order.id])).get(order.id, Decimal(0))
     detail.client_name = client.full_name if client else ""
     # Faqat bekor qilingan buyurtmada — qo'shimcha so'rov behuda ketmasin
     if order.cancelled_by_id is not None:

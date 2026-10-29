@@ -525,10 +525,16 @@ export function formatMoney(value: string | number | null | undefined): string {
 
 /** Qoldiq to'lov = umumiy narx − boshlang'ich to'lov. `amount` yo'qligini
  * ("—" ko'rsatishni) chaqiruvchi o'zi tekshiradi. */
+/** To'langan: kassagacha qo'lda yozilgan avans + kassa orderlari (EKO 4) */
+export const paidTotal = (o: {
+  advance_payment?: string | number | null
+  kassa_tolangan?: string | number | null
+}) => Number(o.advance_payment ?? 0) + Number(o.kassa_tolangan ?? 0)
 export const remainingPayment = (o: {
   amount?: string | number | null
   advance_payment?: string | number | null
-}) => Number(o.amount) - Number(o.advance_payment ?? 0)
+  kassa_tolangan?: string | number | null
+}) => Number(o.amount) - paidTotal(o)
 
 /** Audit log amallari — foydalanuvchiga ko'rinadigan nom (Loglar sahifasi va
  * buyurtma kartasidagi «Oxirgi amal»). Backend `log_action(action=...)` bilan qo'lda oynalangan. */

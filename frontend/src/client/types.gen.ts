@@ -1717,6 +1717,10 @@ export type ClientOrderRow = {
      */
     advance_payment?: string | null;
     /**
+     * Kassa Tolangan
+     */
+    kassa_tolangan?: string;
+    /**
      * Created At
      */
     created_at: string;
@@ -5748,6 +5752,94 @@ export type Nomzod = {
 };
 
 /**
+ * OchilishIn
+ *
+ * Ochilish qoldig'i qatori (CSV dan ham). Mijoz: `client_id`, yoki telefon (+998…), yoki aniq nomi.
+ */
+export type OchilishIn = {
+    /**
+     * Tur
+     */
+    tur: 'mijoz' | 'taminotchi';
+    /**
+     * Client Id
+     */
+    client_id?: number | null;
+    /**
+     * Telefon
+     */
+    telefon?: string;
+    /**
+     * Nomi
+     */
+    nomi?: string;
+    /**
+     * Summa
+     */
+    summa: number | string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Izoh
+     */
+    izoh?: string;
+};
+
+/**
+ * OchilishNatija
+ */
+export type OchilishNatija = {
+    /**
+     * Yozildi
+     */
+    yozildi: number;
+    /**
+     * Qatorlar
+     */
+    qatorlar: Array<OchilishRead>;
+};
+
+/**
+ * OchilishRead
+ */
+export type OchilishRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Client Id
+     */
+    client_id: number | null;
+    /**
+     * Kontragent
+     */
+    kontragent: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Qolgan
+     */
+    qolgan?: string | null;
+};
+
+/**
  * OeeStart
  *
  * OEE hisobi shu kundan boshlanadi. `None` — cheklov yo'q (butun tarix).
@@ -5837,6 +5929,10 @@ export type OrderDetail = {
      * Advance Payment
      */
     advance_payment: string | null;
+    /**
+     * Kassa Tolangan
+     */
+    kassa_tolangan?: string;
     /**
      * Notes
      */
@@ -6027,6 +6123,10 @@ export type OrderRead = {
      * Advance Payment
      */
     advance_payment: string | null;
+    /**
+     * Kassa Tolangan
+     */
+    kassa_tolangan?: string;
     /**
      * Notes
      */
@@ -8921,6 +9021,32 @@ export type TabloStopRow = {
      * Reason
      */
     reason: string | null;
+};
+
+/**
+ * Tekshiruv
+ */
+export type Tekshiruv = {
+    /**
+     * Modul
+     */
+    modul: string;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Holat
+     */
+    holat: 'ok' | 'ogoh' | 'xato';
+    /**
+     * Izoh
+     */
+    izoh: string;
+    /**
+     * Havola
+     */
+    havola: string;
 };
 
 /**
@@ -14762,6 +14888,52 @@ export type MoliyaDavrOchishTasdiqResponses = {
 
 export type MoliyaDavrOchishTasdiqResponse = MoliyaDavrOchishTasdiqResponses[keyof MoliyaDavrOchishTasdiqResponses];
 
+export type MoliyaOchilishData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/ochilish';
+};
+
+export type MoliyaOchilishResponses = {
+    /**
+     * Response Moliya Ochilish
+     *
+     * Successful Response
+     */
+    200: Array<OchilishRead>;
+};
+
+export type MoliyaOchilishResponse = MoliyaOchilishResponses[keyof MoliyaOchilishResponses];
+
+export type MoliyaOchilishQoshData = {
+    /**
+     * Body
+     */
+    body: Array<OchilishIn>;
+    path?: never;
+    query?: never;
+    url: '/api/v1/moliya/ochilish';
+};
+
+export type MoliyaOchilishQoshErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaOchilishQoshError = MoliyaOchilishQoshErrors[keyof MoliyaOchilishQoshErrors];
+
+export type MoliyaOchilishQoshResponses = {
+    /**
+     * Successful Response
+     */
+    200: OchilishNatija;
+};
+
+export type MoliyaOchilishQoshResponse = MoliyaOchilishQoshResponses[keyof MoliyaOchilishQoshResponses];
+
 export type SoliqKorxonaData = {
     body?: never;
     path?: never;
@@ -15606,6 +15778,24 @@ export type BuxYozuvStornoResponses = {
 };
 
 export type BuxYozuvStornoResponse = BuxYozuvStornoResponses[keyof BuxYozuvStornoResponses];
+
+export type TayyorlikData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/tayyorlik';
+};
+
+export type TayyorlikResponses = {
+    /**
+     * Response Tayyorlik
+     *
+     * Successful Response
+     */
+    200: Array<Tekshiruv>;
+};
+
+export type TayyorlikResponse = TayyorlikResponses[keyof TayyorlikResponses];
 
 export type KroyHolatData = {
     body?: never;

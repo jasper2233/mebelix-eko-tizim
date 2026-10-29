@@ -76,6 +76,7 @@ import {
   isWarehouseStaff,
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
+  paidTotal,
   remainingPayment,
   TERMINAL_STATUSES,
 } from "@/lib/mes"
@@ -532,10 +533,7 @@ function OrderDetailPage() {
           }
         />
         <Meta label="Umumiy narx" value={formatMoney(order.amount)} />
-        <Meta
-          label="Boshlang'ich to'lov"
-          value={formatMoney(order.advance_payment)}
-        />
+        <Meta label="To'langan" value={formatMoney(paidTotal(order))} />
         <Meta
           label="Qoldiq to'lov"
           value={

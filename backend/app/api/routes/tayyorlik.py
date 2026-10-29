@@ -9,7 +9,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 
 from app.api.deps import SessionDep, require_roles
 from app.models import User
@@ -35,16 +35,12 @@ class Tekshiruv(BaseModel):
     havola: str
 
 
-async def _rol_soni(db: SessionDep, *rollar: UserRole) -> int:
-    return int(
-        await db.scalar(
-            select(func.count()).where(
-                User.role.in_(rollar),
-                User.is_active == True,  # noqa: E712
-            )
-        )
-        or 0
-    )
+async def _rol_soni(db: SessionDep, *rollar: UserRole, admin: bool = False) -> int:
+    """Faol foydalanuvchilar soni; `admin` — admin va superuser ham (`require_roles` ularni doim o'tkazadi)."""
+    shart: ColumnElement[bool] = User.role.in_(rollar)
+    if admin:
+        shart = shart | (User.role == UserRole.ADMIN) | (User.is_superuser == True)  # noqa: E712
+    return int(await db.scalar(select(func.count()).where(shart, User.is_active == True)) or 0)  # noqa: E712
 
 
 @router.get("", response_model=list[Tekshiruv], operation_id="tayyorlik")
@@ -90,12 +86,12 @@ async def tayyorlik(db: SessionDep, _: TayyorlikUser) -> list[Tekshiruv]:
             ogoh=True,
         )
     if "moliya" in mod or "kassa" in mod:
-        n = await _rol_soni(db, UserRole.DIRECTOR, UserRole.MOLIYACHI)
+        n = await _rol_soni(db, UserRole.DIRECTOR, UserRole.MOLIYACHI, admin=True)
         add(
             "Moliya",
             "Ikki kalit uchun kamida 2 xodim",
             n >= 2,
-            f"Direktor + moliyachi: {n}. Storno va davrni qayta ochish boshqa xodim tasdig'ini talab qiladi",
+            f"Direktor, moliyachi, admin: {n}. Storno va davrni qayta ochish boshqa xodim tasdig'ini talab qiladi",
             "/admin",
         )
         och = await kassa.ochilishlar(db)

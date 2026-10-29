@@ -12,6 +12,7 @@ from app.core.exceptions import DuplicateValueException
 from app.crud import crud_clients, log_action
 from app.models import ORDER_FAT_COLUMNS, Client, Order
 from app.models.enums import OrderStatus
+from app.modules.kassa import service as kassa
 from app.schemas.clients import ClientCreate, ClientCredit, ClientDetail, ClientOrderRow, ClientRead, ClientUpdate
 from app.schemas.common import Message, Paginated
 
@@ -197,6 +198,9 @@ async def read_client_detail(db: SessionDep, _: StaffReadUser, client_id: int) -
         .all()
     )
     detail.orders = [ClientOrderRow.model_validate(o) for o in orders]
+    paid = await kassa.tolangan(db, [o.id for o in detail.orders])
+    for row in detail.orders:
+        row.kassa_tolangan = paid.get(row.id, Decimal(0))
     detail.orders_count = len(orders)
     o = (await _reyting(db)).get(client_id)
     if o is not None:

@@ -21,6 +21,7 @@ import { Route as LayoutBuxgalteriyaRouteImport } from './routes/_layout/buxgalt
 import { Route as LayoutClientsRouteImport } from './routes/_layout/clients'
 import { Route as LayoutDefectsRouteImport } from './routes/_layout/defects'
 import { Route as LayoutEmployeesRouteImport } from './routes/_layout/employees'
+import { Route as LayoutIshgaTushirishRouteImport } from './routes/_layout/ishga-tushirish'
 import { Route as LayoutKassaRouteImport } from './routes/_layout/kassa'
 import { Route as LayoutLogsRouteImport } from './routes/_layout/logs'
 import { Route as LayoutMoliyaRouteImport } from './routes/_layout/moliya'
@@ -108,6 +109,11 @@ const LayoutDefectsRoute = LayoutDefectsRouteImport.update({
 const LayoutEmployeesRoute = LayoutEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => LayoutRoute,
+} as any)
+const LayoutIshgaTushirishRoute = LayoutIshgaTushirishRouteImport.update({
+  id: '/ishga-tushirish',
+  path: '/ishga-tushirish',
   getParentRoute: () => LayoutRoute,
 } as any)
 const LayoutKassaRoute = LayoutKassaRouteImport.update({
@@ -269,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/clients': typeof LayoutClientsRoute
   '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
+  '/ishga-tushirish': typeof LayoutIshgaTushirishRoute
   '/kassa': typeof LayoutKassaRoute
   '/logs': typeof LayoutLogsRoute
   '/moliya': typeof LayoutMoliyaRoute
@@ -310,6 +317,7 @@ export interface FileRoutesByTo {
   '/clients': typeof LayoutClientsRoute
   '/defects': typeof LayoutDefectsRoute
   '/employees': typeof LayoutEmployeesRoute
+  '/ishga-tushirish': typeof LayoutIshgaTushirishRoute
   '/kassa': typeof LayoutKassaRoute
   '/logs': typeof LayoutLogsRoute
   '/moliya': typeof LayoutMoliyaRoute
@@ -354,6 +362,7 @@ export interface FileRoutesById {
   '/_layout/clients': typeof LayoutClientsRoute
   '/_layout/defects': typeof LayoutDefectsRoute
   '/_layout/employees': typeof LayoutEmployeesRoute
+  '/_layout/ishga-tushirish': typeof LayoutIshgaTushirishRoute
   '/_layout/kassa': typeof LayoutKassaRoute
   '/_layout/logs': typeof LayoutLogsRoute
   '/_layout/moliya': typeof LayoutMoliyaRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/defects'
     | '/employees'
+    | '/ishga-tushirish'
     | '/kassa'
     | '/logs'
     | '/moliya'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/clients'
     | '/defects'
     | '/employees'
+    | '/ishga-tushirish'
     | '/kassa'
     | '/logs'
     | '/moliya'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/_layout/clients'
     | '/_layout/defects'
     | '/_layout/employees'
+    | '/_layout/ishga-tushirish'
     | '/_layout/kassa'
     | '/_layout/logs'
     | '/_layout/moliya'
@@ -608,6 +620,13 @@ declare module '@tanstack/react-router' {
       path: '/employees'
       fullPath: '/employees'
       preLoaderRoute: typeof LayoutEmployeesRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/ishga-tushirish': {
+      id: '/_layout/ishga-tushirish'
+      path: '/ishga-tushirish'
+      fullPath: '/ishga-tushirish'
+      preLoaderRoute: typeof LayoutIshgaTushirishRouteImport
       parentRoute: typeof LayoutRoute
     }
     '/_layout/kassa': {
@@ -823,6 +842,7 @@ interface LayoutRouteChildren {
   LayoutClientsRoute: typeof LayoutClientsRoute
   LayoutDefectsRoute: typeof LayoutDefectsRoute
   LayoutEmployeesRoute: typeof LayoutEmployeesRoute
+  LayoutIshgaTushirishRoute: typeof LayoutIshgaTushirishRoute
   LayoutKassaRoute: typeof LayoutKassaRoute
   LayoutLogsRoute: typeof LayoutLogsRoute
   LayoutMoliyaRoute: typeof LayoutMoliyaRoute
@@ -861,6 +881,7 @@ const LayoutRouteChildren: LayoutRouteChildren = {
   LayoutClientsRoute: LayoutClientsRoute,
   LayoutDefectsRoute: LayoutDefectsRoute,
   LayoutEmployeesRoute: LayoutEmployeesRoute,
+  LayoutIshgaTushirishRoute: LayoutIshgaTushirishRoute,
   LayoutKassaRoute: LayoutKassaRoute,
   LayoutLogsRoute: LayoutLogsRoute,
   LayoutMoliyaRoute: LayoutMoliyaRoute,

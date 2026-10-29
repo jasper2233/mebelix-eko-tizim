@@ -1,9 +1,11 @@
 // Buyurtma formasi: sxema, payload va umumiy maydonlar — AddOrder/EditOrder
 // bitta backend kontraktiga tegadi, shuning uchun bir manbadan.
 
+import { useQuery } from "@tanstack/react-query"
 import type { Control } from "react-hook-form"
 import { z } from "zod"
 
+import { UsersService } from "@/client"
 import { DatePicker } from "@/components/ui/date-picker"
 import {
   FormControl,
@@ -69,6 +71,14 @@ export function OrderFields({
    *  buyurtmaga kelishilgan (o'tgan) sanani keyin yozish mumkin bo'lsin. */
   isNew?: boolean
 }) {
+  // Kassa (EKO 4) yoqilgan bo'lsa to'lov faqat kassa orderi bilan — qo'lda avans pulni ikki marta sanardi
+  // (backend kassa boshlangach rad etadi). Menyu bilan bir xil kalit — so'rov keshdan.
+  const { data: modullar } = useQuery({
+    queryKey: ["modullar"],
+    queryFn: async () => (await UsersService.readUserModullar()).data,
+    staleTime: 5 * 60_000,
+  })
+  const kassada = modullar?.includes("kassa") ?? false
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
@@ -147,9 +157,13 @@ export function OrderFields({
               <FormControl>
                 <Input
                   {...field}
+                  disabled={kassada}
+                  title={
+                    kassada ? "Avans Kassa orqali qabul qilinadi" : undefined
+                  }
                   inputMode="numeric"
                   className="num"
-                  placeholder="2 000 000"
+                  placeholder={kassada ? "Kassa orqali" : "2 000 000"}
                   onChange={(e) =>
                     field.onChange(formatMoneyInput(e.target.value))
                   }

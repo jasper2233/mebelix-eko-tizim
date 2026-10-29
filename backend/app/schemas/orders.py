@@ -21,6 +21,8 @@ class OrderRead(BaseModel):
     deadline: date | None
     amount: Decimal | None
     advance_payment: Decimal | None
+    #: Kassa orderlari bilan to'langan (EKO 4; qaytarish va storno ayirilgan). To'langan = avans + shu
+    kassa_tolangan: Decimal = Decimal(0)
     notes: str | None
     project_name: str | None
     created_at: datetime

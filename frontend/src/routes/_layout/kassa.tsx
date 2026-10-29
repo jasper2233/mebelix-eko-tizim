@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { CheckCircle2, Lock, Search, TriangleAlert, Unlock } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import {
   type AmalNatija,
@@ -225,6 +225,11 @@ function Amal({
   const queryClient = useQueryClient()
   const [tur, setTur] = useState<"kirim" | "chiqim">("kirim")
   const [maqsad, setMaqsad] = useState<string>("tolov")
+  // «Ochilish qarzi» (tizimga o'tishdagi qarz) tanlansa — faqat qarz to'lovi. Formani qayta yaratmaymiz:
+  // aks holda to'lovdan keyingi natija xabari yo'qolardi
+  useEffect(() => {
+    if (tanlangan?.holat === "ochilish") setMaqsad("qarz")
+  }, [tanlangan])
   const [usul, setUsul] = useState<string>("naqd")
   const [summa, setSumma] = useState("")
   const [karta, setKarta] = useState("")

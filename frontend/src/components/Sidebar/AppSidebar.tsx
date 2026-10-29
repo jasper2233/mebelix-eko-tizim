@@ -21,6 +21,7 @@ import {
   LayoutDashboard,
   MonitorCog,
   Receipt,
+  Rocket,
   Ruler,
   ScanLine,
   ScrollText,
@@ -119,6 +120,12 @@ export const NAV_ITEMS: (Item & {
     path: "/buxgalteriya",
     show: isMoliya,
     modul: "buxgalteriya",
+  },
+  {
+    icon: Rocket,
+    title: "Ishga tushirish",
+    path: "/ishga-tushirish",
+    show: isMoliya,
   },
   {
     icon: ClipboardList,

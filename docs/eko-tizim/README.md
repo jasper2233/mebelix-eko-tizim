@@ -42,7 +42,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 7a Buxgalteriya (backend): schyotlar rejasi, avtomatik provodkalar, aylanma-saldo, nazorat | tayyor, lokal sinalgan | pastda |
 | 7b Buxgalteriya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 8a Ishga tushirish (backend): ochilish qoldiqlari, qo'lda avans qulfi, tayyorlik tekshiruvi | tayyor, lokal sinalgan | pastda |
-| 8b Ishga tushirish (ekran) | navbatda | |
+| 8b Ishga tushirish (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -484,4 +484,17 @@ Tashqi xizmatlarsiz (haqiqiy ESF operatori, E-IMZO, fiskal chek — keyin ulanad
   xodimi, ochilish qoldiqlari, korxona rekvizitlari, soliq rejimi, ESF operatori (sinov — ogohlantirish), MXIK
   qamrovi, inventarizatsiya, buxgalteriya nazorati. Tarifda yo'q modul tekshirilmaydi.
 - Orakl `ishga_tushirish_oracle.py` 16/16 (yo'l funksiyasi commit qiladi — har safar toza baza).
+
+### 8b — «Ishga tushirish» ekrani `/ishga-tushirish`
+
+Tayyorlik ro'yxati (qizil — to'siq, sariq — e'tibor; har band tuzatish joyiga olib boradi) va ochilish qoldiqlari:
+bitta qator (mijoz qidiruvi yoki ta'minotchi nomi) yoki CSV / Excel dan (`tur;telefon yoki nom;summa;sana;izoh`,
+DD.MM.YYYY ham) — xato qator raqami bilan ko'rsatiladi, hech biri yozilmaydi. Kassa navbatida «Ochilish qarzi»
+tanlansa maqsad o'zi «Qarzni to'lash» (natija xabari saqlanadi). Buyurtma formasida kassa moduli yoqilgan bo'lsa
+«Boshlang'ich to'lov» yopiq («Kassa orqali»).
+
+Ko'rsatish paytida topilib tuzatildi:
+- buyurtma sahifasi va mijoz kartasidagi «Qoldiq to'lov» faqat qo'lda avansdan hisoblanardi — endi buyurtma
+  javoblarida `kassa_tolangan`, sahifada «To'langan» = avans + kassa (`lib/mes.ts: paidTotal`);
+- tayyorlikdagi «ikki kalit» admin va superuser ni sanamasdi (ular ham storno qila oladi).
 
