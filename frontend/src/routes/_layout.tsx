@@ -61,6 +61,9 @@ export const Route = createFileRoute("/_layout")({
       !["/kassa", "/settings"].some((p) => location.pathname.startsWith(p))
     )
       throw redirect({ to: "/kassa" })
+    // Moliyachining ishi — Moliya; ishlab chiqarish paneli uning uchun bo'sh (faqat menejer/texnolog/direktor)
+    if (me.role === "moliyachi" && location.pathname === "/")
+      throw redirect({ to: "/moliya", search: { b: "bosh" } })
   },
 })
 

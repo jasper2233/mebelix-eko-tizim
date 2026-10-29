@@ -135,8 +135,23 @@ export const handleError = (err: unknown): void => {
 /** API bazasi — klient konfiguratsiyasi (`main.tsx`) va xom URL quruvchi
  * joylar (fayl yuklab olish havolalari, WebSocket) shu yagona qiymatni oladi.
  * Ilgari `OpenAPI.BASE` edi; zamonaviy klientda bunday global yo'q. */
-export const API_BASE: string =
-  import.meta.env.VITE_API_URL ?? "http://localhost:8000"
+/** API manzili. FAQAT LOKAL: API `localhost` da va sahifa `kassir.localhost` kabi subdomendan ochilgan bo'lsa,
+ *  API ham o'sha subdomenga boradi — kirish cookie'si xost bo'yicha alohida bo'lib, bitta Chrome'da har tabda
+ *  boshqa rol bilan kirib ko'rish mumkin. Prod (`VITE_API_URL` haqiqiy domen) ga ta'siri yo'q. */
+export const API_BASE: string = (() => {
+  const env = import.meta.env.VITE_API_URL ?? "http://localhost:8000"
+  try {
+    const u = new URL(env)
+    const h = window.location.hostname
+    if (u.hostname === "localhost" && h.endsWith(".localhost")) {
+      u.hostname = h
+      return u.origin
+    }
+  } catch {
+    // noto'g'ri URL — o'zgarishsiz
+  }
+  return env
+})()
 
 export const getInitials = (name: string): string => {
   return name

@@ -92,7 +92,8 @@ export const NAV_ITEMS: (Item & {
     icon: Home,
     title: "Boshqaruv paneli",
     path: "/",
-    show: (u) => !isWarehouseOnly(u) && !isKassaOnly(u),
+    show: (u) =>
+      !isWarehouseOnly(u) && !isKassaOnly(u) && u?.role !== "moliyachi",
   },
   {
     icon: Banknote,
