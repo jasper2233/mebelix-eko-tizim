@@ -29,6 +29,8 @@ class UserRole(StrEnum):
     #: tsex roli va beyjik bilan ishlaydi. `POST_ROLES` da ATAYLAB yo'q — bu
     #: lavozimning posti ham, terminali ham yo'q.
     SKLADCHI = "skladchi"
+    #: Kassir (EKO TZ §7) — o'rta daraja: smena, kirim/chiqim orderlari. Storno qilolmaydi (Moliya, direktor)
+    KASSIR = "kassir"
 
 
 class UserLevel(IntEnum):
@@ -51,6 +53,7 @@ ROLE_LEVEL: dict[UserRole, UserLevel] = {
     UserRole.MANAGER: UserLevel.OFIS,
     UserRole.TEXNOLOG: UserLevel.OFIS,
     UserRole.SKLADCHI: UserLevel.ORTA,
+    UserRole.KASSIR: UserLevel.ORTA,
     UserRole.TERMINAL: UserLevel.JARAYON,
     UserRole.TABLO: UserLevel.JARAYON,
     UserRole.ARRACHI: UserLevel.JARAYON,

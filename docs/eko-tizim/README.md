@@ -32,6 +32,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, outbox | tayyor, MX klon bilan sinalgan | pastda |
 | 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i | tayyor, MX klon bilan sinalgan | pastda |
 | 3f Ortiqcha berilgan materialni sexdan qaytarish | tayyor, brauzerda sinalgan | pastda |
+| 4a Kassa (backend): smena, PKO/RKO, aralash to'lov, qarz, qaytarish, o'tkazma, storno, rezerv | tayyor, lokal sinalgan | pastda |
+| 4b Kassa (kassir ekrani) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -311,4 +313,21 @@ paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES 
   kiradi; rezerv `berilgan` kamayadi. Kechki solishtirish: berilgan = sarf − qaytish.
 - Orakl `berish_oracle` 60/60 (15-bosqich); brauzerda: akril listi va 10 m kromka qaytdi, rulon sig'imidan
   oshirish rad etildi; solishtirish farqsiz.
+
+### 4a — Kassa (backend)
+
+`app/modules/kassa` (TZ §7; prototip `Kassa.dc.html` / `kassa-core.js` qoidalari):
+- Hisoblar (`kassa_hisob`: naqd, karta, bank; komissiya %), smena (`kassa_smena`: kupyura bo'yicha ochish/yopish,
+  birinchi smenada sanalgan naqd — boshlang'ich qoldiq; yopishda kutilgan bilan farq → `farq` orderi; karta terminali
+  Z va tizim karta tushumi), orderlar (`kassa_order`: PKO/RKO, `kassa_taqsimot` — buyurtmalarga taqsimot).
+- Order va taqsimot — JURNAL: UPDATE/DELETE trigger bilan taqiqlangan; summa > 0 (storno — manfiy, `storno_of_id`);
+  hisob qoldig'i ustun emas, jurnal yig'indisi. Storno — faqat direktor va ikki kalit (yozgan xodim emas),
+  o'tkazma oyoqlari va komissiya birga; aralash to'lov qismlari alohida.
+- Qoidalar: naqd — faqat ochiq smenada; chiqim qoldiqdan (bankda komissiya bilan); buyurtma to'lovi qolganidan
+  oshmaydi; qarz — mijoz qarzidan, eng eski buyurtmadan; qaytarish — kassadan to'langanidan; mijoz bergan pul va qaytim.
+- Rezerv: `paid_and_required` va `client_debt` endi kassadan (+ kassagacha `advance_payment`, o'tish davri). To'lovdan
+  keyin shu tranzaksiyada B2 — kassirga «material biriktirildi» / «chegaraga yana N so'm kerak».
+- Rol `kassir` (o'rta daraja). API `/api/v1/kassa/...`. Orakl `kassa_oracle.py` 27/27.
+
+Ochiq: `advance_payment` maydonini kassa yoqilgach tahrirlashni yopish (hozir ikkalasi qo'shiladi); fiskal chek (9-bo'lim).
 

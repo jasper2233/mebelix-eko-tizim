@@ -20,11 +20,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import and_, case, func, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client, Order
-from app.models.enums import OrderStatus
 from app.modules.ombor.models import CatalogItem, MaterialMap, Rezerv, RezervLine
 from app.services.settings_service import ENG_KAM_AVANS_FOIZ, REZERV_DARVOZA, REZERV_MUDDAT_KUN, get_setting
 
@@ -239,9 +238,13 @@ def _cover(line: RezervLine, mm: MaterialMap, free: dict[int, Decimal]) -> None:
 
 
 async def paid_and_required(db: AsyncSession, order: Order) -> tuple[Decimal, Decimal]:
-    """(to'langan, chegara) so'mda. Kassa (4-bosqich) kelganda faqat shu funksiya almashadi (Q24)."""
+    """(to'langan, chegara) so'mda (Q24). To'langan — kassa orderlari (EKO 4) + kassagacha qo'lda yozilgan
+    `advance_payment` (o'tish davri). Kassa moduli shu yerda funksiya ichida chaqiriladi: kassa ham to'lovdan keyin
+    rezervni chaqiradi — yuqoridagi import aylanma bo'lardi."""
+    from app.modules.kassa import service as kassa
+
     pct = Decimal(await get_setting(db, ENG_KAM_AVANS_FOIZ))
-    paid = order.advance_payment or Decimal(0)
+    paid = await kassa.jami_tolangan(db, order)
     required = ((order.amount or Decimal(0)) * pct / 100).quantize(Decimal("0.01"), ROUND_HALF_UP)
     return paid, required
 
@@ -346,15 +349,19 @@ async def apply_mapping(
 
 
 async def client_debt(db: AsyncSession, client_id: int) -> Decimal:
-    """Mijozning ochiq qarzi: bekor qilinmagan buyurtmalar bo'yicha `summa − to'langan` (Q24 manbasi)."""
-    unpaid = Order.amount - func.coalesce(Order.advance_payment, 0)
-    q = select(func.coalesce(func.sum(unpaid), 0)).where(
-        Order.client_id == client_id,
-        Order.status != OrderStatus.CANCELLED,
-        Order.is_deleted == False,  # noqa: E712
-        and_(Order.amount.is_not(None), unpaid > 0),
-    )
-    return Decimal((await db.execute(q)).scalar_one() or 0)
+    """Mijozning ochiq qarzi: bekor qilinmagan buyurtmalar bo'yicha `summa − to'langan` (kassa + kassagacha)."""
+    from app.modules.kassa import service as kassa
+
+    return sum((q for _, q in await kassa.mijoz_qarzlari(db, client_id)), Decimal(0))
+
+
+async def holati(db: AsyncSession, order: Order) -> tuple[Decimal, Decimal, bool] | None:
+    """Kassir uchun: (to'langan, chegara, material biriktirilganmi) — rezerv bo'lmasa None."""
+    rez = await _tirik(db, order.id)
+    if rez is None:
+        return None
+    paid, required = await paid_and_required(db, order)
+    return paid, required, rez.holat == YECHILDI
 
 
 async def production_block_reason(db: AsyncSession, order: Order) -> str | None:

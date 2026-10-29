@@ -36,6 +36,7 @@ from app.api.routes.users import router as users_router
 from app.api.routes.ws import router as ws_router
 from app.modules.integratsiya.routes import router as integ_router
 from app.modules.integratsiya.routes import user_router as integ_user_router
+from app.modules.kassa.routes import router as kassa_router
 from app.modules.ombor.routes import berish_router, catalog_router, kroy_router, rezerv_router, sex_router, stock_router
 
 v1_router = APIRouter(prefix="/v1")
@@ -64,6 +65,7 @@ v1_router.include_router(sex_router, dependencies=_protected)  # sexdan so'rov, 
 # MX Kroy (EKO TZ §6, K3/K4): foydalanuvchi emas — xizmat tokeni (`KROY_API_TOKEN`), shuning uchun _protected YO'Q
 v1_router.include_router(kroy_router)
 v1_router.include_router(integ_router)
+v1_router.include_router(kassa_router, dependencies=_protected)  # kassa (EKO TZ §7)
 v1_router.include_router(integ_user_router, dependencies=_protected)  # «Kroy» tugmasi, SSO (K1, K6)
 v1_router.include_router(audit_router, dependencies=_protected)
 v1_router.include_router(terminal_router, dependencies=_protected)

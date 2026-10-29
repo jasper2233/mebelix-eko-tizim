@@ -4,6 +4,7 @@ Ishlab chiqarish ↔ ombor bog'lanishlari (TZ §5). Hammasi chaqiruvchining sess
 buyurtma amali va ombor oqibati bitta tranzaksiyada.
 """
 
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +24,11 @@ async def on_project_loaded(db: AsyncSession, order: Order) -> None:
 async def on_payment_changed(db: AsyncSession, order: Order) -> None:
     """B2: buyurtma to'lovi yoki summasi o'zgardi → chegara bajarilsa rezerv yechiladi."""
     await rezerv.check_payment(db, order)
+
+
+async def rezerv_holati(db: AsyncSession, order: Order) -> tuple[Decimal, Decimal, bool] | None:
+    """Kassa uchun (EKO 4): (to'langan, chegara, material biriktirildimi) yoki rezerv yo'q — None."""
+    return await rezerv.holati(db, order)
 
 
 async def production_block_reason(db: AsyncSession, order: Order) -> str | None:

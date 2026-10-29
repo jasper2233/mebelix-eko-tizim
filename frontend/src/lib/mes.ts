@@ -200,6 +200,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   upakovkachi: "Qadoqlovchi",
   omborchi: "TMO omborchisi",
   skladchi: "Mahsulot omborchisi",
+  kassir: "Kassir",
 }
 
 // Interfeys darajasi (EKO TIZIM TZ §3) — backend `models/enums.py: ROLE_LEVEL`
@@ -213,6 +214,7 @@ export const ROLE_LEVEL: Record<UserRole, UserLevel> = {
   manager: LEVEL.ofis,
   texnolog: LEVEL.ofis,
   skladchi: LEVEL.orta,
+  kassir: LEVEL.orta,
   terminal: LEVEL.jarayon,
   tablo: LEVEL.jarayon,
   arrachi: LEVEL.jarayon,
@@ -304,6 +306,7 @@ export const POSITIONS: {
   position("upakovkachi", "tsex", "UPAKOVKA"),
   position("omborchi", "tsex", "TMO"),
   position("skladchi", "ofis"),
+  position("kassir", "ofis"),
   position("manager", "ofis"),
   position("texnolog", "ofis"),
   position("director", "ofis"),
