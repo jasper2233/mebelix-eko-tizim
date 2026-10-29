@@ -17,6 +17,7 @@ from app.tasks import (
     kroy_katalog_all,
     kroy_outbox_all,
     ombor_solishtirish_all,
+    soliq_esf_all,
     sync_downtimes_all,
 )
 
@@ -57,6 +58,7 @@ class WorkerSettings:
         cron(ombor_solishtirish_all, hour={21}, minute={30}),
         # MES → MX Kroy xabarlari (EKO 3d): har daqiqa; MX javob bermasa navbatda qoladi
         cron(kroy_outbox_all, second={15}),
+        cron(soliq_esf_all, second={45}),  # ESF navbati (EKO 6)
         # MES katalogi → MX (EKO 3e, K5): faqat o'zgarganlari, navbat orqali
         cron(kroy_katalog_all, minute=set(range(0, 60, 10)), second={40}),
     ]

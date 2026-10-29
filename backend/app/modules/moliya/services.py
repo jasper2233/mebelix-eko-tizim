@@ -39,6 +39,7 @@ from app.modules.moliya.schemas import (
     Vazifa,
 )
 from app.modules.ombor import service as ombor
+from app.modules.soliq import service as soliq
 from app.services.settings_service import TOLOV_MUDDAT_KUN, get_setting
 
 #: Kassa order maqsadlari — hisobotdagi nomi
@@ -160,19 +161,25 @@ async def pnl(db: AsyncSession, oy: date, qotgan: bool = True) -> PnL:
     xarajatlar = sorted(
         (Qator(nom=k, summa=v, soni=xar_soni[k]) for k, v in xar.items() if v != 0), key=lambda q: -q.summa
     )
-    xjami = sum((q.summa for q in xarajatlar), _0) + farq
-    yalpi = sotuv_b + sotuv_o - tan_b - tan_o
+    # Soliq (EKO 6): rejim sozlanmagan bo'lsa ikkalasi ham 0
+    sol = await soliq.oy_soliq(db, oy)
+    xjami = sum((q.summa for q in xarajatlar), _0) + farq + sol.aylanma_soliq
+    sof_tushum = sotuv_b + sotuv_o - sol.sotuv_qqs
+    yalpi = sof_tushum - tan_b - tan_o
     return PnL(
         oy=f"{oy:%Y-%m}",
         sotuv_buyurtma=sotuv_b,
         sotuv_ombor=sotuv_o,
         sotuv=sotuv_b + sotuv_o,
+        sotuv_qqs=sol.sotuv_qqs,
+        sof_tushum=sof_tushum,
         tannarx_buyurtma=tan_b,
         tannarx_ombor=tan_o,
         tannarx=tan_b + tan_o,
         yalpi=yalpi,
         xarajatlar=xarajatlar,
         kassa_farqi=farq,
+        aylanma_soliq=sol.aylanma_soliq,
         xarajat_jami=xjami,
         sof=yalpi - xjami,
         buyurtmalar=rent,

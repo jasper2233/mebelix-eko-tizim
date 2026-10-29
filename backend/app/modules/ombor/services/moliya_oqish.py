@@ -8,7 +8,7 @@ from decimal import Decimal
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.ombor.models import StockDoc, StockLot, StockMovement
+from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
 
 
 @dataclass
@@ -101,3 +101,74 @@ async def qoralamalar(db: AsyncSession, dan: date, gacha: date) -> list[str]:
             )
         ).scalars()
     )
+
+
+# ── Soliq (EKO TZ §9) uchun ──
+@dataclass
+class Pozitsiya:
+    id: int
+    code: str
+    name: str
+    unit: str
+    mxik: str | None
+    birlik_kod: str | None
+    qqs_turi: str
+
+
+@dataclass
+class Qator:
+    item_id: int | None
+    nom: str
+    miqdor: Decimal
+    narx: Decimal
+    #: Chegirmadan keyingi qator summasi, so'm
+    summa: Decimal
+
+
+async def pozitsiyalar(db: AsyncSession, ids: list[int]) -> dict[int, Pozitsiya]:
+    rows = (await db.execute(select(CatalogItem).where(CatalogItem.id.in_(ids)))).scalars()
+    return {
+        i.id: Pozitsiya(i.id, i.code, i.name, i.unit or "", i.mxik, i.birlik_kod, i.qqs_turi or "standart")
+        for i in rows
+    }
+
+
+async def hujjat_qatorlari(db: AsyncSession, doc_id: int) -> tuple[StockDoc | None, list[Qator]]:
+    doc = await db.get(StockDoc, doc_id)
+    if doc is None:
+        return None, []
+    lines = (
+        await db.execute(select(StockDocLine).where(StockDocLine.doc_id == doc_id).order_by(StockDocLine.line_no))
+    ).scalars()
+    out = []
+    for ln in lines:
+        g = (ln.qty * ln.price).quantize(Decimal("0.01"))
+        out.append(Qator(ln.item_id, ln.name, ln.qty, ln.price, g - min(ln.discount, g)))
+    return doc, out
+
+
+async def sotuv_qatorlari(db: AsyncSession, dan: date, gacha: date) -> list[tuple[Decimal, str]]:
+    """[dan, gacha) do'kon sotuvi qatorlari: (summa, QQS turi); storno qilingan hujjat qatorlari — manfiy."""
+    out: list[tuple[Decimal, str]] = []
+    for h in await hujjatlar(db, "chiqim", dan, gacha):
+        asl_id = h.id
+        if h.summa < 0:  # storno qatori: asl hujjat qatorlari teskari
+            st = await db.get(StockDoc, h.id)
+            asl_id = int(str(st.head.get("asl_id"))) if st is not None else h.id
+        _, qatorlar = await hujjat_qatorlari(db, asl_id)
+        poz = await pozitsiyalar(db, [q.item_id for q in qatorlar if q.item_id])
+        for q in qatorlar:
+            turi = poz[q.item_id].qqs_turi if q.item_id in poz else "standart"
+            out.append((q.summa if h.summa >= 0 else -q.summa, turi))
+    return out
+
+
+async def soliq_saqla(
+    db: AsyncSession, item_id: int, mxik: str | None, birlik_kod: str | None, qqs_turi: str
+) -> CatalogItem | None:
+    it = await db.get(CatalogItem, item_id)
+    if it is None:
+        return None
+    it.mxik, it.birlik_kod, it.qqs_turi = mxik, birlik_kod, qqs_turi
+    await db.flush()
+    return it

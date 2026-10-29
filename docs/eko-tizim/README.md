@@ -36,6 +36,9 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 4b Kassa (kassir ekrani) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 5a Moliya (backend): P&L, pul oqimi, debitor/kreditor, kalendar, byudjet, balans, akt sverki, davr yopish | tayyor, lokal sinalgan | pastda |
 | 5b Moliya (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
+| 6.0 Tarif darvozasi (obuna): ombor/kassa/moliya/kroy/soliq yo'llari `require_module`, menyu tarifdan | tayyor | pastda |
+| 6a Soliq (backend): rejim tarixi (QQS / aylanma), rekvizitlar, MXIK, ESF + navbat + sinov operatori, QQS kitobi, P&L | tayyor, lokal sinalgan | pastda |
+| 6b Soliq (ekran) | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -383,4 +386,33 @@ Storno qatori pulga ta'siri bilan ko'rsatiladi (chiqim stornosi «+»). Muddati 
 (faqat muddatdan o'tgan buyurtmalar summasi), mijozning butun qarzi emas.
 Demo: debitor muddati 10 → 30 kun (qizil belgi yo'qoladi), akt sverki, xarajat stornosi (P&L dan chiqadi),
 sentyabrni yopish, o'sha xodim qayta ochishni tasdiqlay olmaydi.
+
+### 6.0 — Obuna rejimi: tarif darvozasi
+
+1b dagi `require_module` endi ombor, kassa, moliya, soliq va kroy yo'llariga ulangan: obunachi tarifida yo'q modul —
+403 «Bu modul tarifingizga kirmaydi.». `GET /users/me/modullar` — obunachi modullari; menyu yoqilmagan modul bandini
+ko'rsatmaydi. Har obunachining bazasi alohida, shuning uchun soliq rejimi, rekvizitlar va stavkalar ham obunachiniki.
+
+### 6a — Soliq (backend)
+
+`app/modules/soliq` (TZ §9). Stavka va rejim kodga yozilmaydi:
+- **Rejim tarixi** `soliq_rejim` (amal_boshi, `qqs` | `aylanma`, QQS %, aylanma %): hujjat sanasidagi rejim olinadi —
+  yil o'rtasida QQS ga o'tilsa ham o'tgan oylar eski rejimda qoladi; yuborilgan ESF bor sanaga orqaga yozilmaydi.
+- **Rekvizitlar**: korxona (`soliq_korxona`: nomi, STIR, bank, MFO, hisob raqami, QQS kodi, ESF operatori, buyurtma
+  MXIK i), mijoz (`soliq_mijoz`: yuridik — STIR 9, jismoniy — JShShIR 14), katalogda `mxik` (17), `birlik_kod`,
+  `qqs_turi` (standart / nol / ozod).
+- **ESF** (`soliq_esf`): yetkazilgan buyurtmadan yoki tasdiqlangan ombor sotuvidan, faqat yuridik mijozga; narx QQS
+  bilan, QQS = jami × f/(100+f); MXIK siz pozitsiya — rad. Holatlar: qoralama → navbatda → yuborildi →
+  qabul_qilindi / rad_etildi, bekor; operator ishlamasa qayta urinish 1/5/30/120/360 daqiqa, keyin `xato`.
+  Fon ishi `soliq_esf_all` (har daqiqa, tarifida soliq yo'q obunachini o'tkazadi). Kiruvchi ESF — operatordan,
+  ombor kirimi bilan sotuvchi nomi va summa bo'yicha bog'lanadi; qabul / rad (sabab bilan).
+- **Operator adapteri** (`operator.py`): yuborish, holat, kiruvchilar, javob, bekor. Hozir faqat **`sinov`** — LOKAL
+  sinov operatori (STIR/MXIK/summalarni tekshiradi, qabul yoki rad qiladi; soliq tizimiga hech narsa ketmaydi).
+- **Oylik soliq**: aylanma = yetkazilgan buyurtmalar + do'kon sotuvi; QQS rejimida sotuv QQS − qabul qilingan
+  kiruvchi ESF QQS; aylanma rejimida aylanma × stavka. **QQS kitobi** (sotuv/xarid, CSV) + ESF siz (jismoniy shaxs)
+  sotuvdagi QQS. **P&L**: QQS to'lovchida sof tushum = sotuv − sotuvdagi QQS, aylanma to'lovchida aylanma soliq xarajat.
+- Orakl `soliq_oracle.py` 28/28 (ikki rejim, operator uzilishi, kiruvchi ESF, qo'lda hisob).
+
+Ochiq: haqiqiy ESF operatori (Didox / Faktura.uz va h.k.) — API kaliti, hujjat formati va E-IMZO imzosi kerak;
+fiskal chek (S5); xarid QQS i tannarxdan ayirilmaydi (kirim narxi QQS bilan); stavkalarni buxgalter tasdiqlaydi.
 

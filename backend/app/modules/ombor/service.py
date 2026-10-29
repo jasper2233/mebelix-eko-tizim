@@ -107,3 +107,28 @@ async def ombor_qiymati(db: AsyncSession) -> Decimal:
 
 async def qoralamalar(db: AsyncSession, dan: date, gacha: date) -> list[str]:
     return await moliya_oqish.qoralamalar(db, dan, gacha)
+
+
+# ── Soliq (EKO TZ §9) uchun ──
+Pozitsiya = moliya_oqish.Pozitsiya
+HujjatQatori = moliya_oqish.Qator
+
+
+async def soliq_pozitsiyalar(db: AsyncSession, ids: list[int]) -> dict[int, Pozitsiya]:
+    """Katalog pozitsiyalarining MXIK, o'lchov birligi kodi va QQS turi."""
+    return await moliya_oqish.pozitsiyalar(db, ids)
+
+
+async def hujjat_qatorlari(db: AsyncSession, doc_id: int) -> tuple[Any, list[HujjatQatori]]:
+    """Ombor hujjati (StockDoc yoki None) va qatorlari (chegirmadan keyingi summa bilan)."""
+    return await moliya_oqish.hujjat_qatorlari(db, doc_id)
+
+
+async def sotuv_qatorlari(db: AsyncSession, dan: date, gacha: date) -> list[tuple[Decimal, str]]:
+    """Do'kon sotuvi qatorlari (summa, QQS turi) — storno manfiy."""
+    return await moliya_oqish.sotuv_qatorlari(db, dan, gacha)
+
+
+async def soliq_saqla(db: AsyncSession, item_id: int, mxik: str | None, birlik_kod: str | None, qqs_turi: str) -> bool:
+    """Pozitsiyaning soliq maydonlari; topilmasa False."""
+    return await moliya_oqish.soliq_saqla(db, item_id, mxik, birlik_kod, qqs_turi) is not None

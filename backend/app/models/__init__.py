@@ -2,6 +2,7 @@ from app.modules.integratsiya.models import IntegInbox, IntegOutbox, KroyKatalog
 from app.modules.kassa.models import KassaHisob, KassaModda, KassaOrder, KassaSmena, KassaTaqsimot
 from app.modules.moliya.models import MoliyaDavr, MoliyaMijozShart, MoliyaReja
 from app.modules.ombor.models import CatalogItem, StockDoc, StockDocLine, StockLot, StockMovement
+from app.modules.soliq.models import SoliqEsf, SoliqKorxona, SoliqMijoz, SoliqRejim, SoliqSinovOperator
 
 from .andon import AndonEvent
 from .audit import AuditLog
@@ -50,6 +51,11 @@ __all__ = [
     "MoliyaDavr",
     "MoliyaMijozShart",
     "MoliyaReja",
+    "SoliqEsf",
+    "SoliqKorxona",
+    "SoliqMijoz",
+    "SoliqRejim",
+    "SoliqSinovOperator",
     "KassaOrder",
     "KassaSmena",
     "KassaTaqsimot",

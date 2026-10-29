@@ -30,6 +30,9 @@ class PnL(BaseModel):
     sotuv_buyurtma: Decimal
     sotuv_ombor: Decimal
     sotuv: Decimal
+    #: QQS to'lovchida sotuv ichidagi QQS (daromad emas — byudjetga), sof tushum = sotuv − shu
+    sotuv_qqs: Decimal = Decimal(0)
+    sof_tushum: Decimal = Decimal(0)
     tannarx_buyurtma: Decimal
     tannarx_ombor: Decimal
     tannarx: Decimal
@@ -38,6 +41,8 @@ class PnL(BaseModel):
     xarajatlar: list[Qator]
     #: Smena sanash farqi: kamomad (+) − ortiqcha
     kassa_farqi: Decimal
+    #: Aylanmadan soliq (aylanma rejimida) — xarajat
+    aylanma_soliq: Decimal = Decimal(0)
     xarajat_jami: Decimal
     sof: Decimal
     #: Shu oy yetkazilgan buyurtmalar rentabelligi

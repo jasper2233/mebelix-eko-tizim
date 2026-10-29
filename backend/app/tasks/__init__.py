@@ -26,6 +26,7 @@ from app.models.enums import SessionStatus
 from app.modules.integratsiya import service as integratsiya
 from app.modules.ombor import service as ombor
 from app.modules.platforma import service as platforma
+from app.modules.soliq import service as soliq
 from app.services.activity import last_activity
 from app.services.downtimes import SYNC_WINDOW, sync_machine
 from app.services.labels import (
@@ -471,6 +472,16 @@ async def kroy_katalog(ctx: dict[str, Any]) -> str:
     return f"navbatga:{n}"
 
 
+async def soliq_esf(ctx: dict[str, Any]) -> str:
+    """ESF navbati (EKO 6): yuborish, holat so'rash, kiruvchilarni olish. Tarifda soliq yo'q obunachi — o'tadi."""
+    if not await platforma.module_enabled("soliq"):
+        return "soliq o'chiq"
+    async with local_session() as db:
+        n = await soliq.ishlov(db)
+        await db.commit()
+    return f"yuborildi:{n.yuborildi} javob:{n.javob} xato:{n.xato} kiruvchi:{n.kiruvchi}"
+
+
 all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
 sync_downtimes_all = per_tenant_cron(sync_downtimes)
 close_idle_sessions_all = per_tenant_cron(close_idle_sessions)
@@ -478,3 +489,4 @@ expire_reservations_all = per_tenant_cron(expire_reservations)
 ombor_solishtirish_all = per_tenant_cron(ombor_solishtirish)
 kroy_outbox_all = per_tenant_cron(kroy_outbox)
 kroy_katalog_all = per_tenant_cron(kroy_katalog)
+soliq_esf_all = per_tenant_cron(soliq_esf)
