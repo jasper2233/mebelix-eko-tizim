@@ -74,13 +74,18 @@ def sso_token(user: User) -> str:
     return _token(user.username, user.name or user.username, roles, settings.MX_SSO_TTL_MIN * 60)
 
 
-def _request(method: str, path: str, body: dict[str, Any] | None) -> tuple[int, Any]:
+def _request(
+    method: str, path: str, body: dict[str, Any] | None, idempotency_key: str | None = None
+) -> tuple[int, Any]:
     assert settings.MX_URL is not None
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {_token('mes', 'MES', ['admin'], 300)}"}
+    if idempotency_key:
+        headers["Idempotency-Key"] = idempotency_key
     req = urllib.request.Request(
         settings.MX_URL.rstrip("/") + "/api" + path,
         method=method,
         data=json.dumps(body, ensure_ascii=False, default=str).encode() if body is not None else None,
-        headers={"Content-Type": "application/json", "Authorization": f"Bearer {_token('mes', 'MES', ['admin'], 300)}"},
+        headers=headers,
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as r:  # noqa: S310 — manzil sozlamadan; paket katta bo'lishi mumkin

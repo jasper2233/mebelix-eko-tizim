@@ -174,6 +174,9 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
             sheets.append(
                 {
                     "no": s["no"],
+                    # MX karta manzili — arra «list chiqdi» signali shu bilan MX ga boradi (EKO 3d)
+                    "mx_op": cm.get("material_ref"),
+                    "mx_index": s.get("index"),
                     "L": s["L"],
                     "W": s["W"],
                     "mult": s.get("mult") or 1,

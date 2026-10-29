@@ -23,6 +23,7 @@ from app.core.ws import ws_manager
 from app.crud import log_action
 from app.models import AndonEvent, BridgeAgent, Employee, Order, Pachka, PachkaItem, Scan, WasteItem, WorkSession
 from app.models.enums import SessionStatus
+from app.modules.integratsiya import service as integratsiya
 from app.modules.ombor import service as ombor
 from app.modules.platforma import service as platforma
 from app.services.activity import last_activity
@@ -455,8 +456,16 @@ async def ombor_solishtirish(ctx: dict[str, Any]) -> str:
     return f"farq:{len(farqlar)}"
 
 
+async def kroy_outbox(ctx: dict[str, Any]) -> str:
+    """MES → MX xabarlar navbatini yuborish (EKO 3d): tartib bilan, xatoda keyinroq qayta."""
+    async with local_session() as db:
+        r = await integratsiya.outbox_yubor(db)
+    return f"yuborildi:{r['yuborildi']} rad:{r['rad']}"
+
+
 all_tasks = [tenant_task(f) for f in (print_label, print_pachka_label, print_waste_label, print_badge)]
 sync_downtimes_all = per_tenant_cron(sync_downtimes)
 close_idle_sessions_all = per_tenant_cron(close_idle_sessions)
 expire_reservations_all = per_tenant_cron(expire_reservations)
 ombor_solishtirish_all = per_tenant_cron(ombor_solishtirish)
+kroy_outbox_all = per_tenant_cron(kroy_outbox)

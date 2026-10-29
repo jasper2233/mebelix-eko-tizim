@@ -29,7 +29,8 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 3a MX Kroy: qoldiq ombori API (K3), webhook inbox (K4) | tayyor, HTTP bilan sinalgan | pastda |
 | 3b MX Kroy: buyurtma → loyiha, «Kroy» tugmasi, SSO (K1, K6) | tayyor, MX klon bilan sinalgan | pastda |
 | 3c MX Kroy: kroy paketi qabul (K2) | tayyor, MX klon bilan sinalgan | pastda |
-| 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, katalog sinxroni (K5), outbox | navbatda | |
+| 3d MX Kroy: arra «list chiqdi» → MX va qoldiq bo'laklari, outbox | tayyor, MX klon bilan sinalgan | pastda |
+| 3e MX Kroy: katalog sinxroni (K5), MX bo'lagi ↔ ATX yorlig'i, ortiqchani qaytarish | navbatda | |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
 
 ### 1a — nima qo'shildi
@@ -268,4 +269,19 @@ Ulash (prod): MES `.env` — `MX_URL`, `MX_PUBLIC_URL`, `MX_SSO_PRIVATE_KEY`, `K
 
 Ochiq: qaytarish oqimi (ortiqcha berilgan materialni sexdan omborga skan bilan); MX bo'lagi (`kroy_intake`) ↔
 paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES o'zi oladi.
+
+### 3d — arra «list chiqdi» va outbox
+
+- `scanning.finalize_scan`: ARRA skanidan keyin (commit'dan oldin) `integratsiya.arra_skan` — andozaning har
+  katagida nechta nusxa kesilgani, kesilgan list soni = eng kami (`mult` gacha). Son o'sganda MX qoldiq
+  bo'laklari ulushi `kutish` → `ombor` (MX ni kutmasdan) va MX ga `PATCH /projects/{pid}/operations/{op}/maps/{n}`
+  `{done_count}` outbox orqali. Faqat MX paketi bilan yuklangan buyurtmada (`order.cutmap` varag'ida `mx_op`, `mx_index`).
+- `integ_outbox`: xabar biznes tranzaksiyasi bilan birga yoziladi; worker har daqiqa (`cron second=15`) tartib
+  bilan yuboradi; ulanish/5xx — to'xtaydi, 1/5/30/120/360 daqiqadan keyin qayta; 4xx — `rad`, navbatni to'smaydi;
+  kalit bo'yicha takror yozilmaydi; MX ga `Idempotency-Key`.
+- Topilgan va tuzatilgan: «Kroy (MX)» ni qayta bosish MX loyihasini detalsiz sarlavha bilan qayta yuborib
+  kroychining detallarini o'chirardi (Chrome'da ko'rilgan) — bog'langan loyiha endi faqat ochiladi.
+- Sinov (MX klon ↔ MES): MX ning O'Z kodi «MES ombori» rejimida kirim yubordi (`IN-2026-0003`, 3 bo'lak `kutish`);
+  2-list 7 nusxasi arra skanidan (`finalize_scan` orqali) o'tgach 2-kartaning bo'lagi `ombor` ga, outbox xabari
+  MX da 2-karta `done_count=1`, MX `map.done` qaytardi (inbox: takror qo'llanmadi). `kroy_outbox_oracle.py` 9/9.
 

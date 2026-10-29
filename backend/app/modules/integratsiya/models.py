@@ -4,9 +4,10 @@ Har tashqi xabar (MX Kroy webhook) bir marta qo'llanadi: kalit (`event_id`, bo'l
 takrori — `duplicate` (qayta qo'llanmaydi), xuddi shu kalit BOSHQA mazmun bilan — 409 (yuboruvchida xato).
 """
 
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ForeignKey, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -41,3 +42,30 @@ class KroyLoyiha(BaseModel):
     number: Mapped[str] = mapped_column(String(40), default="", kw_only=True)
     #: MX holati: 0 Не заказан, 1 Заказан, 2 Утвержден, 3 Готов (`project.status` webhook)
     holat: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
+
+
+class IntegOutbox(BaseModel):
+    """Chiquvchi xabarlar navbati (MES → MX) — prototip qoidasi: tashqi tizim javob bermasa xabar YO'QOLMAYDI.
+
+    Xabar tranzaksiya ichida yoziladi (biznes o'zgarishi bilan birga), worker keyin yuboradi. Tartib qat'iy:
+    bitta xabar o'tmaguncha keyingilari kutadi; qayta urinish 1, 5, 30, 120, 360 daqiqadan keyin. Kalit bo'yicha
+    takror yozilmaydi; MX ga `Idempotency-Key` sarlavhasi bilan boradi."""
+
+    __tablename__ = "integ_outbox"
+    __table_args__ = (
+        Index("ix_integ_outbox_kalit", "manba", "kalit", unique=True),
+        Index("ix_integ_outbox_navbat", "manba", "id", postgresql_where=text("holat = 'yangi'")),
+    )
+
+    manba: Mapped[str] = mapped_column(String(20), kw_only=True)
+    kalit: Mapped[str] = mapped_column(String(200), kw_only=True)
+    method: Mapped[str] = mapped_column(String(8), kw_only=True)
+    #: MX API ichidagi yo'l (`/projects/{pid}/operations/{op}/maps/{n}`)
+    path: Mapped[str] = mapped_column(String(300), kw_only=True)
+    body: Mapped[dict[str, Any] | None] = mapped_column(JSONB, default=None, kw_only=True)
+    #: `yangi` | `yuborildi` | `rad` (4xx — qayta urinishdan foyda yo'q, navbatni to'sib qo'ymaydi)
+    holat: Mapped[str] = mapped_column(String(10), default="yangi", kw_only=True)
+    urinish: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
+    keyingi_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    yuborilgan_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None, kw_only=True)
+    xato: Mapped[str] = mapped_column(String(300), default="", kw_only=True)

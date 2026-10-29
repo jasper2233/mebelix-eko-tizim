@@ -14,6 +14,7 @@ from app.tasks import (
     all_tasks,
     close_idle_sessions_all,
     expire_reservations_all,
+    kroy_outbox_all,
     ombor_solishtirish_all,
     sync_downtimes_all,
 )
@@ -53,6 +54,8 @@ class WorkerSettings:
         cron(expire_reservations_all, minute=set(range(0, 60, REZERV_SWEEP_MINUTES))),
         # Kechki ombor solishtirishi (EKO 2.4): 21:30 UTC = 02:30 Toshkent, ish yo'q payt
         cron(ombor_solishtirish_all, hour={21}, minute={30}),
+        # MES → MX Kroy xabarlari (EKO 3d): har daqiqa; MX javob bermasa navbatda qoladi
+        cron(kroy_outbox_all, second={15}),
     ]
     redis_settings = RedisSettings(host=settings.REDIS_HOST, port=settings.REDIS_PORT)
     on_startup = startup

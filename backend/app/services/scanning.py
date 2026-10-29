@@ -30,6 +30,7 @@ from app.models.enums import (
     UserRole,
 )
 from app.models.user import User
+from app.modules.integratsiya import service as integratsiya
 from app.schemas.terminal import ScanResult
 from app.services.downtimes import close_open_locks
 from app.services.giblab.models import strip_order_prefix
@@ -909,6 +910,9 @@ async def finalize_scan(
     yo'ldan o'tadi: ikki nusxa drift bergani uchun bitta joyga yig'ildi."""
     outcome.auto = auto
     if not outcome.duplicate:
+        # MX Kroy (EKO 3d): arra listni to'liq kesib bo'lsa — qoldiq bo'laklari omborga, MX ga «list chiqdi»
+        if await db.scalar(select(Post.code).where(Post.id == outcome.scan.post_id)) == PostCode.ARRA:
+            await integratsiya.arra_skan(db, outcome.instance.order_id, outcome.instance.pattern_no)
         meta: dict[str, Any] = {"post_id": outcome.scan.post_id, "machine_id": outcome.scan.machine_id}
         if agent_id is not None:
             meta["agent_id"] = agent_id
