@@ -569,3 +569,19 @@ Moliya → **Tannarx** (`/tannarx/buyurtmalar`, `/tannarx/oee-yoqotish`, normala
 
 Ochiq: kromka mashina vaqti (lenta tezligi skanda yo'q — hozir kromka metri normasi bilan), asbob resursini
 haqiqiy almashtirishlardan hisoblash, ikkinchi Prisadka uchun alohida ideal sikl.
+
+### 11 — Interfeys: dunyo ERP'lari bilan solishtirish (2026-10-30)
+
+G2, Capterra, TrustRadius, Software Advice sharhlari (SAP B1/Fiori, NetSuite, Business Central, Odoo, Acumatica,
+Zoho, 1C, Katana, MRPeasy) bo'yicha eng ko'p shikoyat: kerakli joyni topib bo'lmaydi (chuqur menyu, ko'p klik,
+yomon qidiruv), ortiqcha to'la ekranlar, tushunarsiz xatolar; maqtov: rolga moslangan ekran, sodda va bir xil
+interfeys. Bizda bajarilgani:
+- **Ctrl+K umumiy qidiruv** (`components/Common/CommandPalette.tsx`, sidebar'da «Qidirish… Ctrl K»): sahifalar,
+  Moliya / Soliq / Buxgalteriya bo'limlari (`lib/bolimlar.ts` — tablar bilan bir manba), buyurtma raqami yoki mijoz,
+  ombor tovari (kod/nom). Ro'yxat rolga qarab — menyuda yo'q sahifa qidiruvda ham yo'q (`NAV_ITEMS`).
+- **Rolga moslangan menyu:** kassir va moliyachida tsex TV ekranlari (LIVE Tablo, Stanoklar) yo'q.
+- **Qaytarib bo'lmaydigan amaldan oldin bir xil savol** (`components/Common/useTasdiq.tsx` → `ConfirmDialog`): oy yopish,
+  vedomost tasdiqlash / bekor, ESF yuborish / bekor, kiruvchi ESF qabul, provodka storno — oqibati matnda yoziladi.
+- **Ikki kalit ekranda ham:** vedomost muallifiga «Tasdiqlash» o'rniga «boshqa xodim tasdiqlaydi» (`yaratgan_id`).
+Keyingi navbat (qilinmadi): hisobot qatoridan manba hujjatga o'tish (moliyachida buyurtma sahifasi yo'q — avval
+o'qish uchun buyurtma kartasi kerak), ro'yxatlarda saqlanadigan filtrlar, kassir uchun planshet ko'rinishi.

@@ -7,11 +7,13 @@ import { useState } from "react"
 
 import { type HaqQator, TannarxService } from "@/client"
 import { SelectField } from "@/components/Common/SelectField"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TableCell, TableRow } from "@/components/ui/table"
+import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { formatDate, formatMoney } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { fmtQty, parseNum } from "@/lib/warehouse"
@@ -36,6 +38,8 @@ const HOLAT: Record<string, string> = {
 
 export function IshHaqi() {
   const qc = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
+  const { currentUser } = useCurrentUser()
   const [xato, setXato] = useState("")
   const [postId, setPostId] = useState("")
   const [narx, setNarx] = useState("")
@@ -127,6 +131,7 @@ export function IshHaqi() {
 
   return (
     <div className="flex flex-col gap-3">
+      {tasdiqOyna}
       <Xato text={xato} />
       <Karta title="Ishbay stavkalar">
         <p className="text-sm text-muted-foreground">
@@ -284,17 +289,42 @@ export function IshHaqi() {
               <TableCell className={cn(td, "text-right whitespace-nowrap")}>
                 {v.holat === "qoralama" && (
                   <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => amal.mutate({ t: "tasdiq", id: v.id })}
-                    >
-                      Tasdiqlash
-                    </Button>
+                    {/* Ikki kalit: vedomostni yozgan xodim o'zi tasdiqlay olmaydi */}
+                    {v.yaratgan_id === currentUser?.id ? (
+                      <span className="mr-2 text-xs text-muted-foreground">
+                        boshqa xodim tasdiqlaydi
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          sora({
+                            title: `${v.no} vedomostini tasdiqlaysizmi?`,
+                            description: `Jami ${formatMoney(v.jami)}, ${v.skanlar} skan. Tasdiqlangach buxgalteriyaga D 2010 — K 6710 bo'lib tushadi va o'zgartirilmaydi.`,
+                            confirmText: "Tasdiqlash",
+                            onConfirm: () =>
+                              amal.mutate({ t: "tasdiq", id: v.id }),
+                          })
+                        }
+                      >
+                        Tasdiqlash
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => amal.mutate({ t: "bekor", id: v.id })}
+                      onClick={() =>
+                        sora({
+                          title: `${v.no} vedomostini bekor qilasizmi?`,
+                          description:
+                            "Bekor qilingan vedomost qaytarilmaydi; davr uchun yangisini yozish mumkin.",
+                          confirmText: "Bekor qilish",
+                          destructive: true,
+                          onConfirm: () =>
+                            amal.mutate({ t: "bekor", id: v.id }),
+                        })
+                      }
                     >
                       Bekor
                     </Button>

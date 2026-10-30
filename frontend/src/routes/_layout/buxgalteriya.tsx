@@ -9,6 +9,7 @@ import { type ReactNode, useState } from "react"
 
 import { BuxgalteriyaService, type YozuvRead } from "@/client"
 import { client } from "@/client/client.gen"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -21,19 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { BUX_BOLIMLAR } from "@/lib/bolimlar"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatMoney, isMoliya } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { num } from "@/lib/warehouse"
 import { extractErrorMessage } from "@/utils"
 
-const BOLIMLAR = [
-  { v: "saldo", l: "Aylanma-saldo" },
-  { v: "kartochka", l: "Schyot kartochkasi" },
-  { v: "provodkalar", l: "Provodkalar" },
-  { v: "nazorat", l: "Nazorat" },
-  { v: "sozlamalar", l: "Schyotlar va qoidalar" },
-] as const
+const BOLIMLAR = BUX_BOLIMLAR
 type Bolim = (typeof BOLIMLAR)[number]["v"]
 
 export const Route = createFileRoute("/_layout/buxgalteriya")({
@@ -390,6 +386,7 @@ function Kartochka({
 // ───────────────────────── provodkalar ─────────────────────────
 function Provodkalar({ dan, gacha }: { dan: string; gacha: string }) {
   const qc = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
   const [faqatQolda, setFaqatQolda] = useState(false)
   const [xato, setXato] = useState("")
   const [f, setF] = useState({
@@ -433,6 +430,7 @@ function Provodkalar({ dan, gacha }: { dan: string; gacha: string }) {
   })
   return (
     <div className="flex flex-col gap-3">
+      {tasdiqOyna}
       <Karta title="Qo'lda provodka (ish haqi, asosiy vosita va boshqa manbasiz operatsiyalar)">
         <div className="grid grid-cols-[9rem_6rem_6rem_10rem_1fr_auto] items-end gap-2">
           <Input
@@ -535,7 +533,15 @@ function Provodkalar({ dan, gacha }: { dan: string; gacha: string }) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => storno.mutate(y)}
+                      onClick={() =>
+                        sora({
+                          title: "Provodkani storno qilasizmi?",
+                          description: `${y.debet} — ${y.kredit}, ${formatMoney(y.summa)}. Teskari yozuv qo'shiladi, asl yozuv o'chirilmaydi.`,
+                          confirmText: "Storno",
+                          destructive: true,
+                          onConfirm: () => storno.mutate(y),
+                        })
+                      }
                     >
                       Storno
                     </Button>

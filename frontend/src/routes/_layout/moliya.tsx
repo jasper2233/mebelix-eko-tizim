@@ -17,6 +17,7 @@ import {
   type Qator,
 } from "@/client"
 import { client } from "@/client/client.gen"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import { IshHaqi } from "@/components/Moliya/IshHaqi"
 import { Tannarx } from "@/components/Moliya/Tannarx"
 import { Button } from "@/components/ui/button"
@@ -39,25 +40,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { MOLIYA_BOLIMLAR } from "@/lib/bolimlar"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatDateTime, formatMoney, isMoliya } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { num, parseNum } from "@/lib/warehouse"
 import { extractErrorMessage } from "@/utils"
 
-const BOLIMLAR = [
-  { v: "bosh", l: "Bosh sahifa" },
-  { v: "debitorlar", l: "Mijozlar qarzi" },
-  { v: "kreditorlar", l: "Bizning qarz" },
-  { v: "kalendar", l: "To'lov kalendari" },
-  { v: "jurnal", l: "Orderlar jurnali" },
-  { v: "smenalar", l: "Smenalar" },
-  { v: "hisobotlar", l: "Hisobotlar" },
-  { v: "ishhaqi", l: "Ish haqi" },
-  { v: "tannarx", l: "Tannarx" },
-  { v: "davrlar", l: "Davr yopish" },
-  { v: "sozlamalar", l: "Sozlamalar" },
-] as const
+const BOLIMLAR = MOLIYA_BOLIMLAR
 type Bolim = (typeof BOLIMLAR)[number]["v"]
 
 export const Route = createFileRoute("/_layout/moliya")({
@@ -1390,6 +1380,7 @@ function Hisobotlar() {
 // ───────────────────────── davr yopish ─────────────────────────
 function Davrlar() {
   const qc = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
   const { data } = useQuery({
     queryKey: ["moliya", "davrlar"],
     queryFn: async () => (await MoliyaService.moliyaDavrlar()).data,
@@ -1424,6 +1415,7 @@ function Davrlar() {
   })
   return (
     <Karta title="Davr yopish">
+      {tasdiqOyna}
       <p className="text-sm text-muted-foreground">
         Yopilgan oyning sanasi bilan hujjat yozilmaydi va foyda-zarari qotadi.
         Keyingi tuzatish joriy oyda storno bilan. Qayta ochish — ikki kalit: bir
@@ -1438,7 +1430,15 @@ function Davrlar() {
         />
         <LoadingButton
           loading={amal.isPending}
-          onClick={() => amal.mutate({ t: "yop", o: oy })}
+          onClick={() =>
+            sora({
+              title: `${oy} oyini yopasizmi?`,
+              description:
+                "Yopilgan oyga orqa sana bilan order, provodka va hujjat yozilmaydi. Qayta ochish — sabab bilan so'rov va boshqa xodimning tasdig'i orqali.",
+              confirmText: "Oyni yopish",
+              onConfirm: () => amal.mutate({ t: "yop", o: oy }),
+            })
+          }
         >
           Oyni yopish
         </LoadingButton>

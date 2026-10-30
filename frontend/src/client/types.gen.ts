@@ -10096,6 +10096,10 @@ export type VedomostRead = {
      */
     tasdiqlangan_at: string | null;
     /**
+     * Yaratgan Id
+     */
+    yaratgan_id?: number | null;
+    /**
      * Yaratgan
      */
     yaratgan?: string | null;

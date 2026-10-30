@@ -69,6 +69,8 @@ class VedomostRead(BaseModel):
     jami: Decimal
     skanlar: int
     tasdiqlangan_at: datetime | None
+    #: ikki kalit: muallif tasdiqlay olmaydi — ekran tugmani shunga qarab yashiradi (backend baribir rad etadi)
+    yaratgan_id: int | None = None
     yaratgan: str | None = None
     tasdiqlagan: str | None = None
     qatorlar: list[HaqQator] = []

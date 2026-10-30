@@ -26,6 +26,7 @@ import {
   Ruler,
   ScanLine,
   ScrollText,
+  Search,
   Shapes,
   SlidersHorizontal,
   TriangleAlert,
@@ -55,6 +56,7 @@ import {
   isWarehouseOnly,
   isWarehouseStaff,
 } from "@/lib/mes"
+import { openCommandPalette } from "@/lib/qidiruv"
 import { getOrderStatusCountsQueryOptions } from "@/queries/mes"
 import { type Item, Main } from "./Main"
 import { User } from "./User"
@@ -80,6 +82,10 @@ const katalogOf = (s: Record<string, unknown>): string =>
     : typeof s.katalog === "string"
       ? s.katalog
       : ""
+
+/** Faqat pul bilan ishlaydigan rollar — tsex TV ekranlari (Tablo, Stanoklar) ular menyusida turmaydi */
+const isFinanceOnly = (u: UserRead | null | undefined) =>
+  isKassaOnly(u) || u?.role === "moliyachi"
 
 export const NAV_ITEMS: (Item & {
   show: (user: UserRead | null | undefined) => boolean
@@ -316,7 +322,7 @@ export const NAV_ITEMS: (Item & {
     icon: Tv,
     title: "LIVE Tablo",
     path: "/tablo",
-    show: (u) => !isWarehouseOnly(u),
+    show: (u) => !isWarehouseOnly(u) && !isFinanceOnly(u),
   },
   // Ikkinchi TV ekran: Pico ulangan stanoklarning jonli holati va bugungi OEE si
   {
@@ -324,8 +330,8 @@ export const NAV_ITEMS: (Item & {
     title: "Stanoklar",
     path: "/tablo/stanoklar",
     // Mahsulot omborchisiga tsex ekranlari kerak emas — uning o'rnida
-    // katalog kategoriyalari turadi
-    show: (u) => !isWarehouseOnly(u),
+    // katalog kategoriyalari turadi; kassir va moliyachiga ham (stanok puli — Moliya → Tannarx da)
+    show: (u) => !isWarehouseOnly(u) && !isFinanceOnly(u),
   },
   {
     // MonitorCog, Printer emas: agent — tsex KOMPYUTERI (chek printeri +
@@ -454,6 +460,21 @@ export function AppSidebar() {
           faqat to'q fonga moslangan: standart och kulrang, Windows'da strelkali chiziq menyuni
           kesib turardi. Telefonlarda (iOS/Android) chiziq baribir faqat aylantirganda chiqadi */}
       <SidebarContent className="[scrollbar-color:color-mix(in_oklab,var(--sidebar-foreground)_35%,transparent)_transparent] [scrollbar-width:thin]">
+        {/* Umumiy qidiruv (Ctrl+K): menyuni varaqlamasdan sahifa, bo'lim, buyurtma yoki tovarga o'tish */}
+        <button
+          type="button"
+          onClick={openCommandPalette}
+          title="Qidirish (Ctrl+K)"
+          className="mx-2 mt-2 flex items-center gap-2 rounded-md border border-sidebar-border px-2.5 py-1.5 text-left text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <Search className="size-4 shrink-0" />
+          <span className="flex-1 group-data-[collapsible=icon]:hidden">
+            Qidirish…
+          </span>
+          <kbd className="rounded border border-sidebar-border px-1 text-[10px] group-data-[collapsible=icon]:hidden">
+            Ctrl K
+          </kbd>
+        </button>
         <Main items={withBadges} />
       </SidebarContent>
       <SidebarFooter>

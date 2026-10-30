@@ -16,6 +16,7 @@ import {
   SoliqService,
 } from "@/client"
 import { client } from "@/client/client.gen"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import {
@@ -35,18 +36,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { SOLIQ_BOLIMLAR } from "@/lib/bolimlar"
 import { requireAccess } from "@/lib/guards"
 import { formatDate, formatMoney, isMoliya } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { num } from "@/lib/warehouse"
 import { extractErrorMessage } from "@/utils"
 
-const BOLIMLAR = [
-  { v: "esf", l: "ESF — sotuv" },
-  { v: "kiruvchi", l: "Kiruvchi ESF" },
-  { v: "hisobot", l: "Soliq va QQS kitobi" },
-  { v: "sozlamalar", l: "Sozlamalar" },
-] as const
+const BOLIMLAR = SOLIQ_BOLIMLAR
 type Bolim = (typeof BOLIMLAR)[number]["v"]
 
 export const Route = createFileRoute("/_layout/soliq")({
@@ -384,6 +381,7 @@ function EsfDialog({ e, onClose }: { e: EsfRead | null; onClose: () => void }) {
 // ───────────────────────── chiquvchi ESF ─────────────────────────
 function Chiquvchi() {
   const qc = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
   const [xato, setXato] = useState("")
   const [korish, setKorish] = useState<EsfRead | null>(null)
   const [rekvizit, setRekvizit] = useState<{
@@ -438,6 +436,7 @@ function Chiquvchi() {
   }
   return (
     <div className="grid gap-3 xl:grid-cols-[26rem_1fr]">
+      {tasdiqOyna}
       <Karta title={`ESF yozilmagan sotuvlar · ${nomzod?.length ?? 0}`}>
         <p className="text-xs text-muted-foreground">
           Yetkazilgan buyurtmalar va ombor sotuvlari (90 kun). Yuridik mijozniki
@@ -542,7 +541,16 @@ function Chiquvchi() {
                   {(e.holat === "qoralama" || e.holat === "xato") && (
                     <Button
                       size="sm"
-                      onClick={() => amal.mutate({ id: e.id, t: "yubor" })}
+                      onClick={() =>
+                        sora({
+                          title: "ESF ni soliq operatoriga yuborasizmi?",
+                          description:
+                            "Yuborilgan ESF o'zgartirilmaydi — xato bo'lsa faqat bekor qilinadi va yangisi yoziladi.",
+                          confirmText: "Yuborish",
+                          onConfirm: () =>
+                            amal.mutate({ id: e.id, t: "yubor" }),
+                        })
+                      }
                     >
                       Yuborish
                     </Button>
@@ -551,7 +559,16 @@ function Chiquvchi() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => amal.mutate({ id: e.id, t: "bekor" })}
+                      onClick={() =>
+                        sora({
+                          title: "ESF ni bekor qilasizmi?",
+                          description: "Bekor qilingan ESF qaytarilmaydi.",
+                          confirmText: "Bekor qilish",
+                          destructive: true,
+                          onConfirm: () =>
+                            amal.mutate({ id: e.id, t: "bekor" }),
+                        })
+                      }
                     >
                       Bekor
                     </Button>
@@ -677,6 +694,7 @@ function HujjatDialog({
 // ───────────────────────── kiruvchi ESF ─────────────────────────
 function Kiruvchi() {
   const qc = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
   const [xato, setXato] = useState("")
   const [korish, setKorish] = useState<EsfRead | null>(null)
   const [rad, setRad] = useState<EsfRead | null>(null)
@@ -733,6 +751,7 @@ function Kiruvchi() {
   })
   return (
     <div className="grid gap-3 xl:grid-cols-[1fr_22rem]">
+      {tasdiqOyna}
       <Karta
         title={
           <span className="flex items-center justify-between gap-2">
@@ -804,7 +823,16 @@ function Kiruvchi() {
                     <>
                       <Button
                         size="sm"
-                        onClick={() => javob.mutate({ id: e.id, qabul: true })}
+                        onClick={() =>
+                          sora({
+                            title: "Kiruvchi ESF ni qabul qilasizmi?",
+                            description:
+                              "Qabul qilingan ESF bo'yicha QQS hisobga olinadi va javob ta'minotchiga yuboriladi.",
+                            confirmText: "Qabul qilish",
+                            onConfirm: () =>
+                              javob.mutate({ id: e.id, qabul: true }),
+                          })
+                        }
                       >
                         Qabul
                       </Button>
