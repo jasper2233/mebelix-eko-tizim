@@ -295,3 +295,48 @@ class OchilishRead(BaseModel):
 class OchilishNatija(BaseModel):
     yozildi: int
     qatorlar: list[OchilishRead]
+
+
+class KartaTolov(BaseModel):
+    kassa_order_id: int
+    no: str
+    sana: datetime
+    tur: str
+    maqsad: str
+    hisob: str
+    summa: Decimal
+    storno: bool
+
+
+class KartaEsf(BaseModel):
+    id: int
+    no: str
+    sana: date
+    holat: str
+    jami: Decimal
+
+
+class BuyurtmaKarta(BaseModel):
+    """Moliya uchun buyurtma kartasi (faqat o'qish): summa, to'lovlar, qarz, ESF, tannarx.
+    Hisobot qatoridan manba hujjatga o'tish — moliyachi ishlab chiqarish sahifasini ko'rmaydi."""
+
+    order_id: int
+    number: str
+    client_id: int
+    mijoz: str
+    status: str
+    yaratilgan: datetime
+    muddat: date | None
+    topshirilgan: datetime | None
+    summa: Decimal | None
+    #: Kassagacha qo'lda yozilgan to'lov (buyurtmadagi avans)
+    kassagacha: Decimal
+    tolangan: Decimal
+    qarz: Decimal
+    tolovlar: list[KartaTolov]
+    esflar: list[KartaEsf]
+    material: Decimal
+    mehnat: Decimal
+    tannarx: Decimal
+    #: Summa yozilmagan buyurtmada None
+    foyda: Decimal | None

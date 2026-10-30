@@ -7,6 +7,7 @@ import { useState } from "react"
 
 import { type TannarxQator, TannarxService } from "@/client"
 import { SelectField } from "@/components/Common/SelectField"
+import { BuyurtmaHavola } from "@/components/Moliya/BuyurtmaKarta"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -147,7 +148,9 @@ function Buyurtmalar({ dan, gacha }: { dan: string; gacha: string }) {
             return (
               <TableRow key={r.order_id}>
                 <TableCell className={td}>
-                  <div className="font-semibold">{r.number}</div>
+                  <div className="font-semibold">
+                    <BuyurtmaHavola id={r.order_id}>{r.number}</BuyurtmaHavola>
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {r.mijoz}
                     {r.yetkazilgan && ` · ${formatDate(r.yetkazilgan)}`}

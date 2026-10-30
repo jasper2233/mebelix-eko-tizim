@@ -21,6 +21,7 @@ from app.modules.moliya.schemas import (
     Akt,
     Balans,
     Bosh,
+    BuyurtmaKarta,
     ByudjetQator,
     DavrRead,
     DavrSababIn,
@@ -115,6 +116,15 @@ async def moliya_akt(
         return await m.akt(db, client_id, dan or date(g.year, 1, 1), g)
     except m.MoliyaXato as e:
         raise _bad(e.xatolar) from e
+
+
+@router.get("/buyurtma/{order_id}", response_model=BuyurtmaKarta, operation_id="moliya_buyurtma_karta")
+async def moliya_buyurtma_karta(db: SessionDep, _: MoliyaUser, order_id: int) -> BuyurtmaKarta:
+    """Buyurtma kartasi (faqat o'qish): hisobot qatoridan to'lov, ESF va tannarxga o'tish."""
+    try:
+        return await m.buyurtma_karta(db, order_id)
+    except m.MoliyaXato as e:
+        raise HTTPException(status_code=404, detail=e.xatolar[0]) from e
 
 
 @router.get("/kreditorlar", response_model=list[Kreditor], operation_id="moliya_kreditorlar")

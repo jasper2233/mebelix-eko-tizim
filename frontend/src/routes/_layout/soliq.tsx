@@ -16,7 +16,9 @@ import {
   SoliqService,
 } from "@/client"
 import { client } from "@/client/client.gen"
+import { EsfHolat as Holat } from "@/components/Common/EsfHolat"
 import { useTasdiq } from "@/components/Common/useTasdiq"
+import { BuyurtmaHavola } from "@/components/Moliya/BuyurtmaKarta"
 import { Button } from "@/components/ui/button"
 import { cardSurface } from "@/components/ui/card"
 import {
@@ -55,16 +57,6 @@ export const Route = createFileRoute("/_layout/soliq")({
   head: () => ({ meta: [{ title: "Soliq | MebeliX" }] }),
 })
 
-const HOLAT: Record<string, { l: string; c: string }> = {
-  qoralama: { l: "qoralama", c: "bg-muted text-foreground" },
-  navbatda: { l: "navbatda", c: "bg-amber-100 text-amber-900" },
-  yuborildi: { l: "yuborildi", c: "bg-sky-100 text-sky-900" },
-  qabul_qilindi: { l: "qabul qilindi", c: "bg-emerald-100 text-emerald-900" },
-  rad_etildi: { l: "rad etildi", c: "bg-red-100 text-red-900" },
-  kutilmoqda: { l: "javob kutmoqda", c: "bg-amber-100 text-amber-900" },
-  xato: { l: "operator xatosi", c: "bg-red-100 text-red-900" },
-  bekor: { l: "bekor", c: "bg-muted text-muted-foreground line-through" },
-}
 const bugun = () => new Date().toLocaleDateString("sv-SE")
 
 function SoliqPage() {
@@ -130,15 +122,6 @@ function Xato({ text }: { text: string }) {
       <TriangleAlert className="mt-0.5 size-4 shrink-0" />
       {text}
     </div>
-  )
-}
-
-function Holat({ h }: { h: string }) {
-  const x = HOLAT[h] ?? { l: h, c: "bg-muted" }
-  return (
-    <span className={cn("rounded px-2 py-0.5 text-xs whitespace-nowrap", x.c)}>
-      {x.l}
-    </span>
   )
 }
 
@@ -520,7 +503,13 @@ function Chiquvchi() {
                   </span>
                 </TableCell>
                 <TableCell className="text-xs">
-                  {e.order_number ?? e.stock_doc_no}
+                  {e.order_number ? (
+                    <BuyurtmaHavola id={e.order_id}>
+                      {e.order_number}
+                    </BuyurtmaHavola>
+                  ) : (
+                    e.stock_doc_no
+                  )}
                 </TableCell>
                 <TableCell className={num_r}>{formatMoney(e.qqs)}</TableCell>
                 <TableCell className={cn(num_r, "font-semibold")}>

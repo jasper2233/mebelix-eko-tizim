@@ -583,5 +583,17 @@ interfeys. Bizda bajarilgani:
 - **Qaytarib bo'lmaydigan amaldan oldin bir xil savol** (`components/Common/useTasdiq.tsx` → `ConfirmDialog`): oy yopish,
   vedomost tasdiqlash / bekor, ESF yuborish / bekor, kiruvchi ESF qabul, provodka storno — oqibati matnda yoziladi.
 - **Ikki kalit ekranda ham:** vedomost muallifiga «Tasdiqlash» o'rniga «boshqa xodim tasdiqlaydi» (`yaratgan_id`).
-Keyingi navbat (qilinmadi): hisobot qatoridan manba hujjatga o'tish (moliyachida buyurtma sahifasi yo'q — avval
-o'qish uchun buyurtma kartasi kerak), ro'yxatlarda saqlanadigan filtrlar, kassir uchun planshet ko'rinishi.
+Keyingi navbat (qilinmadi): ro'yxatlarda saqlanadigan filtrlar, kassir uchun planshet ko'rinishi.
+
+### 11b — Hisobot qatoridan buyurtmaga o'tish (moliya buyurtma kartasi)
+
+Moliyachi ishlab chiqarish sahifasini (`/orders`) ko'rmaydi, shuning uchun buyurtma pul tomonidan ochiladi:
+`GET /moliya/buyurtma/{order_id}` (direktor, moliyachi; faqat o'qish) → summa, to'langan (kassagacha + kassa orderlari
+taqsimot bo'yicha), qarz, ESF lar (bekor qilinganlari ham), material (FIFO) + mehnat = tannarx, foyda. Raqamlar
+P&L, `kassa.jami_tolangan` va soliq ro'yxati bilan bir manbadan (`kassa.buyurtma_tolovlari`, `soliq.buyurtma_esflari`).
+Ekranda: `components/Moliya/BuyurtmaKarta.tsx` — o'ng panel, `_layout` da bitta; `BuyurtmaHavola` bosilsa ochiladi.
+Havola bor joylar: Moliya → Orderlar jurnali, Tannarx, Soliq → Chiquvchi ESF (manba ustuni). Foyda faqat topshirilgan
+buyurtmada ko'rsatiladi (P&L kabi). Ishlab chiqarish rollari (direktor) uchun panelda buyurtma sahifasiga havola bor.
+ESF holat belgisi `components/Common/EsfHolat.tsx` ga ko'chdi (Soliq sahifasi bilan bir manba).
+Orakl: `scripts/oracles/buyurtma_karta_oracle.py` — ruxsat (kassir 403), 404, P&L tannarx/foyda, to'lovlar yig'indisi,
+qarz, ESF bog'lanishi.

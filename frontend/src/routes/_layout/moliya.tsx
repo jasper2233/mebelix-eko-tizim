@@ -18,6 +18,7 @@ import {
 } from "@/client"
 import { client } from "@/client/client.gen"
 import { useTasdiq } from "@/components/Common/useTasdiq"
+import { BuyurtmaHavola } from "@/components/Moliya/BuyurtmaKarta"
 import { IshHaqi } from "@/components/Moliya/IshHaqi"
 import { Tannarx } from "@/components/Moliya/Tannarx"
 import { Button } from "@/components/ui/button"
@@ -1026,7 +1027,14 @@ function Jurnal() {
               </TableCell>
               <TableCell className={td}>
                 {o.kontragent || "—"}
-                {o.order_number && ` · ${o.order_number}`}
+                {o.order_number && (
+                  <>
+                    {" · "}
+                    <BuyurtmaHavola id={o.order_id}>
+                      {o.order_number}
+                    </BuyurtmaHavola>
+                  </>
+                )}
                 <div className="text-xs text-muted-foreground">
                   {o.turkum || o.maqsad}
                   {o.storno_no && (

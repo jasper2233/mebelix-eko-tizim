@@ -1,10 +1,13 @@
 """soliq moduli ochiq interfeysi — tashqaridan faqat shu fayl import qilinadi."""
 
+from dataclasses import dataclass
 from datetime import date
+from decimal import Decimal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.soliq import services
+from app.modules.soliq import models, services
 
 OySoliq = services.OySoliq
 Ishlov = services.Ishlov
@@ -29,3 +32,18 @@ async def korxona_tayyor(db: AsyncSession) -> bool:
     """Korxona nomi va STIR i kiritilganmi (ESF va hujjatlar uchun)."""
     k = await services.korxona(db)
     return bool(k.nomi.strip()) and len(k.stir) == 9
+
+
+@dataclass
+class EsfQisqa:
+    id: int
+    no: str
+    sana: date
+    holat: str
+    jami: Decimal
+
+
+async def buyurtma_esflari(db: AsyncSession, order_id: int) -> list[EsfQisqa]:
+    """Buyurtmaga yozilgan ESF lar (bekor qilinganlari ham — tarix), eskisi birinchi."""
+    q = select(models.SoliqEsf).where(models.SoliqEsf.order_id == order_id).order_by(models.SoliqEsf.id)
+    return [EsfQisqa(e.id, e.no, e.sana, e.holat, e.jami) for e in (await db.execute(q)).scalars()]

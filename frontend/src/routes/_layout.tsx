@@ -13,6 +13,7 @@ import { toast } from "sonner"
 
 import { MX_PATH, MX_VIEWBOX } from "@/components/Common/BrandLoader"
 import { CommandPalette } from "@/components/Common/CommandPalette"
+import { BuyurtmaKartaOyna } from "@/components/Moliya/BuyurtmaKarta"
 import { AppSidebar, NAV_ITEMS } from "@/components/Sidebar/AppSidebar"
 import { Button } from "@/components/ui/button"
 import {
@@ -142,6 +143,7 @@ function Layout() {
     <SidebarProvider>
       <AppSidebar />
       <CommandPalette />
+      <BuyurtmaKartaOyna />
       <SidebarInset>
         {/* Brend suv belgisi — o'ng past burchak. 28-iyulda (29e790b) olib
             tashlangan edi: absolute varianti overflow-hidden o'ram talab qilib

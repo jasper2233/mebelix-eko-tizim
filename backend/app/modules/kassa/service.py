@@ -1,5 +1,6 @@
 """kassa moduli ochiq interfeysi — tashqaridan faqat shu fayl import qilinadi."""
 
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -114,3 +115,33 @@ async def pnl_emas_moddalar(db: AsyncSession) -> set[str]:
     """P&L xarajati bo'lmagan moddalar (ishbay ish haqi to'lovi — 6710 ni yopadi)."""
     rows = await db.execute(select(models.KassaModda.nom).where(models.KassaModda.pnl_emas == True))  # noqa: E712
     return set(rows.scalars())
+
+
+@dataclass
+class BuyurtmaTolov:
+    """Buyurtmaga taqsimlangan order qatori (moliya buyurtma kartasi uchun)."""
+
+    kassa_order_id: int
+    no: str
+    sana: datetime
+    tur: str
+    maqsad: str
+    hisob: str
+    #: Shu buyurtmaga tushgan qismi (order bir necha buyurtmaga bo'linishi mumkin); qaytarish/storno — manfiy
+    summa: Decimal
+    storno: bool
+
+
+async def buyurtma_tolovlari(db: AsyncSession, order_id: int) -> list[BuyurtmaTolov]:
+    """Buyurtma bo'yicha kassa orderlari (taqsimot orqali), eskisi birinchi."""
+    q = (
+        select(models.KassaTaqsimot.summa, models.KassaOrder, models.KassaHisob.kod)
+        .join(models.KassaOrder, models.KassaOrder.id == models.KassaTaqsimot.kassa_order_id)
+        .join(models.KassaHisob, models.KassaHisob.id == models.KassaOrder.hisob_id)
+        .where(models.KassaTaqsimot.order_id == order_id)
+        .order_by(models.KassaOrder.id)
+    )
+    return [
+        BuyurtmaTolov(o.id, o.no, o.created_at, o.tur, o.maqsad, kod, s, o.storno_of_id is not None)
+        for s, o, kod in (await db.execute(q)).all()
+    ]

@@ -1074,6 +1074,87 @@ export type BuyurtmaFoyda = {
 };
 
 /**
+ * BuyurtmaKarta
+ *
+ * Moliya uchun buyurtma kartasi (faqat o'qish): summa, to'lovlar, qarz, ESF, tannarx.
+ * Hisobot qatoridan manba hujjatga o'tish — moliyachi ishlab chiqarish sahifasini ko'rmaydi.
+ */
+export type BuyurtmaKarta = {
+    /**
+     * Order Id
+     */
+    order_id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Client Id
+     */
+    client_id: number;
+    /**
+     * Mijoz
+     */
+    mijoz: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Yaratilgan
+     */
+    yaratilgan: string;
+    /**
+     * Muddat
+     */
+    muddat: string | null;
+    /**
+     * Topshirilgan
+     */
+    topshirilgan: string | null;
+    /**
+     * Summa
+     */
+    summa: string | null;
+    /**
+     * Kassagacha
+     */
+    kassagacha: string;
+    /**
+     * Tolangan
+     */
+    tolangan: string;
+    /**
+     * Qarz
+     */
+    qarz: string;
+    /**
+     * Tolovlar
+     */
+    tolovlar: Array<KartaTolov>;
+    /**
+     * Esflar
+     */
+    esflar: Array<KartaEsf>;
+    /**
+     * Material
+     */
+    material: string;
+    /**
+     * Mehnat
+     */
+    mehnat: string;
+    /**
+     * Tannarx
+     */
+    tannarx: string;
+    /**
+     * Foyda
+     */
+    foyda: string | null;
+};
+
+/**
  * ByudjetQator
  */
 export type ByudjetQator = {
@@ -4261,6 +4342,70 @@ export type KalibStart = {
      * L Ref
      */
     L_ref: number;
+};
+
+/**
+ * KartaEsf
+ */
+export type KartaEsf = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Holat
+     */
+    holat: string;
+    /**
+     * Jami
+     */
+    jami: string;
+};
+
+/**
+ * KartaTolov
+ */
+export type KartaTolov = {
+    /**
+     * Kassa Order Id
+     */
+    kassa_order_id: number;
+    /**
+     * No
+     */
+    no: string;
+    /**
+     * Sana
+     */
+    sana: string;
+    /**
+     * Tur
+     */
+    tur: string;
+    /**
+     * Maqsad
+     */
+    maqsad: string;
+    /**
+     * Hisob
+     */
+    hisob: string;
+    /**
+     * Summa
+     */
+    summa: string;
+    /**
+     * Storno
+     */
+    storno: boolean;
 };
 
 /**
@@ -14899,6 +15044,36 @@ export type MoliyaAktResponses = {
 };
 
 export type MoliyaAktResponse = MoliyaAktResponses[keyof MoliyaAktResponses];
+
+export type MoliyaBuyurtmaKartaData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/moliya/buyurtma/{order_id}';
+};
+
+export type MoliyaBuyurtmaKartaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoliyaBuyurtmaKartaError = MoliyaBuyurtmaKartaErrors[keyof MoliyaBuyurtmaKartaErrors];
+
+export type MoliyaBuyurtmaKartaResponses = {
+    /**
+     * Successful Response
+     */
+    200: BuyurtmaKarta;
+};
+
+export type MoliyaBuyurtmaKartaResponse = MoliyaBuyurtmaKartaResponses[keyof MoliyaBuyurtmaKartaResponses];
 
 export type MoliyaKreditorlarData = {
     body?: never;

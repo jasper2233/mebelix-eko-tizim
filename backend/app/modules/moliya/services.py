@@ -25,10 +25,13 @@ from app.modules.moliya.schemas import (
     Balans,
     Bosh,
     BuyurtmaFoyda,
+    BuyurtmaKarta,
     ByudjetQator,
     Debitor,
     HisobOqim,
     KalendarQator,
+    KartaEsf,
+    KartaTolov,
     KassirOqim,
     Kreditor,
     KunOqim,
@@ -723,3 +726,36 @@ async def davr_ochish_tasdiq(db: AsyncSession, oy: date, user_id: int | None) ->
     d.holat, d.ochgan_id, d.ochilgan_at, d.natija = "ochildi", user_id, datetime.now(UTC), {}
     await db.flush()
     return d
+
+
+# ───────────────────────── buyurtma kartasi (hisobotdan manba hujjatga) ─────────────────────────
+async def buyurtma_karta(db: AsyncSession, order_id: int) -> BuyurtmaKarta:
+    o = await db.get(Order, order_id)
+    if o is None or o.is_deleted:
+        raise MoliyaXato(["Buyurtma topilmadi"])
+    c = await db.get(Client, o.client_id)  # o'chirilgan mijoz ham — tarix ko'rinsin
+    tolovlar = await kassa.buyurtma_tolovlari(db, order_id)
+    material = (await ombor.buyurtma_tannarxi(db, [order_id])).get(order_id, _0)
+    mehnat = (await tannarx.buyurtma_mehnati(db, [order_id])).get(order_id, _0)
+    tolangan = await kassa.jami_tolangan(db, o)
+    jami_tan = material + mehnat
+    return BuyurtmaKarta(
+        order_id=o.id,
+        number=o.number,
+        client_id=o.client_id,
+        mijoz=c.full_name if c else "",
+        status=o.status.value,
+        yaratilgan=o.created_at,
+        muddat=o.deadline,
+        topshirilgan=o.delivered_at,
+        summa=o.amount,
+        kassagacha=o.advance_payment or _0,
+        tolangan=tolangan,
+        qarz=max((o.amount or _0) - tolangan, _0) if o.status != OrderStatus.CANCELLED else _0,
+        tolovlar=[KartaTolov(**vars(t)) for t in tolovlar],
+        esflar=[KartaEsf(**vars(e)) for e in await soliq.buyurtma_esflari(db, order_id)],
+        material=material,
+        mehnat=mehnat,
+        tannarx=jami_tan,
+        foyda=None if o.amount is None else o.amount - jami_tan,
+    )
