@@ -588,8 +588,10 @@ Keyingi navbat (qilinmadi): ro'yxatlarda saqlanadigan filtrlar, kassir uchun pla
 ### 11c — Jadval va pul formati (butun tizim)
 
 - **Jadval — Excel kabi to'r** (`components/ui/table.tsx`, hamma jadval shu komponentdan): har katak vertikal chiziq
-  bilan ajraladi; o'ngga tekislangan (pul, son) ustunlar kontent kengligida (`w-px` + `nowrap`), bo'sh joyni matn
-  ustuni oladi; raqamlar `tabular-nums` — ustun bo'ylab bir tekis.
+  bilan ajraladi; har ustun kontent kengligida (`w-px` + `nowrap`), bo'sh joyni BITTA ustun oladi — matni eng uzun
+  chapga tekislangan ustun (nom, izoh, kontragent; sana va `PKO-2026-0001` kabi raqamlar hisobga olinmaydi). U
+  chizilgandan keyin avtomatik tanlanadi (`useOsuvchiUstun`, `th[data-osadi]`) — jadvallarda qo'lda belgilanmaydi.
+  Raqamlar `tabular-nums` — ustun bo'ylab bir tekis.
 - **Pul tiyingacha:** `formatSum` / `formatMoney` (`lib/mes.ts`) → `1 234 567,89 so'm` (minglik — bo'shliq, kasr —
   vergul). Ilgari butunga yaxlitlanardi — hisobotlar yig'indisi qatorlardan farq qilishi mumkin edi. Omborda pul
   uchun `fmtSum` (`lib/warehouse.ts`), `fmt` faqat son/dona uchun qoldi. Backend xabarlari (`kassa._som`,
