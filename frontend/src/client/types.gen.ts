@@ -6652,6 +6652,30 @@ export type PaginatedUserRead = {
 };
 
 /**
+ * ParolNatija
+ */
+export type ParolNatija = {
+    /**
+     * Ok
+     */
+    ok: boolean;
+};
+
+/**
+ * ParolTekshir
+ */
+export type ParolTekshir = {
+    /**
+     * Login
+     */
+    login: string;
+    /**
+     * Password
+     */
+    password: string;
+};
+
+/**
  * PnL
  *
  * Foyda va zarar: sotuv − FIFO tannarx − xarajatlar (oy, mahalliy vaqt).
@@ -14317,6 +14341,31 @@ export type KroyIntakeCancelResponses = {
 };
 
 export type KroyIntakeCancelResponse = KroyIntakeCancelResponses[keyof KroyIntakeCancelResponses];
+
+export type KroyParolTekshirData = {
+    body: ParolTekshir;
+    path?: never;
+    query?: never;
+    url: '/api/v1/integ/kroy/parol-tekshir';
+};
+
+export type KroyParolTekshirErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyParolTekshirError = KroyParolTekshirErrors[keyof KroyParolTekshirErrors];
+
+export type KroyParolTekshirResponses = {
+    /**
+     * Successful Response
+     */
+    200: ParolNatija;
+};
+
+export type KroyParolTekshirResponse = KroyParolTekshirResponses[keyof KroyParolTekshirResponses];
 
 export type KroyWebhookData = {
     /**

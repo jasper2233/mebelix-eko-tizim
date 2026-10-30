@@ -324,6 +324,21 @@ paketdagi `ATX-` qoldiq bog'lanishi; MX da «MES» tugmasi (push) — hozir MES 
 - Orakl `berish_oracle` 60/60 (15-bosqich); brauzerda: akril listi va 10 m kromka qaytdi, rulon sig'imidan
   oshirish rad etildi; solishtirish farqsiz.
 
+### 3g — MX «Раскроечные станки»: stanok standarti MES paroli bilan (2026-10-30)
+
+- MX `4f94fd3`: stanok standarti (pila, torsovka, burilishlar…) faqat login paroli bilan o'zgaradi. MES SSO
+  rejimida (ochiq kalit) MX da parol yo'q — tekshiruv o'chib, texnolog va direktor standartni parolsiz yozardi.
+- Endi MX parolni MES dan so'raydi: `POST /api/v1/integ/kroy/parol-tekshir` (xizmat tokeni `KROY_API_TOKEN`)
+  `{login, password}` → `{ok}`. Login — SSO tokendagi `sub` (foydalanuvchi nomi; telefon qabul qilinmaydi), nofaol va
+  texnik hisob — `ok: false`. Xato urinishlar LOGIN bo'yicha cheklanadi (`LOGIN_RATE_LIMIT_*`, keyin 429): hamma
+  so'rov bitta MX serveridan keladi. Har urinish audit logda (`kroy/mx_parol`, `mx_parol_xato`).
+- MX tomoni (klon `eko-integratsiya`, asl MX ga o'tkaziladi): manzil `MES_PASSWORD_URL`, bo'lmasa
+  `MES_WEBHOOK_URL` dagi `/webhook` → `/parol-tekshir`; MES javob bermasa yoki sozlanmagan bo'lsa — 503, standart
+  o'zgarmaydi (parolsiz o'tkazilmaydi).
+- Orakl `mx_parol_oracle` 10/10 (jonli MES + MX klon); MX testi `test_password_checked_by_mes_in_sso_mode`.
+- Shu yangilanishdagi `3982f3d` (detal soni oshsa kroy saqlanadi): «До кроить» qilinmagan nusxalar paketda
+  «Kesish xaritasida joyi yo'q nusxalar» ogohlantirishi bilan keladi — MES tomonida o'zgarish kerak emas.
+
 ### 4a — Kassa (backend)
 
 `app/modules/kassa` (TZ §7; prototip `Kassa.dc.html` / `kassa-core.js` qoidalari):

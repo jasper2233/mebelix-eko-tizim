@@ -3,6 +3,9 @@
 Voqealar (`MES_INTEGRATSIYA.md` §3.3): `map.done` (karta listi arradan chiqdi → qoldiq bo'laklari omborga),
 `project.status`, `remnant.move`, `test`. Hammasi inboxga yoziladi; ishlovi bo'lmagani — saqlanadi.
 Ishlovda kutilmagan xato — 500 va hech narsa yozilmaydi: MX navbatida qolib qayta yuboradi.
+
+`POST /integ/kroy/parol-tekshir` — MX SSO rejimida muhim sozlamani (stanok standarti) o'zgartirishdan oldin xodimning
+MES parolini tekshiradi (MX da parol yo'q). Faqat xizmat tokeni bilan; xato urinishlar login bo'yicha cheklanadi.
 """
 
 import hashlib
@@ -11,12 +14,14 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import SessionDep, client_ip, require_roles
-from app.core.exceptions import ForbiddenException, NotFoundException
-from app.crud import log_action
+from app.core.config import settings
+from app.core.exceptions import ForbiddenException, NotFoundException, RateLimitException
+from app.core.utils.rate_limit import rate_limiter
+from app.crud import crud_users, log_action
 from app.models import Order, User
 from app.models.enums import UserRole
 from app.modules.integratsiya import kroy, paket
@@ -57,6 +62,40 @@ async def _qolla(db: SessionDep, event: str, body: dict[str, Any]) -> str:
     if event == "project.status":
         return await kroy.holat_webhook(db, body)
     return "saqlandi"
+
+
+class ParolTekshir(BaseModel):
+    login: str = Field(max_length=150)
+    password: str = Field(max_length=200)
+
+
+class ParolNatija(BaseModel):
+    ok: bool
+
+
+@router.post("/parol-tekshir", operation_id="kroy_parol_tekshir")
+async def kroy_parol_tekshir(db: SessionDep, body: ParolTekshir, request: Request) -> ParolNatija:
+    """Login — MX tokendagi `sub` (MES foydalanuvchi nomi, telefon emas). Nofaol va texnik hisob — `ok: false`.
+
+    Cheklov IP bo'yicha emas, LOGIN bo'yicha: hamma so'rov bitta MX serveridan keladi — IP bo'yicha bo'lsa bitta
+    xodimning xatolari butun korxonani to'sib qo'yardi."""
+    kalit = f"ratelimit:mxparol:{body.login.strip().lower()}"
+    if await rate_limiter.over_limit(kalit, settings.LOGIN_RATE_LIMIT_ATTEMPTS):
+        raise RateLimitException()
+    user = await crud_users.authenticate(db=db, username_or_phone=body.login, password=body.password)
+    ok = user is not None and user.username == body.login and user.is_active and not user.is_system
+    if not ok:
+        await rate_limiter.bump(kalit, settings.LOGIN_RATE_LIMIT_PERIOD)
+    log_action(
+        db,
+        module="kroy",
+        action="mx_parol" if ok else "mx_parol_xato",
+        user_id=user.id if ok and user is not None else None,
+        message=f"MX stanok standarti uchun parol: {body.login[:40]}",
+        ip=client_ip(request),
+    )
+    await db.commit()
+    return ParolNatija(ok=ok)
 
 
 @router.post("/webhook", operation_id="kroy_webhook", response_model=None)
