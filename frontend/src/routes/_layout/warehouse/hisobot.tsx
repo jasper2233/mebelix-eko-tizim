@@ -26,7 +26,13 @@ import {
 import { requireAccess } from "@/lib/guards"
 import { isoOf, isWarehouseStaff } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { CATALOG_NAMES, downloadCsv, fmt, fmtQty, num } from "@/lib/warehouse"
+import {
+  CATALOG_NAMES,
+  downloadCsv,
+  fmtQty,
+  fmtSum,
+  num,
+} from "@/lib/warehouse"
 
 export const Route = createFileRoute("/_layout/warehouse/hisobot")({
   component: StockReportPage,
@@ -83,7 +89,7 @@ function StockReportPage() {
         g.positions,
         fmtQty(g.qty_in),
         fmtQty(g.qty_out),
-        fmt(g.value),
+        fmtSum(g.value),
       ]),
     ])
   }
@@ -94,7 +100,7 @@ function StockReportPage() {
         title="Ombor hisoboti"
         description={
           data
-            ? `${fmt(data.value)} so'm · ${data.positions} pozitsiya · aylanma ${dateFrom} — ${dateTo}`
+            ? `${fmtSum(data.value)} so'm · ${data.positions} pozitsiya · aylanma ${dateFrom} — ${dateTo}`
             : "Guruh bo'yicha qoldiq va aylanma, ABC tahlili, harakatsiz tovarlar"
         }
         actions={
@@ -167,7 +173,7 @@ function StockReportPage() {
                         {num(g.qty_out) ? fmtQty(g.qty_out) : "—"}
                       </TableCell>
                       <TableCell className="num text-right font-semibold">
-                        {fmt(g.value)}
+                        {fmtSum(g.value)}
                       </TableCell>
                     </TableRow>
                   ))
@@ -211,7 +217,7 @@ function StockReportPage() {
                         {a.positions} ta · {a.pct}%
                       </span>
                     </dt>
-                    <dd className="num font-semibold">{fmt(a.value)}</dd>
+                    <dd className="num font-semibold">{fmtSum(a.value)}</dd>
                   </div>
                 ))}
               </dl>
@@ -249,7 +255,7 @@ function StockReportPage() {
                         </span>
                       </span>
                       <span className="num shrink-0 text-sm font-semibold">
-                        {fmt(d.value)}
+                        {fmtSum(d.value)}
                       </span>
                     </button>
                   ))

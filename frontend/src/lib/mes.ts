@@ -450,8 +450,6 @@ export function groupThousands(digits: string): string {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
 }
 
-/** So'm butun son (tiyin yo'q): API'dan kelgan "14000000.00" ham, hisoblangan
- * qoldiq ham butunga yaxlitlanadi. */
 const BIRLIK = [
   "",
   "bir",
@@ -516,11 +514,20 @@ export function isoOf(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-export function formatMoney(value: string | number | null | undefined): string {
+/** Pul summasi tiyingacha: `1 234 567,89` (minglik — bo'shliq, kasr — vergul, Excel/1C kabi).
+ *  Hisobotlar aniq chiqishi uchun butunga yaxlitlanmaydi; ustunda raqamlar bir tekis turadi. */
+export function formatSum(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—"
-  const n = Math.round(Number(value))
-  if (!Number.isFinite(n)) return "—"
-  return `${n < 0 ? "−" : ""}${groupThousands(String(Math.abs(n)))} so'm`
+  const t = Math.round(Number(value) * 100)
+  if (!Number.isFinite(t)) return "—"
+  const a = Math.abs(t)
+  const tiyin = String(a % 100).padStart(2, "0")
+  return `${t < 0 ? "−" : ""}${groupThousands(String(Math.floor(a / 100)))},${tiyin}`
+}
+
+export function formatMoney(value: string | number | null | undefined): string {
+  const s = formatSum(value)
+  return s === "—" ? s : `${s} so'm`
 }
 
 /** Qoldiq to'lov = umumiy narx − boshlang'ich to'lov. `amount` yo'qligini

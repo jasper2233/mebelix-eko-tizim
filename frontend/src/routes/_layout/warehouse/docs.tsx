@@ -29,7 +29,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { downloadCsv, fmt, num } from "@/lib/warehouse"
+import { downloadCsv, fmtSum, num } from "@/lib/warehouse"
 import { handleError } from "@/utils"
 
 export const Route = createFileRoute("/_layout/warehouse/docs")({
@@ -136,15 +136,15 @@ function DocsPage() {
                 {d.kind === "kirim" &&
                   d.rate &&
                   !draft &&
-                  ` · kurs ${fmt(d.rate)}`}
+                  ` · kurs ${fmtSum(d.rate)}`}
               </TableCell>
               <TableCell className="num text-right">{d.rows}</TableCell>
               <TableCell className="num text-right font-semibold">
-                {draft ? "—" : fmt(d.total)}
+                {draft ? "—" : fmtSum(d.total)}
               </TableCell>
               <TableCell className="num text-right text-muted-foreground">
                 {!draft && d.kind === "chiqim" && d.cogs != null
-                  ? fmt(num(d.total) - num(d.cogs))
+                  ? fmtSum(num(d.total) - num(d.cogs))
                   : ""}
               </TableCell>
               <TableCell

@@ -59,8 +59,8 @@ import { cn } from "@/lib/utils"
 import {
   CATALOG_NAMES,
   type CatalogLetter,
-  fmt,
   fmtQty,
+  fmtSum,
   groupKey,
   num,
   parseNum,
@@ -388,10 +388,10 @@ function Editor({
     onSuccess: (d) => {
       const profit =
         d.cogs != null
-          ? ` · FIFO tannarx ${fmt(d.cogs)} · foyda ${fmt(num(d.total) - num(d.cogs))}`
+          ? ` · FIFO tannarx ${fmtSum(d.cogs)} · foyda ${fmtSum(num(d.total) - num(d.cogs))}`
           : ""
       toast.success(
-        `${d.no} tasdiqlandi · ${fmt(d.total)} so'm${profit} — yangi list ochildi`,
+        `${d.no} tasdiqlandi · ${fmtSum(d.total)} so'm${profit} — yangi list ochildi`,
       )
       done()
       reset()
@@ -623,9 +623,9 @@ function Editor({
           <span className="text-sm text-muted-foreground">
             {usedLines.length} ta qator · <b>JAMI</b>{" "}
             <b className="num text-lg text-foreground">
-              {isK ? `${jami.toFixed(2)} $` : fmt(jami)}
+              {isK ? `${jami.toFixed(2)} $` : fmtSum(jami)}
             </b>{" "}
-            {isK ? `≈ ${fmt(jami * rate)} so'm` : "so'm"}
+            {isK ? `≈ ${fmtSum(jami * rate)} so'm` : "so'm"}
           </span>
         </div>
         <Table>
@@ -745,17 +745,19 @@ function Editor({
                   </span>
                   {CATALOG_NAMES[c]}lar
                 </span>
-                <span className="num">{fmt(sums[c])}</span>
+                <span className="num">{fmtSum(sums[c])}</span>
               </div>
             ))}
           <div className="flex justify-between border-t pt-2">
             <span>Mahsulotlar summasi</span>
-            <b className="num">{isK ? `$${gross.toFixed(2)}` : fmt(gross)}</b>
+            <b className="num">
+              {isK ? `$${gross.toFixed(2)}` : fmtSum(gross)}
+            </b>
           </div>
           {isC && (
             <div className="flex justify-between">
               <span>Chegirma</span>
-              <span className="num text-primary">− {fmt(disc)}</span>
+              <span className="num text-primary">− {fmtSum(disc)}</span>
             </div>
           )}
           <div className="flex items-baseline justify-between border-t pt-2">
@@ -763,14 +765,14 @@ function Editor({
               {isSx ? "Jami tannarx" : "Jami summa"}
             </b>
             <b className="num text-2xl">
-              {isK ? `${jami.toFixed(2)} $` : fmt(jami)}{" "}
+              {isK ? `${jami.toFixed(2)} $` : fmtSum(jami)}{" "}
               <span className="text-xs font-normal">{isK ? "" : "so'm"}</span>
             </b>
           </div>
           {isK && (
             <div className="flex justify-between text-muted-foreground">
-              <span>So'mda · kurs {fmt(rate)}</span>
-              <b className="num text-foreground">{fmt(jami * rate)} so'm</b>
+              <span>So'mda · kurs {fmtSum(rate)}</span>
+              <b className="num text-foreground">{fmtSum(jami * rate)} so'm</b>
             </div>
           )}
           {canWrite && (
@@ -1008,7 +1010,7 @@ function LineRow({
                 <span className="min-w-0 flex-1 truncate">{r.name}</span>
                 <span className="num text-xs text-muted-foreground">
                   {r.catalog === "X"
-                    ? `xizmat · ${fmt(r.sale_price)}`
+                    ? `xizmat · ${fmtSum(r.sale_price)}`
                     : `${fmtQty(r.quantity)} ${r.unit ?? ""}`}
                 </span>
               </button>
@@ -1091,10 +1093,10 @@ function LineRow({
         </TableCell>
       )}
       <TableCell className="num text-right font-semibold">
-        {isK ? `$${s.toFixed(2)}` : fmt(s)}
+        {isK ? `$${s.toFixed(2)}` : fmtSum(s)}
         {isK && s > 0 && (
           <div className="text-[11px] font-normal text-muted-foreground">
-            {fmt(s * rate)} so'm
+            {fmtSum(s * rate)} so'm
           </div>
         )}
       </TableCell>
@@ -1288,7 +1290,7 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
         ["Telefon", h.phone],
         ["Faktura №", h.invoice],
         ["Qabul qildi", h.receiver],
-        ["Kurs", doc.rate ? `1 $ = ${fmt(doc.rate)} so'm` : undefined],
+        ["Kurs", doc.rate ? `1 $ = ${fmtSum(doc.rate)} so'm` : undefined],
         ["Izoh", h.note],
       ]
     : isSx
@@ -1414,24 +1416,24 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
                   {isK
                     ? `$${num(l.price).toFixed(2)}`
                     : isSx // sexda narx — tasdiqdagi FIFO tannarx (`cost`)
-                      ? fmt(num(l.cost) / (num(l.qty) || 1))
-                      : fmt(l.price)}
+                      ? fmtSum(num(l.cost) / (num(l.qty) || 1))
+                      : fmtSum(l.price)}
                 </TableCell>
                 {isC && (
                   <TableCell className="num text-right">
-                    {num(l.discount) ? fmt(l.discount) : "—"}
+                    {num(l.discount) ? fmtSum(l.discount) : "—"}
                   </TableCell>
                 )}
                 <TableCell className="num text-right font-semibold">
                   {isK
-                    ? fmt(num(l.qty) * num(l.price) * num(doc.rate))
+                    ? fmtSum(num(l.qty) * num(l.price) * num(doc.rate))
                     : isSx
-                      ? fmt(l.cost)
-                      : fmt(rows[i].sum)}
+                      ? fmtSum(l.cost)
+                      : fmtSum(rows[i].sum)}
                 </TableCell>
                 {isC && (
                   <TableCell className="num text-right text-muted-foreground">
-                    {l.cost != null ? fmt(l.cost) : "—"}
+                    {l.cost != null ? fmtSum(l.cost) : "—"}
                   </TableCell>
                 )}
               </TableRow>
@@ -1442,16 +1444,16 @@ function ReadOnlyDoc({ doc }: { doc: DocRead }) {
           {isC && doc.cogs != null && (
             <>
               <span>
-                FIFO tannarx <b className="num">{fmt(doc.cogs)}</b>
+                FIFO tannarx <b className="num">{fmtSum(doc.cogs)}</b>
               </span>
               <span>
                 Foyda{" "}
-                <b className="num">{fmt(num(doc.total) - num(doc.cogs))}</b>
+                <b className="num">{fmtSum(num(doc.total) - num(doc.cogs))}</b>
               </span>
             </>
           )}
           <span>
-            Jami <b className="num text-lg">{fmt(doc.total)} so'm</b>
+            Jami <b className="num text-lg">{fmtSum(doc.total)} so'm</b>
           </span>
         </div>
       </section>
@@ -1523,7 +1525,7 @@ function InvDoc({ doc }: { doc: DocRead }) {
                     {fmtQty(d)}
                   </TableCell>
                   <TableCell className="num text-right">
-                    {l.cost != null ? fmt(l.cost) : "—"}
+                    {l.cost != null ? fmtSum(l.cost) : "—"}
                   </TableCell>
                 </TableRow>
               )
@@ -1532,7 +1534,7 @@ function InvDoc({ doc }: { doc: DocRead }) {
         </Table>
         <div className="flex justify-end border-t p-4 text-sm">
           <span>
-            Jami farq <b className="num text-lg">{fmt(doc.total)} so'm</b>
+            Jami farq <b className="num text-lg">{fmtSum(doc.total)} so'm</b>
           </span>
         </div>
       </section>

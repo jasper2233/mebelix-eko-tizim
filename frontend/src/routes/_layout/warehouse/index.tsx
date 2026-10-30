@@ -45,6 +45,7 @@ import {
   downloadCsv,
   fmt,
   fmtQty,
+  fmtSum,
   fmtUsd,
   groupKey,
   isLow,
@@ -597,11 +598,11 @@ function NomenklaturaPage() {
                         <>
                           <TableCell className="num text-right text-muted-foreground">
                             {r.purchase_price != null
-                              ? fmt(r.purchase_price)
+                              ? fmtSum(r.purchase_price)
                               : "—"}
                           </TableCell>
                           <TableCell className="num text-right font-semibold">
-                            {r.sale_price != null ? fmt(r.sale_price) : "—"}
+                            {r.sale_price != null ? fmtSum(r.sale_price) : "—"}
                           </TableCell>
                         </>
                       ) : (
@@ -616,7 +617,7 @@ function NomenklaturaPage() {
                           </TableCell>
                           <TableCell className="num text-right text-muted-foreground">
                             {r.purchase_price != null
-                              ? fmt(r.purchase_price)
+                              ? fmtSum(r.purchase_price)
                               : "—"}
                           </TableCell>
                           <TableCell className="num text-right font-semibold">
@@ -654,7 +655,7 @@ function NomenklaturaPage() {
                             </TableCell>
                           )}
                           <TableCell className="num text-right">
-                            {r.sale_price != null ? fmt(r.sale_price) : "—"}
+                            {r.sale_price != null ? fmtSum(r.sale_price) : "—"}
                             {/* Qo'lda qo'yilgan narx guruh qoidasiga bo'ysunmaydi
                                 (`extra.narx_qolda`, docs/14 §8.1) */}
                             {r.narx_qolda && (

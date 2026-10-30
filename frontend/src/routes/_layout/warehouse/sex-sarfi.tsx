@@ -26,7 +26,7 @@ import { SexTabs } from "@/components/Warehouse/SexTabs"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { downloadCsv, fmt, fmtQty, num } from "@/lib/warehouse"
+import { downloadCsv, fmtQty, fmtSum, num } from "@/lib/warehouse"
 
 export const Route = createFileRoute("/_layout/warehouse/sex-sarfi")({
   component: SexLogPage,
@@ -146,11 +146,11 @@ function SexLogPage() {
           )}
         >
           <span>
-            Jami <b className="num">{fmt(total)} so'm</b>
+            Jami <b className="num">{fmtSum(total)} so'm</b>
           </span>
           {perTaker.map(([k, v]) => (
             <span key={k} className="text-muted-foreground">
-              {k} <b className="num text-foreground">{fmt(v)}</b>
+              {k} <b className="num text-foreground">{fmtSum(v)}</b>
             </span>
           ))}
         </div>
@@ -203,7 +203,7 @@ function SexLogPage() {
                       {fmtQty(r.qty)} {r.unit ?? ""}
                     </TableCell>
                     <TableCell className="num text-right">
-                      {r.amount != null ? fmt(r.amount) : "—"}
+                      {r.amount != null ? fmtSum(r.amount) : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {r.giver}

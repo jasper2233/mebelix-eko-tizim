@@ -10,7 +10,14 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn(
+          // Excel kabi to'r: har katak vertikal chiziq bilan ajraladi; o'ngga tekislangan (pul, son)
+          // ustunlar kontent kengligida, bo'sh joyni matn ustuni oladi — raqamlar ustun bo'ylab bir tekis
+          "w-full caption-bottom text-sm",
+          "[&_td:not(:last-child)]:border-r [&_th:not(:last-child)]:border-r",
+          "[&_td.text-right]:w-px [&_th.text-right]:w-px [&_td.text-right]:tabular-nums",
+          className,
+        )}
         {...props}
       />
     </div>

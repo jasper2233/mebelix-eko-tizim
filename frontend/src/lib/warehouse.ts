@@ -2,6 +2,7 @@
 // Narx HISOBI serverda (`backend/app/services/warehouse.py`); bu yerda faqat ko'rsatish.
 
 import type { CatalogRow, WarehousePricingOutput } from "@/client"
+import { formatSum } from "@/lib/mes"
 
 export const CATALOG_NAMES = {
   M: "Material",
@@ -56,6 +57,10 @@ export function fmt(v: string | number | null | undefined): string {
   const n = Math.round(num(v))
   return `${n < 0 ? "−" : ""}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`
 }
+
+/** Pul (narx, summa, kurs) tiyingacha: `12 800,00` — birliksiz. Son/dona uchun `fmt`. */
+export const fmtSum = (v: string | number | null | undefined): string =>
+  formatSum(num(v))
 
 /** Miqdor: kasr bo'lsa 3 xonagacha (`metr`), aks holda butun. */
 export function fmtQty(v: string | number | null | undefined): string {

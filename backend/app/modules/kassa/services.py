@@ -50,7 +50,8 @@ class Natija:
 
 
 def _som(x: Decimal) -> str:
-    return f"{x:,.0f}".replace(",", " ")
+    """1000000.5 → «1 000 000,50»: tiyingacha, minglik — bo'shliq, kasr — vergul (ekrandagi formatSum bilan bir xil)."""
+    return f"{x:,.2f}".replace(",", " ").replace(".", ",")
 
 
 def _now() -> datetime:

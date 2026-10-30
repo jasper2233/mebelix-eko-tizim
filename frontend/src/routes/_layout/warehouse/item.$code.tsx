@@ -34,8 +34,8 @@ import { cn } from "@/lib/utils"
 import {
   CATALOG_NAMES,
   type CatalogLetter,
-  fmt,
   fmtQty,
+  fmtSum,
   fmtUsd,
   groupKey,
   isLow,
@@ -161,7 +161,7 @@ function ItemCard() {
           )}
           <Stat
             label={xizmat ? "Xarajat" : "Xarid narxi"}
-            value={r.purchase_price != null ? fmt(r.purchase_price) : "—"}
+            value={r.purchase_price != null ? fmtSum(r.purchase_price) : "—"}
             sub={
               r.purchase_price != null
                 ? `so'm / ${r.unit ?? "dona"}${usd != null ? ` · ${fmtUsd(usd)}` : ""}`
@@ -170,10 +170,10 @@ function ItemCard() {
           />
           <Stat
             label="Sotuv narxi"
-            value={r.sale_price != null ? fmt(r.sale_price) : "—"}
+            value={r.sale_price != null ? fmtSum(r.sale_price) : "—"}
             sub={
               !xizmat && num(r.quantity) > 0
-                ? `qoldiq qiymati ${fmt(num(r.quantity) * num(r.purchase_price ?? r.sale_price))} so'm`
+                ? `qoldiq qiymati ${fmtSum(num(r.quantity) * num(r.purchase_price ?? r.sale_price))} so'm`
                 : undefined
             }
           />

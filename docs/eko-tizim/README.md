@@ -585,6 +585,16 @@ interfeys. Bizda bajarilgani:
 - **Ikki kalit ekranda ham:** vedomost muallifiga «Tasdiqlash» o'rniga «boshqa xodim tasdiqlaydi» (`yaratgan_id`).
 Keyingi navbat (qilinmadi): ro'yxatlarda saqlanadigan filtrlar, kassir uchun planshet ko'rinishi.
 
+### 11c — Jadval va pul formati (butun tizim)
+
+- **Jadval — Excel kabi to'r** (`components/ui/table.tsx`, hamma jadval shu komponentdan): har katak vertikal chiziq
+  bilan ajraladi; o'ngga tekislangan (pul, son) ustunlar kontent kengligida (`w-px` + `nowrap`), bo'sh joyni matn
+  ustuni oladi; raqamlar `tabular-nums` — ustun bo'ylab bir tekis.
+- **Pul tiyingacha:** `formatSum` / `formatMoney` (`lib/mes.ts`) → `1 234 567,89 so'm` (minglik — bo'shliq, kasr —
+  vergul). Ilgari butunga yaxlitlanardi — hisobotlar yig'indisi qatorlardan farq qilishi mumkin edi. Omborda pul
+  uchun `fmtSum` (`lib/warehouse.ts`), `fmt` faqat son/dona uchun qoldi. Backend xabarlari (`kassa._som`,
+  `rezerv._som`) ham tiyingacha.
+
 ### 11b — Hisobot qatoridan buyurtmaga o'tish (moliya buyurtma kartasi)
 
 Moliyachi ishlab chiqarish sahifasini (`/orders`) ko'rmaydi, shuning uchun buyurtma pul tomonidan ochiladi:

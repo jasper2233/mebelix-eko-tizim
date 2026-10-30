@@ -36,7 +36,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { requireAccess } from "@/lib/guards"
 import { isWarehouseStaff, isWarehouseWriter } from "@/lib/mes"
 import { cn } from "@/lib/utils"
-import { fmt, fmtQty, groupKey, num, parseNum } from "@/lib/warehouse"
+import { fmt, fmtQty, fmtSum, groupKey, num, parseNum } from "@/lib/warehouse"
 import { getCatalogAllQueryOptions } from "@/queries/mes"
 import { handleError } from "@/utils"
 
@@ -167,7 +167,7 @@ function InvPage() {
             [
               ["Pozitsiya", fmt(rows.length)],
               ["Farq topildi", fmt(found.length)],
-              ["Summada", `${fmt(sumDiff)} so'm`],
+              ["Summada", `${fmtSum(sumDiff)} so'm`],
             ] as const
           ).map(([k, v]) => (
             <div key={k} className={cn(cardSurface, "p-4")}>
@@ -243,7 +243,7 @@ function InvPage() {
                       {d == null ? "" : `${d > 0 ? "+" : ""}${fmtQty(d)}`}
                     </TableCell>
                     <TableCell className="num text-right text-muted-foreground">
-                      {d ? fmt(d * num(r.purchase_price)) : ""}
+                      {d ? fmtSum(d * num(r.purchase_price)) : ""}
                     </TableCell>
                   </TableRow>
                 )

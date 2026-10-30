@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { fmt, fmtQty, num } from "@/lib/warehouse"
+import { fmtQty, fmtSum, num } from "@/lib/warehouse"
 
 const MOVE_KIND: Record<string, string> = {
   kirim: "Kirim",
@@ -56,8 +56,8 @@ export function ItemHistory({
           <span className="text-sm font-normal text-muted-foreground">
             Avval eng eski partiya chiqadi
             {data.next_cost != null &&
-              ` · keyingi chiqim narxi ${fmt(data.next_cost)} so'm`}{" "}
-            · qoldiq qiymati {fmt(value)} so'm
+              ` · keyingi chiqim narxi ${fmtSum(data.next_cost)} so'm`}{" "}
+            · qoldiq qiymati {fmtSum(value)} so'm
           </span>
         </h3>
         <Table>
@@ -91,7 +91,7 @@ export function ItemHistory({
                     {fmtQty(l.qty_left)} {unit ?? ""}
                   </TableCell>
                   <TableCell className="num text-right">
-                    {fmt(l.unit_cost)}
+                    {fmtSum(l.unit_cost)}
                     {l.usd != null && (
                       <span className="text-xs text-muted-foreground">
                         {" "}
@@ -100,7 +100,7 @@ export function ItemHistory({
                     )}
                   </TableCell>
                   <TableCell className="num text-right">
-                    {fmt(num(l.qty_left) * num(l.unit_cost))}
+                    {fmtSum(num(l.qty_left) * num(l.unit_cost))}
                     {i === 0 && (
                       <span className="ml-1 text-xs font-semibold">
                         keyingi chiqim
@@ -185,7 +185,7 @@ export function ItemHistory({
                     {fmtQty(m.balance)}
                   </TableCell>
                   <TableCell className="num text-right text-muted-foreground">
-                    {m.amount != null ? fmt(m.amount) : "—"}
+                    {m.amount != null ? fmtSum(m.amount) : "—"}
                   </TableCell>
                 </TableRow>
               ))
