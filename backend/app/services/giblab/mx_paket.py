@@ -236,6 +236,16 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
         for c in pkg.get("consumption") or []
     ]
 
+    # Prisadka qadami faqat stanok fayli bilan ochiladi: fayl kelmasa detal sexda shu postdan jimgina o'tib ketmasin
+    faylsiz = [str(d.get("key")) for d in pkg.get("parts") or [] if d.get("xnc_refs") and d.get("key") not in cnc_keys]
+    if faylsiz:
+        warnings.insert(
+            0,
+            f"Prisadka qadami ochilmadi: XNC li {len(faylsiz)} ta detalga stanok fayli kelmagan "
+            f"({', '.join(faylsiz[:3])}{' …' if len(faylsiz) > 3 else ''}). "
+            "MX da prisadka stanogini yoqib, kroyni qayta yuboring.",
+        )
+
     project = ParsedProject(
         uuid=f"mx:{src.get('project_id')}",
         name=str(src.get("project_name") or ""),
