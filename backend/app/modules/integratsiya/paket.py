@@ -36,7 +36,13 @@ async def qabul(
     if order.status == OrderStatus.DRAFT:
         raise ForbiddenException("Kroy faqat tasdiqlangan buyurtmaga yuklanadi.")
     await _require_editable(db, order, "Kroyni qayta yuklab bo'lmaydi")
-    mp = parse_package(pkg, order.number)
+    try:
+        mp = parse_package(pkg, order.number)
+    except ParseError:
+        raise
+    except (AttributeError, KeyError, TypeError, ValueError) as e:
+        # Tashqi tizim paketi: kutilmagan tuzilma 500 emas, sababli rad (MX oynasida ko'rinadi)
+        raise ParseError(f"MX paketi tuzilmasi noto'g'ri: {type(e).__name__}: {e}") from e
     raw = json.dumps(pkg, ensure_ascii=False).encode()
 
     async def fayllar(root: Path) -> None:

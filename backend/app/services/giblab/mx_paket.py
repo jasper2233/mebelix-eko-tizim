@@ -121,7 +121,8 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
         product = products.get(str(d.get("product_mx_id")))
         if product is None:
             raise ParseError(f"{d.get('key')}: mahsuloti paketda yo'q.")
-        inst = sorted(d.get("instances") or [], key=lambda i: int(i["n"]))
+        # Yagona nusxada MX `n` yubormaydi (QR suffikssiz, `MES_PAKET_V1` §4.5) — MES da u 1-nusxa
+        inst = sorted(d.get("instances") or [], key=lambda i: int(i.get("n") or 1))
         mat = mats.get(d.get("material_ref") or "")
         pp = ParsedPart(
             file_part_id=int(d["mx_uid"]),
@@ -161,7 +162,7 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
                         part_key=pp.key,
                         pattern_no=int(i["pattern_no"]),
                         cell_index=int(i["cell_index"]),
-                        instance_no=int(i["n"]),
+                        instance_no=int(i.get("n") or 1),
                     )
                 )
         product.parts.append(pp)
