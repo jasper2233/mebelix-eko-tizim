@@ -29,7 +29,6 @@ from app.models.enums import UserRole
 from app.modules.integratsiya import kroy, paket
 from app.modules.integratsiya.models import IntegInbox, KroyLoyiha, KroyVersiya
 from app.modules.ombor import service as ombor
-from app.schemas.orders import ProjectUploadResult
 from app.services.giblab import mx_paket
 
 #: MX → MES (xizmat tokeni)
@@ -158,25 +157,6 @@ async def kroy_ochish(db: SessionDep, user: KroyUser, order_id: int, request: Re
     return KroyOchish(url=url, project_id=link.project_id, number=link.number)
 
 
-#: Kroy natijasini buyurtmaga yuklash — `.project` yuklash bilan bir xil huquq (texnolog), nazorat uchun direktor
-KroyTexnolog = Annotated[User, Depends(require_roles(UserRole.ADMIN, UserRole.DIRECTOR, UserRole.TEXNOLOG))]
-
-
-@user_router.post("/orders/{order_id}/kroy-olish", response_model=ProjectUploadResult, operation_id="kroy_olish")
-async def kroy_olish(db: SessionDep, user: KroyTexnolog, order_id: int, request: Request) -> ProjectUploadResult:
-    """K2 (MES oladi): bog'langan MX loyihasidan kroy paketini olib, buyurtmaga yozadi — `.project` o'rnida."""
-    order = await db.get(Order, order_id)
-    if order is None or order.is_deleted:
-        raise NotFoundException("Buyurtma topilmadi.")
-    try:
-        pkg = await paket.olish(db, order)
-        return await paket.qabul(db, order, pkg, user_id=user.id, ip=client_ip(request), manba="mes")
-    except kroy.KroyXato as e:
-        raise HTTPException(status_code=502, detail=str(e)) from e
-    except paket.ParseError as e:
-        raise HTTPException(status_code=422, detail=str(e)) from e
-
-
 class KroyVersiyaQator(BaseModel):
     versiya: int
     manba: str
@@ -252,7 +232,7 @@ async def kroy_versiyalar(db: SessionDep, _: KroyUser, order_id: int) -> KroyVer
     )
 
 
-#: «MES ga yuborish» huquqi — `KroyTexnolog` bilan bir xil
+#: «MES ga yuborish» huquqi — `.project` yuklash bilan bir xil (texnolog), nazorat uchun direktor
 YUBORUVCHI = {UserRole.ADMIN, UserRole.DIRECTOR, UserRole.TEXNOLOG}
 
 
@@ -283,7 +263,7 @@ async def kroy_paket_yuborish(
     if order is None or order.is_deleted:
         return JSONResponse(status_code=404, content={"detail": "Bu loyiha MES buyurtmasiga bog'lanmagan."})
     try:
-        res = await paket.qabul(db, order, body, user_id=user.id, ip=client_ip(request), manba="mx")
+        res = await paket.qabul(db, order, body, user_id=user.id, ip=client_ip(request))
     except paket.ParseError as e:
         return JSONResponse(status_code=422, content={"detail": str(e)})
     except ForbiddenException as e:

@@ -119,10 +119,6 @@ async def _mx(method: str, path: str, body: dict[str, Any] | None = None) -> tup
     return await asyncio.to_thread(_request, method, path, body)
 
 
-async def mx_get(path: str) -> tuple[int, Any]:
-    return await _mx("GET", path)
-
-
 async def order_body(db: AsyncSession, order: Order) -> dict[str, Any]:
     """MX `MesOrder`: sarlavha. Detallarni kroychi MX da loyiha faylidan (.project) yuklaydi."""
     client = await db.get(Client, order.client_id)

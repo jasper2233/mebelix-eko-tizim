@@ -150,10 +150,6 @@ tek(
     ],
 )
 
-print("\nMES «Kroyni olish» ham versiya yozadi:")
-c, r = sorov(f"{MES}/integ/kroy/orders/{ORDER}/kroy-olish", "POST", {}, tex)
-tek("olindi", c, 200)
-v = versiyalar(tex)
-tek("versiya +2", v["versiyalar"][0]["versiya"], v0 + 2)  # type: ignore[index]
-tek("manba", v["versiyalar"][0]["manba"], "mes")  # type: ignore[index]
+print("\n«Kroyni olish» olib tashlangan:")
+tek("MES dan tortib olish yo'q", sorov(f"{MES}/integ/kroy/orders/{ORDER}/kroy-olish", "POST", {}, tex)[0], 404)
 print(f"\nXULOSA: {sum(natija)}/{len(natija)} to'g'ri")

@@ -1,8 +1,6 @@
 """MX Kroy paketini buyurtmaga qabul qilish (K2) — `MES_PAKET_V1.md` §2.
 
-Ikki yo'l, bitta ishlov:
-- MX yuboradi (`POST /integ/kroy/loyiha/{project_id}/paket`, xizmat tokeni + xodim tokeni) — MX dagi «MES ga yuborish»;
-- MES o'zi oladi («Kroyni olish» — `GET {MX}/api/projects/{pid}/mes-package`), bog'langan loyihadan.
+MX yuboradi (`POST /integ/kroy/loyiha/{project_id}/paket`, xizmat tokeni + xodim tokeni) — MX dagi «MES ga yuborish».
 
 Paket `.project` yuklash bilan AYNAN bir yo'ldan o'tadi (`orders/files.py: load_project`): qayta yuklash qoidasi
 (postda skan bo'lsa rad), qo'lda marshrutlar saqlanadi, rezerv quriladi. Stanok fayllari shu tranzaksiyada saqlanadi.
@@ -20,9 +18,7 @@ from app.api.routes.orders.files import load_project
 from app.core.exceptions import ForbiddenException
 from app.models import Order, OrderFile, WasteItem
 from app.models.enums import FileKind, OrderStatus
-from app.modules.integratsiya import kroy
 from app.modules.integratsiya.models import KroyLoyiha, KroyVersiya
-from app.modules.integratsiya.outbox import navbatga
 from app.modules.ombor import service as ombor
 from app.schemas.orders import ProjectUploadResult
 from app.services.giblab.models import ParseError
@@ -30,7 +26,7 @@ from app.services.giblab.mx_paket import MxPaket, parse_package
 
 
 async def qabul(
-    db: AsyncSession, order: Order, pkg: dict[str, Any], *, user_id: int | None, ip: str | None, manba: str
+    db: AsyncSession, order: Order, pkg: dict[str, Any], *, user_id: int | None, ip: str | None
 ) -> ProjectUploadResult:
     """Paketni buyurtmaga yozadi va commit qiladi. Xato — `ParseError` (422) yoki `ForbiddenException`."""
     if order.status == OrderStatus.DRAFT:
@@ -49,7 +45,7 @@ async def qabul(
         await _stanok_fayllari(db, order, mp, root)
         await _bogla(db, order, mp)
         await _yorliqla(db, order, mp)
-        await _versiya(db, order, pkg, manba, user_id)
+        await _versiya(db, order, pkg, user_id)
 
     qayta = order.project_uuid is not None
     return await load_project(
@@ -94,25 +90,16 @@ def xulosa(pkg: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def _versiya(db: AsyncSession, order: Order, pkg: dict[str, Any], manba: str, user_id: int | None) -> None:
-    """Paket qabul qilish tranzaksiyasi ichida: yangi versiya; MES o'zi olgan bo'lsa MX da loyiha qulflanadi."""
+async def _versiya(db: AsyncSession, order: Order, pkg: dict[str, Any], user_id: int | None) -> None:
+    """Paket qabul qilish tranzaksiyasi ichida: yangi versiya; «MX da qayta ochilgan» belgisi yechiladi."""
     link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
     oxirgi = (
         await db.execute(select(func.max(KroyVersiya.versiya)).where(KroyVersiya.order_id == order.id))
     ).scalar_one()
     versiya = int(oxirgi or 0) + 1
-    db.add(KroyVersiya(order_id=order.id, versiya=versiya, manba=manba, user_id=user_id, xulosa=xulosa(pkg)))
+    db.add(KroyVersiya(order_id=order.id, versiya=versiya, manba="mx", user_id=user_id, xulosa=xulosa(pkg)))
     if link is not None:
         link.qayta_ochilgan = False
-        if manba == "mes":
-            # MX o'zi yuborganda qulfni o'zi qo'yadi; bu yerda — kroy MES ga o'tganini MX ham bilsin
-            await navbatga(
-                db,
-                f"kroy-qulf:{order.id}:{versiya}",
-                "POST",
-                f"/projects/{link.project_id}/mes-sent",
-                {"version": versiya, "order_number": order.number},
-            )
     await db.flush()
 
 
@@ -171,21 +158,4 @@ async def _yorliqla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
     await ombor.kroy_yorliqla(db, mp.project_id, kartalar, qoldiqlar)
 
 
-async def olish(db: AsyncSession, order: Order) -> dict[str, Any]:
-    """Bog'langan MX loyihasidan paketni oladi (faqat korxonada ishlatiladigan stanoklar fayllari bilan)."""
-    link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
-    if link is None:
-        raise kroy.KroyXato("Bu buyurtma MX Kroy loyihasiga bog'lanmagan — avval «Kroy (MX)» ni bosing.")
-    code, pkg = await kroy.mx_get(
-        f"/projects/{link.project_id}/mes-package?version=1&pp=enabled&files=inline"
-        f"&mes_order_id={order.id}&mes_order_number={order.number}"
-    )
-    if code != 200 or not isinstance(pkg, dict):
-        detail = pkg.get("detail") if isinstance(pkg, dict) else None
-        raise kroy.KroyXato(f"MX Kroy paketni bermadi ({code}): {detail or ''}".strip())
-    if not pkg.get("cut_maps"):
-        raise kroy.KroyXato("MX loyihasida kroy hali qilinmagan — avval MX da kesishni hisoblang.")
-    return pkg
-
-
-__all__ = ["ParseError", "olish", "qabul"]
+__all__ = ["ParseError", "qabul"]

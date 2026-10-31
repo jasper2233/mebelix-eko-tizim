@@ -17293,36 +17293,6 @@ export type KroyOchishResponses = {
 
 export type KroyOchishResponse = KroyOchishResponses[keyof KroyOchishResponses];
 
-export type KroyOlishData = {
-    body?: never;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/integ/kroy/orders/{order_id}/kroy-olish';
-};
-
-export type KroyOlishErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type KroyOlishError = KroyOlishErrors[keyof KroyOlishErrors];
-
-export type KroyOlishResponses = {
-    /**
-     * Successful Response
-     */
-    200: ProjectUploadResult;
-};
-
-export type KroyOlishResponse = KroyOlishResponses[keyof KroyOlishResponses];
-
 export type KroyVersiyalarData = {
     body?: never;
     path: {

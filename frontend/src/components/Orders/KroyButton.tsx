@@ -5,7 +5,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Download, Scissors, TriangleAlert } from "lucide-react"
+import { Scissors, TriangleAlert } from "lucide-react"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
@@ -15,9 +15,8 @@ import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { formatDateTime } from "@/lib/mes"
 import { handleError } from "@/utils"
 
-//: Backend `integratsiya/routes.py: KroyUser` / `KroyTexnolog` bilan bir xil
+//: Backend `integratsiya/routes.py: KroyUser` bilan bir xil
 const ROLLAR = new Set(["admin", "director", "texnolog", "manager"])
-const YUKLOVCHI = new Set(["admin", "director", "texnolog"])
 
 const useKroyHolat = (enabled: boolean) =>
   useQuery({
@@ -133,32 +132,11 @@ export function KroyButton({ orderId }: { orderId: number }) {
       handleError(e)
     },
   })
-  const queryClient = useQueryClient()
-  // K2: MX dagi tayyor kroy (detallar, QR, xarita, qoldiq, sarf, stanok fayllari) — `.project` o'rnida
-  const olish = useMutation({
-    mutationFn: async () =>
-      (await IntegratsiyaService.kroyOlish({ path: { order_id: orderId } }))
-        .data,
-    onSuccess: (r) => {
-      toast.success(r.message)
-      for (const w of (r.warnings ?? []).slice(0, 3)) toast.warning(w)
-      queryClient.invalidateQueries({ queryKey: ["orders"] })
-      queryClient.invalidateQueries({ queryKey: ["ombor"] })
-      queryClient.invalidateQueries({ queryKey: ["integ", "kroy", "versiya"] })
-    },
-    onError: handleError,
-  })
-  const yuklay = Boolean(u?.is_superuser || YUKLOVCHI.has(u?.role ?? ""))
   // Holat kelguncha joy band: aks holda qatordagi tugmalar yuklanish paytida siljiydi va bosish «Ishlab chiqarishga
   // uzatish» ga tushib ketadi (sinovda shunday bo'lgan)
   if (ruxsat && isPending) {
     return (
       <>
-        {yuklay && (
-          <LoadingButton variant="outline" disabled>
-            <Download /> Kroyni olish
-          </LoadingButton>
-        )}
         <LoadingButton variant="outline" disabled>
           <Scissors /> Kroy (MX)
         </LoadingButton>
@@ -168,16 +146,6 @@ export function KroyButton({ orderId }: { orderId: number }) {
   if (!ruxsat || !data?.enabled) return null
   return (
     <>
-      {yuklay && (
-        <LoadingButton
-          variant="outline"
-          loading={olish.isPending}
-          title="MX dagi tayyor kroyni buyurtmaga yuklash (.project o'rnida)"
-          onClick={() => olish.mutate()}
-        >
-          <Download /> Kroyni olish
-        </LoadingButton>
-      )}
       <LoadingButton
         variant="outline"
         loading={ochish.isPending}

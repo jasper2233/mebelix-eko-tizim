@@ -54,7 +54,7 @@ class KroyVersiya(BaseModel):
 
     order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), kw_only=True)
     versiya: Mapped[int] = mapped_column(kw_only=True)
-    #: `mx` (MX dagi «MES ga yuborish») yoki `mes` (MES dagi «Kroyni olish»)
+    #: `mx` (MX dagi «MES ga yuborish»); `mes` — olib tashlangan «Kroyni olish» bilan yozilgan eski qatorlar
     manba: Mapped[str] = mapped_column(String(8), kw_only=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
     #: `{detallar: {kalit: {nom, soni, L, W}}, listlar, nusxalar, fayllar, sarf: {nom: [miqdor, birlik]}}`

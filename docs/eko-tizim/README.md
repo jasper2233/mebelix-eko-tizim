@@ -272,8 +272,8 @@ Ulash (prod): MES `.env` — `MX_URL`, `MX_PUBLIC_URL`, `MX_SSO_PRIVATE_KEY`, `K
   `uploads/projects/{id}/stanok/{stanok}/` (`FileKind.STANOK`, meta: format, stanok, sha256, detallar).
 - Sarf (`consumption`) → `order.material_usage` (CS/CN → list, EL → kromka, CL → `linear` metr, boshqasi → dona).
   Rezerv: fayldagi kod katalog kodiga AYNAN teng bo'lsa moslash avtomatik (koef 1, bir marta yoziladi).
-- Ikki yo'l: «Kroyni olish» (buyurtma sahifasi; MES `GET {MX}/projects/{pid}/mes-package?pp=enabled`) va MX
-  yuboradi `POST /api/v1/integ/kroy/loyiha/{project_id}/paket` (bosqich 12 da o'zgardi: xizmat tokeni + xodim tokeni; pastda).
+- Yagona yo'l: MX yuboradi `POST /api/v1/integ/kroy/loyiha/{project_id}/paket` (xizmat tokeni + xodim tokeni; bosqich 12).
+  MES dan tortib oluvchi «Kroyni olish» bosqich 12 da foydalanuvchi qarori bilan olib tashlandi.
 - Yo'l-yo'lakay topilgan xatolar: (1) rezerv qayta qurilganda berilgan miqdor yangi ehtiyojgacha KESILARDI va
   kroydan chiqib ketgan material yo'qolardi — endi to'liq ko'chadi, «kerak 0, berilgan N» qatori, berish
   varaqasida «ortiqcha» (kechki solishtirish ushlagan); (2) to'liq berilgan (`sarflandi`) rezervli buyurtmaga kroy
@@ -621,7 +621,7 @@ qarz, ESF bog'lanishi.
 - `kroy_versiya`: har qabul v1, v2 … (`manba` mx / mes, `xulosa`: detal, nusxa, list, sarf). Buyurtma sahifasida versiya, kim, qachon; qayta
   yuborilganda farq (`GET /integ/kroy/orders/{id}/versiyalar`). Skandan keyin qayta yuborish — avvalgidek rad (`_require_editable`), sabab MX da chiqadi.
 - MX da yuborilgan loyiha qulf. «Qayta ochish» → `project.reopened` → `kroy_loyiha.qayta_ochilgan`, buyurtmada ogohlantirish; keyingi qabulda yechiladi.
-  «Kroyni olish» bilan olinganda ham MX qulflanadi (`kroy-qulf:*`, outbox, `POST /projects/{pid}/mes-sent`).
+  Eski `manba=mes` versiya qatorlari («Kroyni olish» davridan) o'zgarmagan holda ko'rinadi.
 - Topilgan xato: «Kroy» tugmalari holat kelguncha yo'q edi, qator siljib bosish «Ishlab chiqarishga uzatish» ga tushardi — endi joy band.
 - Sinov: `scripts/oracles/kroy_yuborish_oracle.py` 25/25 (qulf, huquq, soxta token, qayta ochish, versiya, farq), MX `tests/test_mes_send.py`; brauzerda B-2026-101.
 - Topilgan xato: yagona nusxali detalda MX `n: null` yuboradi (shartnoma bo'yicha), MES `int(None)` bilan 500 berardi; endi u 1-nusxa. Kutilmagan paket tuzilmasi — 422 va sabab.
@@ -629,5 +629,6 @@ qarz, ESF bog'lanishi.
 - Ishlab chiqarishga uzatish endi faqat menejer va admin amali (`POST /orders/{id}/start`: `ManagerUser`); texnologda tugma yo'q (foydalanuvchi qarori).
 - Furnitura: MX (O) qatori o'z nomi va birligi bilan keladi (`consumption[].unit`: шт → dona, м → metr). Yangi kroyda avvalgi furnitura yo'qolsa birinchi ogohlantirish shu haqda (`load_project`, `.project` yo'li ham). Ajratilmagan furnitura uzatishni to'xtatmaydi: menejer ro'yxatni ko'rib tasdiqlaydi. Orakl `kroy_furnitura_oracle.py`.
 - Qo'lda furnitura (`buyurtma_furnitura`, `ombor/services/furnitura.py`, `Orders/FurnituraPanel.tsx`): texnolog yoki menejer buyurtmaning «Furnituralar» bo'limida kod yoki nom bilan qidirib qo'shadi, katalogda yo'g'i nom bilan qo'shilib Ta'minotga tushadi. `material_usage` dan alohida: qayta yuborishda o'chmaydi. Rezerv ikkalasini kalit bo'yicha qo'shib hisoblaydi (kroyda 8, qo'lda 2 = 10, ogohlantirish bilan). Topshirilguncha qo'shiladi; omborchi berganidan kam qilinmaydi, xato ko'p kiritilgani «Omborga qaytarish» bilan qaytadi (furnitura berilganicha qaytadi). Material hisobotiga ham kiradi. Orakl `furnitura_qolda_oracle.py`.
+- «Kroyni olish» tugmasi va `POST /integ/kroy/orders/{id}/kroy-olish` olib tashlandi: kroy MES ga faqat MX dagi «MES ga yuborish» bilan yoki `.project` fayli bilan keladi. Asl MX ga yuborish tugmasi o'tkazilmaguncha u yerdagi kroy MES ga MX orqali kelmaydi.
 - MX qismi klonda (`eko-integratsiya`), asl MX ga o'tkazilishi kerak. MX muhitiga: `MES_PUBLIC_URL`.
 
