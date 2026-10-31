@@ -1,4 +1,4 @@
-"""EKO 12: «MES ga yuborish» — huquq, qulf, qayta ochish, versiya va farq (MES 8005 + MX klon 8010, lokal sinov, prod EMAS).
+"""EKO 12: «MES ga yuborish» — huquq, qulf, qayta ochish, versiya, farq (MES 8005 + MX klon 8010, lokal, prod EMAS).
 
 cd backend && .venv/Scripts/python.exe ../scripts/oracles/kroy_yuborish_oracle.py <demo parol> <order_id>
 
