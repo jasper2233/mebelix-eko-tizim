@@ -533,7 +533,7 @@ function OrderDetailPage() {
           </div>
         )}
 
-      <KroyVersiyaPanel orderId={order.id} />
+      <KroyVersiyaPanel orderId={order.id} holat={order.status} />
       <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Mijoz" value={order.client_name} />
         <Meta

@@ -15,12 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.orders._common import _require_editable
 from app.api.routes.orders.files import load_project
+from app.core.config import upload_root
 from app.core.exceptions import ForbiddenException
+from app.crud import log_action
 from app.models import Order, OrderFile, WasteItem
 from app.models.enums import FileKind, OrderStatus
 from app.modules.integratsiya.models import KroyLoyiha, KroyVersiya
+from app.modules.integratsiya.outbox import navbatga
 from app.modules.ombor import service as ombor
 from app.schemas.orders import ProjectUploadResult
+from app.services.giblab.ingest import drop_stale_files, restore_stale_files, wipe_previous_parse
 from app.services.giblab.models import ParseError
 from app.services.giblab.mx_paket import MxPaket, parse_package
 
@@ -129,13 +133,20 @@ async def _stanok_fayllari(db: AsyncSession, order: Order, mp: MxPaket, root: Pa
 
 
 async def _bogla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
-    """MX yuborgan bo'lsa (MES «Kroy» tugmasisiz) ham buyurtma ↔ loyiha bog'lansin."""
+    """Buyurtma ↔ loyiha: MX da tanlab yuborilganda shu yerda bog'lanadi. Buyurtmada boshqa loyiha bo'lsa — u ajraladi
+    (bitta buyurtmaga bitta loyiha), MX ga xabar navbat orqali: eski loyihada qulf va buyurtma raqami qolmasin."""
     link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
     if link is None:
         db.add(KroyLoyiha(order_id=order.id, project_id=mp.project_id, number=mp.project_number))
     else:
+        if link.project_id != mp.project_id:
+            await ajrat_navbatga(db, order, link.project_id)
         link.project_id, link.number = mp.project_id, mp.project_number
     await db.flush()
+
+
+async def ajrat_navbatga(db: AsyncSession, order: Order, project_id: str) -> None:
+    await navbatga(db, f"kroy-ajrat:{order.id}:{project_id}", "POST", f"/projects/{project_id}/mes-detach", {})
 
 
 async def _yorliqla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
@@ -158,4 +169,42 @@ async def _yorliqla(db: AsyncSession, order: Order, mp: MxPaket) -> None:
     await ombor.kroy_yorliqla(db, mp.project_id, kartalar, qoldiqlar)
 
 
-__all__ = ["ParseError", "qabul"]
+async def tozala(db: AsyncSession, order: Order, *, user_id: int, ip: str | None) -> None:
+    """Noto'g'ri tanlangan yoki keraksiz kroyni buyurtmadan olib tashlaydi (uzatilmagan, skansiz); loyiha ajraladi.
+    Qo'lda qo'shilgan furnitura va omborchi bergan material rezervda qoladi. Commit shu yerda, fayllar — undan keyin."""
+    if order.status != OrderStatus.TECHNICAL_REVIEW:
+        raise ForbiddenException("Kroy faqat ishlab chiqarishga uzatilmagan buyurtmadan tozalanadi.")
+    await _require_editable(db, order, "Kroyni tozalab bo'lmaydi")
+    root = upload_root()
+    eski = await wipe_previous_parse(db, order, root)
+    try:
+        order.project_uuid = None
+        order.project_name = None
+        order.project_loaded_at = None
+        order.cutmap = None
+        order.material_usage = []
+        link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
+        if link is not None:
+            await ajrat_navbatga(db, order, link.project_id)
+            await db.delete(link)
+        await db.flush()
+        await ombor.on_project_loaded(db, order)
+        log_action(
+            db,
+            module="kroy",
+            action="kroy_tozalandi",
+            user_id=user_id,
+            entity_type="order",
+            entity_id=order.id,
+            message=f"{order.number}: kroy buyurtmadan olib tashlandi",
+            ip=ip,
+        )
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        restore_stale_files(eski, root)
+        raise
+    drop_stale_files(eski, root)
+
+
+__all__ = ["ParseError", "qabul", "tozala"]

@@ -10,22 +10,22 @@ MES parolini tekshiradi (MX da parol yo'q). Faqat xizmat tokeni bilan; xato urin
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any
 from urllib.parse import urlsplit
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 
 from app.api.deps import SessionDep, client_ip, require_roles
 from app.core.config import settings
 from app.core.exceptions import ForbiddenException, NotFoundException, RateLimitException
 from app.core.utils.rate_limit import rate_limiter
 from app.crud import crud_users, log_action
-from app.models import Order, User
-from app.models.enums import UserRole
+from app.models import Client, Order, Part, Product, User
+from app.models.enums import OrderStatus, UserRole
 from app.modules.integratsiya import kroy, paket
 from app.modules.integratsiya.models import IntegInbox, KroyLoyiha, KroyVersiya
 from app.modules.ombor import service as ombor
@@ -157,6 +157,10 @@ async def kroy_ochish(db: SessionDep, user: KroyUser, order_id: int, request: Re
     return KroyOchish(url=url, project_id=link.project_id, number=link.number)
 
 
+#: Kroyni tozalash — `.project` yuklash bilan bir xil huquq (texnolog), nazorat uchun direktor
+KroyTexnolog = Annotated[User, Depends(require_roles(UserRole.ADMIN, UserRole.DIRECTOR, UserRole.TEXNOLOG))]
+
+
 class KroyVersiyaQator(BaseModel):
     versiya: int
     manba: str
@@ -215,6 +219,10 @@ async def kroy_versiyalar(db: SessionDep, _: KroyUser, order_id: int) -> KroyVer
         )
     ).all()
     link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order_id))).scalar_one_or_none()
+    # Tozalangan yoki `.project` bilan almashtirilgan kroyda oxirgi MX versiyasi endi amalda emas
+    order = await db.get(Order, order_id)
+    if order is None or not (order.project_uuid or "").startswith("mx:"):
+        rows = []
     return KroyVersiyalar(
         versiyalar=[
             KroyVersiyaQator(
@@ -232,8 +240,186 @@ async def kroy_versiyalar(db: SessionDep, _: KroyUser, order_id: int) -> KroyVer
     )
 
 
+class KroyBuyurtma(BaseModel):
+    id: int
+    number: str
+    nom: str
+    mijoz: str
+    muddat: date | None
+    #: Kroyi bor: uzatilmagan buyurtmada u almashadi
+    kroy_bor: bool
+    versiya: int | None
+    #: Buyurtma bog'langan MX loyihasi (ID va raqam): yangisi tanlansa u ajraladi
+    mx_loyiha: str | None
+    mx_raqam: str | None
+
+
+class KroyTekshirIn(BaseModel):
+    order_id: int | None = None
+    customer: str = ""
+    #: MES paketi (`files=meta`, stanok fayllarisiz) — solishtirish uchun
+    paket: dict[str, Any]
+
+
+class KroyTekshir(BaseModel):
+    buyurtma: KroyBuyurtma
+    #: Yuborilayotgan kroy: mahsulotlar kodi, detal turlari, nusxalar, listlar
+    mahsulotlar: list[str]
+    turlar: int
+    nusxalar: int
+    listlar: int
+    #: Avvalgi kroy qisqacha; yo'q bo'lsa null
+    avvalgi: str | None
+    ogoh: list[str]
+
+
+def _bir_xil_mijoz(a: str, b: str) -> bool:
+    x, y = " ".join(a.lower().split()), " ".join(b.lower().split())
+    return bool(x and y) and (x in y or y in x)
+
+
+async def _buyurtma_kartasi(db: SessionDep, order: Order, mijoz: str) -> KroyBuyurtma:
+    link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
+    versiya = None
+    if order.project_uuid and order.project_uuid.startswith("mx:"):
+        versiya = (
+            await db.execute(select(func.max(KroyVersiya.versiya)).where(KroyVersiya.order_id == order.id))
+        ).scalar_one()
+    return KroyBuyurtma(
+        id=order.id,
+        number=order.number,
+        nom=order.project_name or "",
+        mijoz=mijoz,
+        muddat=order.deadline,
+        kroy_bor=order.project_uuid is not None,
+        versiya=versiya,
+        mx_loyiha=link.project_id if link else None,
+        mx_raqam=link.number if link else None,
+    )
+
+
+@router.get("/buyurtmalar", operation_id="kroy_ochiq_buyurtmalar", response_model=None)
+async def kroy_ochiq_buyurtmalar(
+    db: SessionDep,
+    x_mes_user_token: Annotated[str | None, Header()] = None,
+    q: str = Query(default="", max_length=100),
+    customer: str = Query(default="", max_length=200),
+) -> JSONResponse | list[KroyBuyurtma]:
+    """MX da tanlash uchun: ishlab chiqarishga uzatilmagan («Texnologda») buyurtmalar, mijozi mos kelgani birinchi."""
+    user = await _yuboruvchi(db, x_mes_user_token)
+    if isinstance(user, JSONResponse):
+        return user
+    so_rov = (
+        select(Order, Client.full_name)
+        .join(Client, Client.id == Order.client_id)
+        .where(Order.status == OrderStatus.TECHNICAL_REVIEW, Order.is_deleted == False)  # noqa: E712
+        .order_by(Order.id.desc())
+        .limit(100)
+    )
+    t = q.strip()
+    if t:
+        naqsh = "%" + t.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        so_rov = so_rov.where(
+            or_(
+                Order.number.ilike(naqsh, escape="\\"),
+                Order.project_name.ilike(naqsh, escape="\\"),
+                Client.full_name.ilike(naqsh, escape="\\"),
+            )
+        )
+    qatorlar = [await _buyurtma_kartasi(db, o, nom) for o, nom in (await db.execute(so_rov)).all()]
+    # sorted barqaror: bir xil guruh ichida yangisi birinchi qoladi
+    return sorted(qatorlar, key=lambda b: not _bir_xil_mijoz(customer, b.mijoz))
+
+
+@router.post("/loyiha/{project_id}/tekshir", operation_id="kroy_tekshir", response_model=None)
+async def kroy_tekshir(
+    db: SessionDep,
+    project_id: str,
+    body: KroyTekshirIn,
+    x_mes_user_token: Annotated[str | None, Header()] = None,
+) -> JSONResponse | KroyTekshir:
+    """Yuborishdan oldingi tasdiq oynasi uchun: buyurtma va mos kelmaslik ogohlantirishlari. Hech narsa yozmaydi."""
+    user = await _yuboruvchi(db, x_mes_user_token)
+    if isinstance(user, JSONResponse):
+        return user
+    link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.project_id == project_id))).scalar_one_or_none()
+    if body.order_id is not None and link is not None and link.order_id != body.order_id:
+        return JSONResponse(status_code=409, content={"detail": "Bu loyiha boshqa buyurtmaga bog'langan."})
+    order = await db.get(Order, body.order_id if body.order_id is not None else (link.order_id if link else 0))
+    if order is None or order.is_deleted:
+        return JSONResponse(status_code=404, content={"detail": "Buyurtma topilmadi."})
+    mijoz = await db.get(Client, order.client_id)
+    karta = await _buyurtma_kartasi(db, order, mijoz.full_name if mijoz else "")
+    x = paket.xulosa(body.paket)
+    mahsulotlar = sorted({str(p.get("code") or p.get("name") or "") for p in body.paket.get("products") or []})
+    ogoh: list[str] = []
+    if body.customer.strip() and karta.mijoz and not _bir_xil_mijoz(body.customer, karta.mijoz):
+        ogoh.append(f"MX dagi buyurtmachi «{body.customer.strip()}», MES dagi mijoz «{karta.mijoz}».")
+    if karta.mx_loyiha and karta.mx_loyiha != project_id:
+        ogoh.append(f"Buyurtma MX {karta.mx_raqam} loyihasiga bog'langan: u ajratiladi.")
+    avvalgi = None
+    if order.project_uuid is not None:
+        eski = (
+            await db.execute(
+                select(Product.code, func.count(Part.id), func.coalesce(func.sum(Part.count), 0))
+                .join(Part, Part.product_id == Product.id)
+                .where(Part.order_id == order.id, Part.is_deleted == False, Product.is_deleted == False)  # noqa: E712
+                .group_by(Product.code)
+            )
+        ).all()
+        eski_turlar, eski_nusxa = sum(r[1] for r in eski), sum(int(r[2]) for r in eski)
+        eski_kodlar = {str(r[0]) for r in eski}
+        avvalgi = f"{karta.versiya}-versiya: " if karta.versiya else "Yuklangan fayl: "
+        avvalgi += f"{eski_turlar} xil, {eski_nusxa} dona"
+        ogoh.append(f"Buyurtmada kroy bor ({avvalgi}): u almashadi.")
+        if eski_kodlar and mahsulotlar and not (eski_kodlar & set(mahsulotlar)):
+            ogoh.append(
+                f"Mahsulot boshqa: avvalgi {', '.join(sorted(eski_kodlar)[:3])}, yangisi {', '.join(mahsulotlar[:3])}."
+            )
+        katta, kichik = max(eski_nusxa, x["nusxalar"]), min(eski_nusxa, x["nusxalar"])
+        if katta >= 5 and kichik * 10 < katta * 7:
+            ogoh.append(f"Detal soni keskin farq qiladi: avvalgi {eski_nusxa}, yangisi {x['nusxalar']} dona.")
+    return KroyTekshir(
+        buyurtma=karta,
+        mahsulotlar=mahsulotlar,
+        turlar=len(x["detallar"]),
+        nusxalar=x["nusxalar"],
+        listlar=x["listlar"],
+        avvalgi=avvalgi,
+        ogoh=ogoh,
+    )
+
+
+@user_router.post("/orders/{order_id}/kroy-tozala", response_model=KroyHolat, operation_id="kroy_tozala")
+async def kroy_tozala(db: SessionDep, user: KroyTexnolog, order_id: int, request: Request) -> KroyHolat:
+    """Noto'g'ri tanlangan kroyni buyurtmadan olib tashlash: uzatilmagan va skansiz buyurtmada."""
+    order = await db.get(Order, order_id)
+    if order is None or order.is_deleted:
+        raise NotFoundException("Buyurtma topilmadi.")
+    if order.project_uuid is None:
+        raise ForbiddenException("Bu buyurtmada kroy yo'q.")
+    await paket.tozala(db, order, user_id=user.id, ip=client_ip(request))
+    return KroyHolat(enabled=kroy.enabled())
+
+
 #: «MES ga yuborish» huquqi — `.project` yuklash bilan bir xil (texnolog), nazorat uchun direktor
 YUBORUVCHI = {UserRole.ADMIN, UserRole.DIRECTOR, UserRole.TEXNOLOG}
+
+
+async def _yuboruvchi(db: SessionDep, token: str | None) -> User | JSONResponse:
+    """MX orqali kelgan xodim: MES imzolagan SSO token bo'yicha; huquqi bo'lmasa — tayyor javob."""
+    if not token:
+        return JSONResponse(status_code=401, content={"detail": "MX ga MES dagi «Kroy (MX)» tugmasi orqali kiring."})
+    try:
+        login = kroy.token_login(token)
+    except kroy.KroyXato as e:
+        return JSONResponse(status_code=401, content={"detail": str(e)})
+    user = (await db.execute(select(User).where(User.username == login))).scalar_one_or_none()
+    if user is None or not user.is_active or user.is_system:
+        return JSONResponse(status_code=403, content={"detail": "Foydalanuvchi faol emas."})
+    if not user.is_superuser and UserRole(user.role) not in YUBORUVCHI:
+        return JSONResponse(status_code=403, content={"detail": "Kroyni MES ga faqat texnolog yoki direktor yuboradi."})
+    return user
 
 
 @router.post("/loyiha/{project_id}/paket", operation_id="kroy_paket_yuborish", response_model=None)
@@ -243,25 +429,32 @@ async def kroy_paket_yuborish(
     body: Annotated[dict[str, Any], Body()],
     request: Request,
     x_mes_user_token: Annotated[str | None, Header()] = None,
+    order_id: int | None = None,
 ) -> JSONResponse:
     """K2 (MX yuboradi, `MES_PAKET_V1.md` §2): xodim tokeni bilan: kim yuborgani yoziladi, huquq shu yerda.
 
-    201 `{order_id, order_number, redirect_url, version, message, warnings}`; xato — `{detail}`."""
-    if not x_mes_user_token:
-        return JSONResponse(status_code=401, content={"detail": "MX ni MES dagi «Kroy (MX)» tugmasi orqali oching."})
-    try:
-        login = kroy.token_login(x_mes_user_token)
-    except kroy.KroyXato as e:
-        return JSONResponse(status_code=401, content={"detail": str(e)})
-    user = (await db.execute(select(User).where(User.username == login))).scalar_one_or_none()
-    if user is None or not user.is_active or user.is_system:
-        return JSONResponse(status_code=403, content={"detail": "Foydalanuvchi faol emas."})
-    if not user.is_superuser and UserRole(user.role) not in YUBORUVCHI:
-        return JSONResponse(status_code=403, content={"detail": "Kroyni MES ga faqat texnolog yoki direktor yuboradi."})
+    `order_id` — MX da MES siz ochilgan loyiha shu buyurtmaga biriktiriladi (paket qabul qilingach bog'lanish yoziladi).
+    201 `{order_id, order_number, mijoz, redirect_url, version, message, warnings}`; xato — `{detail}`."""
+    user = await _yuboruvchi(db, x_mes_user_token)
+    if isinstance(user, JSONResponse):
+        return user
     link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.project_id == project_id))).scalar_one_or_none()
-    order = await db.get(Order, link.order_id) if link else None
+    if order_id is not None and link is not None and link.order_id != order_id:
+        boshqa = await db.get(Order, link.order_id)
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": f"Bu loyiha {boshqa.number if boshqa else ''} buyurtmasiga bog'langan.".replace("  ", " ")
+            },
+        )
+    order = await db.get(Order, order_id if order_id is not None else (link.order_id if link else 0))
     if order is None or order.is_deleted:
         return JSONResponse(status_code=404, content={"detail": "Bu loyiha MES buyurtmasiga bog'lanmagan."})
+    if link is None and order.status != OrderStatus.TECHNICAL_REVIEW:
+        return JSONResponse(
+            status_code=409,
+            content={"detail": f"{order.number}: faqat «Texnologda» holatidagi buyurtmaga biriktiriladi."},
+        )
     try:
         res = await paket.qabul(db, order, body, user_id=user.id, ip=client_ip(request))
     except paket.ParseError as e:
@@ -271,11 +464,13 @@ async def kroy_paket_yuborish(
     versiya = (
         await db.execute(select(func.max(KroyVersiya.versiya)).where(KroyVersiya.order_id == order.id))
     ).scalar_one()
+    mijoz = await db.get(Client, order.client_id)
     return JSONResponse(
         status_code=201,
         content={
             "order_id": order.id,
             "order_number": order.number,
+            "mijoz": mijoz.full_name if mijoz else "",
             "redirect_url": f"/orders/{order.id}",
             "version": versiya,
             "message": res.message,

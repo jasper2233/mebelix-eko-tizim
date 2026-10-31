@@ -5,11 +5,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { Scissors, TriangleAlert } from "lucide-react"
+import { Scissors, Trash2, TriangleAlert } from "lucide-react"
 import { useEffect } from "react"
 import { toast } from "sonner"
 
 import { IntegratsiyaService } from "@/client"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import { formatDateTime } from "@/lib/mes"
@@ -62,8 +63,36 @@ export function MxKroyQaytish() {
 }
 
 /** Buyurtmadagi kroy versiyasi: kim, qachon; MX da qayta ochilgan bo'lsa ogohlantirish; qayta yuborilganda farq */
-export function KroyVersiyaPanel({ orderId }: { orderId: number }) {
+export function KroyVersiyaPanel({
+  orderId,
+  holat,
+}: {
+  orderId: number
+  holat: string
+}) {
   const { currentUser: u } = useCurrentUser()
+  const queryClient = useQueryClient()
+  const [tasdiqOyna, sora] = useTasdiq()
+  // Noto'g'ri buyurtmaga yuborilgan kroy: uzatilguncha olib tashlanadi (backend `KroyTexnolog`)
+  const tozalay =
+    holat === "technical_review" &&
+    Boolean(
+      u?.is_superuser ||
+        u?.role === "admin" ||
+        u?.role === "director" ||
+        u?.role === "texnolog",
+    )
+  const tozala = useMutation({
+    mutationFn: () =>
+      IntegratsiyaService.kroyTozala({ path: { order_id: orderId } }),
+    onSuccess: () => {
+      toast.success("Kroy buyurtmadan olib tashlandi")
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
+      queryClient.invalidateQueries({ queryKey: ["ombor"] })
+      queryClient.invalidateQueries({ queryKey: ["integ", "kroy", "versiya"] })
+    },
+    onError: handleError,
+  })
   const ruxsat = Boolean(u?.is_superuser || ROLLAR.has(u?.role ?? ""))
   const { data } = useQuery({
     queryKey: ["integ", "kroy", "versiya", orderId],
@@ -79,6 +108,7 @@ export function KroyVersiyaPanel({ orderId }: { orderId: number }) {
   if (!data || !v) return null
   return (
     <div className="mb-6 flex flex-col gap-2 rounded-md border p-3 text-sm">
+      {tasdiqOyna}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="font-medium">Kroy {v.versiya}-versiya</span>
         <span className="text-muted-foreground">
@@ -88,6 +118,26 @@ export function KroyVersiyaPanel({ orderId }: { orderId: number }) {
         <span className="num text-muted-foreground">
           {v.listlar} list, {v.nusxalar} detal
         </span>
+        {tozalay && (
+          <LoadingButton
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            loading={tozala.isPending}
+            onClick={() =>
+              sora({
+                title: "Kroy buyurtmadan olib tashlansinmi?",
+                description:
+                  "Detallar, QR, kesish xaritasi va stanok fayllari o'chadi, MX loyihasi buyurtmadan ajraladi. Qo'lda qo'shilgan furnitura qoladi.",
+                confirmText: "Kroyni olib tashlash",
+                destructive: true,
+                onConfirm: () => tozala.mutate(),
+              })
+            }
+          >
+            <Trash2 /> Kroyni olib tashlash
+          </LoadingButton>
+        )}
       </div>
       {data.qayta_ochilgan && (
         <div className="flex items-center gap-2 text-amber-800">
@@ -136,25 +186,21 @@ export function KroyButton({ orderId }: { orderId: number }) {
   // uzatish» ga tushib ketadi (sinovda shunday bo'lgan)
   if (ruxsat && isPending) {
     return (
-      <>
-        <LoadingButton variant="outline" disabled>
-          <Scissors /> Kroy (MX)
-        </LoadingButton>
-      </>
+      <LoadingButton variant="outline" disabled>
+        <Scissors /> Kroy (MX)
+      </LoadingButton>
     )
   }
   if (!ruxsat || !data?.enabled) return null
   return (
-    <>
-      <LoadingButton
-        variant="outline"
-        loading={ochish.isPending}
-        onClick={() => {
-          ochish.mutate(window.open("about:blank", "_blank"))
-        }}
-      >
-        <Scissors /> Kroy (MX)
-      </LoadingButton>
-    </>
+    <LoadingButton
+      variant="outline"
+      loading={ochish.isPending}
+      onClick={() => {
+        ochish.mutate(window.open("about:blank", "_blank"))
+      }}
+    >
+      <Scissors /> Kroy (MX)
+    </LoadingButton>
   )
 }

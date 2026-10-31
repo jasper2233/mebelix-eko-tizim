@@ -5165,6 +5165,26 @@ export type KroyOchish = {
 };
 
 /**
+ * KroyTekshirIn
+ */
+export type KroyTekshirIn = {
+    /**
+     * Order Id
+     */
+    order_id?: number | null;
+    /**
+     * Customer
+     */
+    customer?: string;
+    /**
+     * Paket
+     */
+    paket: {
+        [key: string]: unknown;
+    };
+};
+
+/**
  * KroyVersiyaQator
  */
 export type KroyVersiyaQator = {
@@ -14894,6 +14914,78 @@ export type KroyWebhookResponses = {
     200: unknown;
 };
 
+export type KroyOchiqBuyurtmalarData = {
+    body?: never;
+    headers?: {
+        /**
+         * X-Mes-User-Token
+         */
+        'x-mes-user-token'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Customer
+         */
+        customer?: string;
+    };
+    url: '/api/v1/integ/kroy/buyurtmalar';
+};
+
+export type KroyOchiqBuyurtmalarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyOchiqBuyurtmalarError = KroyOchiqBuyurtmalarErrors[keyof KroyOchiqBuyurtmalarErrors];
+
+export type KroyOchiqBuyurtmalarResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type KroyTekshirData = {
+    body: KroyTekshirIn;
+    headers?: {
+        /**
+         * X-Mes-User-Token
+         */
+        'x-mes-user-token'?: string | null;
+    };
+    path: {
+        /**
+         * Project Id
+         */
+        project_id: string;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/loyiha/{project_id}/tekshir';
+};
+
+export type KroyTekshirErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyTekshirError = KroyTekshirErrors[keyof KroyTekshirErrors];
+
+export type KroyTekshirResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
 export type KroyPaketYuborishData = {
     /**
      * Body
@@ -14913,7 +15005,12 @@ export type KroyPaketYuborishData = {
          */
         project_id: string;
     };
-    query?: never;
+    query?: {
+        /**
+         * Order Id
+         */
+        order_id?: number | null;
+    };
     url: '/api/v1/integ/kroy/loyiha/{project_id}/paket';
 };
 
@@ -17322,6 +17419,36 @@ export type KroyVersiyalarResponses = {
 };
 
 export type KroyVersiyalarResponse = KroyVersiyalarResponses[keyof KroyVersiyalarResponses];
+
+export type KroyTozalaData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/orders/{order_id}/kroy-tozala';
+};
+
+export type KroyTozalaErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyTozalaError = KroyTozalaErrors[keyof KroyTozalaErrors];
+
+export type KroyTozalaResponses = {
+    /**
+     * Successful Response
+     */
+    200: KroyHolat;
+};
+
+export type KroyTozalaResponse = KroyTozalaResponses[keyof KroyTozalaResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;
