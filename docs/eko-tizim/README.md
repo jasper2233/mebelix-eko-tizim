@@ -627,5 +627,6 @@ qarz, ESF bog'lanishi.
 - Topilgan xato: yagona nusxali detalda MX `n: null` yuboradi (shartnoma bo'yicha), MES `int(None)` bilan 500 berardi; endi u 1-nusxa. Kutilmagan paket tuzilmasi — 422 va sabab.
 - Topilgan xavf: MX da stanok yoqilmagan bo'lsa paket faylsiz keladi va XNC li detalga Prisadka qadami ochilmaydi. Endi birinchi ogohlantirish shu haqda.
 - Ishlab chiqarishga uzatish endi faqat menejer va admin amali (`POST /orders/{id}/start`: `ManagerUser`); texnologda tugma yo'q (foydalanuvchi qarori).
+- Furnitura: MX (O) qatori o'z nomi va birligi bilan keladi (`consumption[].unit`: шт → dona, м → metr). Yangi kroyda avvalgi furnitura yo'qolsa birinchi ogohlantirish shu haqda (`load_project`, `.project` yo'li ham). Ajratilmagan furnitura uzatishni to'xtatmaydi: menejer ro'yxatni ko'rib tasdiqlaydi. Orakl `kroy_furnitura_oracle.py`.
 - MX qismi klonda (`eko-integratsiya`), asl MX ga o'tkazilishi kerak. MX muhitiga: `MES_PUBLIC_URL`.
 

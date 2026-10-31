@@ -731,7 +731,7 @@ async def ingest_project(
     # o'tgandan keyin (yangi eksportlarda `code="110083"`, `code="КРМ1009"`) nom emas, kod
     # barqaror kalit. Eski fayllarda `code` yo'q — o'shanda `None` bo'lib qoladi.
     order.material_usage = [
-        {"name": m.name, "code": m.code, "kind": m.kind, "count": m.count, "unit": _USAGE_UNITS[m.kind]}
+        {"name": m.name, "code": m.code, "kind": m.kind, "count": m.count, "unit": m.unit or _USAGE_UNITS[m.kind]}
         for m in project.materials
         if m.count
     ]

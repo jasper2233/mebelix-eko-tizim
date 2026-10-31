@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { OrdersService, type ProjectUploadResult } from "@/client"
+import { OmborService, OrdersService, type ProjectUploadResult } from "@/client"
 import { ConfirmDialog } from "@/components/Common/ConfirmDialog"
 import { CutMap } from "@/components/Common/CutMapIcon"
 import { PageHeader } from "@/components/Common/PageHeader"
@@ -25,6 +25,7 @@ import { QueryError } from "@/components/Common/QueryError"
 import { SectionTitle } from "@/components/Common/SectionTitle"
 import { StagePipeline } from "@/components/Common/StagePipeline"
 import { StatusBadge } from "@/components/Common/StatusBadge"
+import { useTasdiq } from "@/components/Common/useTasdiq"
 import {
   BazisPanel,
   bazisHolati,
@@ -205,6 +206,41 @@ function OrderDetailPage() {
       OrdersService.startOrderProduction({ path: { order_id: id } }),
     ...cb("Ishlab chiqarishga uzatildi"),
   })
+  const [tasdiqOyna, sora] = useTasdiq()
+  // Furnitura uzatishni to'xtatmaydi (yig'ishda kerak bo'ladi), lekin menejer nimasiz uzatayotganini ko'radi.
+  // Rezerv bosish paytida qayta o'qiladi: ekrandagi ma'lumot eskirgan bo'lishi mumkin.
+  const uzatish = async () => {
+    const rez = await queryClient.fetchQuery({
+      queryKey: ["ombor", "rezerv", id],
+      queryFn: async () =>
+        (
+          await OmborService.readOrderRezerv({
+            path: { order_id: id },
+            throwOnError: false,
+          })
+        ).data ?? null,
+    })
+    const ajratilmagan = (rez?.lines ?? []).filter(
+      (l) =>
+        l.kind === "hardware" &&
+        (l.item_id == null || Number(l.qoplangan_qty) < Number(l.kerak_qty)),
+    )
+    if (ajratilmagan.length === 0) {
+      start.mutate()
+      return
+    }
+    sora({
+      title: `${ajratilmagan.length} ta furnitura omborda ajratilmagan`,
+      description: `${ajratilmagan
+        .slice(0, 6)
+        .map((l) => l.tashqi_nom)
+        .join(
+          ", ",
+        )}${ajratilmagan.length > 6 ? " …" : ""}. Yig'ishgacha ta'minlash kerak bo'ladi. Baribir ishlab chiqarishga uzatasizmi?`,
+      confirmText: "Baribir uzatish",
+      onConfirm: () => start.mutate(),
+    })
+  }
   const deliverCb = cb("Buyurtma topshirildi")
   const deliver = useMutation({
     mutationFn: () => OrdersService.deliverOrder({ path: { order_id: id } }),
@@ -287,6 +323,7 @@ function OrderDetailPage() {
 
   return (
     <div>
+      {tasdiqOyna}
       <Link
         to="/orders"
         className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -357,10 +394,7 @@ function OrderDetailPage() {
             {canManage &&
               order.status === "technical_review" &&
               order.project_uuid && (
-                <LoadingButton
-                  loading={start.isPending}
-                  onClick={() => start.mutate()}
-                >
+                <LoadingButton loading={start.isPending} onClick={uzatish}>
                   <Play /> Ishlab chiqarishga uzatish
                 </LoadingButton>
               )}

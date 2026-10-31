@@ -30,6 +30,7 @@ from app.modules.integratsiya import kroy, paket
 from app.modules.integratsiya.models import IntegInbox, KroyLoyiha, KroyVersiya
 from app.modules.ombor import service as ombor
 from app.schemas.orders import ProjectUploadResult
+from app.services.giblab import mx_paket
 
 #: MX → MES (xizmat tokeni)
 router = APIRouter(prefix="/integ/kroy", tags=["integratsiya"], dependencies=[Depends(ombor.kroy_token)])
@@ -194,7 +195,7 @@ class KroyVersiyalar(BaseModel):
 
 
 #: Paketdagi sarf birligi (`consumption[].unit`) → ko'rinadigan nom
-BIRLIK = {"sheets": "list", "pcs": "dona"}
+BIRLIK = {"sheets": "list", **mx_paket.BIRLIK}
 
 
 def _son(v: float) -> str:

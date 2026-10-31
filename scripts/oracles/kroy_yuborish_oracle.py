@@ -145,7 +145,7 @@ tek(
         "Detal nusxalari: 2 → 5",
         "Qo'shilgan detal: 1 ta (polka)",
         "O'zgargan detal: 1 ta (bok)",
-        "Kromka: 0 → 4,5 m",
+        "Kromka: 0 → 4,5 metr",
         "LDSP: 2 → 3 list",
     ],
 )

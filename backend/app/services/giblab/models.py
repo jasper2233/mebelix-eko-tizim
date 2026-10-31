@@ -116,6 +116,7 @@ class ParsedMaterial:
     code: str | None = None
     thickness: float | None = None
     count: float | None = None  # sheets used / band meters bought
+    unit: str | None = None  # furnitura: MX da yozilgan birlik; bo'sh bo'lsa — tur bo'yicha (`ingest._USAGE_UNITS`)
 
 
 #: Paz/freza qirraga «tegdi» deb sanaladigan masofa (mm). Qirra profili asbobi qirraning

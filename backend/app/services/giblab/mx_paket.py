@@ -26,6 +26,17 @@ VERSION = 1
 
 #: Sarf turi (`consumption[].type`) → material turi (`order.material_usage[].kind`)
 _KIND = {"CS": "sheet", "CN": "sheet", "EL": "band", "CL": "linear"}
+#: Furnitura / sirt ishlovi birligi (`consumption[].unit`, MX da xodim yozadi) → ko'rinadigan nom; boshqasi o'zicha
+BIRLIK = {
+    "шт": "dona",
+    "pcs": "dona",
+    "м": "metr",
+    "m": "metr",
+    "м²": "m²",
+    "m2": "m²",
+    "компл": "komplekt",
+    "компл.": "komplekt",
+}
 
 
 @dataclass
@@ -232,6 +243,10 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
             name=str(c.get("name") or c.get("code") or ""),
             code=str(c.get("code") or "") or None,
             count=float(c.get("qty") or 0),
+            # List va kromka birligi tur bo'yicha; qoldiq qatori `pcs` bo'lsa ham u list
+            unit=BIRLIK.get(u, u) or None
+            if (u := str(c.get("unit") or "")) and str(c.get("type")) not in _KIND
+            else None,
         )
         for c in pkg.get("consumption") or []
     ]

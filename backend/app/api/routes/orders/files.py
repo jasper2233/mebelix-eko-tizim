@@ -100,6 +100,11 @@ async def upload_order_project(
     )
 
 
+def _furnitura_kalit(m: dict[str, Any]) -> str:
+    """Furnitura solishtirish kaliti: kod, kodsiz bo'lsa nom (rezervdagi moslash kaliti bilan bir qoida)."""
+    return str(m.get("code") or "").strip() or " ".join(str(m.get("name") or "").lower().split())
+
+
 async def load_project(
     db: SessionDep,
     order: Order,
@@ -121,6 +126,7 @@ async def load_project(
     # Qo'lda chizilgan marshrutlar fayldan kelmaydi — qayta yuklashda ular bilan birga
     # yo'qolib ketmasligi uchun detal kodi bo'yicha saqlab turiladi.
     saved_routes = await snapshot_custom_routes(db, order)
+    eski_furnitura = [m for m in order.material_usage or [] if m.get("kind") == "hardware"]
     # Eski fayllar `.stale` ga qayta nomlanadi: ingest yiqilsa qaytariladi, commit'dan
     # keyin o'chiriladi. Ilgari unlink tranzaksiya ichida edi — ParseError'da DB orqaga
     # qaytar, fayllar esa qaytmasdi.
@@ -142,6 +148,21 @@ async def load_project(
         if isinstance(exc, ParseError):
             raise HTTPException(status_code=422, detail=str(exc)) from None
         raise
+    yangi = {_furnitura_kalit(m) for m in order.material_usage or [] if m.get("kind") == "hardware"}
+    yoqolgan = [m for m in eski_furnitura if _furnitura_kalit(m) not in yangi]
+    if yoqolgan:
+        # Birinchi qatorda: furnitura sarf va rezervdan jimgina chiqib ketmasin (toast ro'yxatning boshini ko'rsatadi)
+        nomlar = ", ".join(
+            f"{m.get('name')} ({format(m.get('count') or 0, 'g').replace('.', ',')} {m.get('unit') or ''})".replace(
+                " )", ")"
+            )
+            for m in yoqolgan[:5]
+        )
+        summary["warnings"].insert(
+            0,
+            f"Avvalgi kroydagi furnitura yangisida yo'q: {nomlar}{' …' if len(yoqolgan) > 5 else ''}. "
+            "Kerak bo'lsa, loyihaga qo'shib qayta yuboring.",
+        )
     if restored:
         # Nostandart detalgina emas: standart detalga matritsadan qo'shilgan
         # qadam ham MANUAL bo'lib saqlanadi va shu sanoqqa kiradi.
