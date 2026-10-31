@@ -7962,10 +7962,6 @@ export type RezervLineRead = {
      */
     item_id: number | null;
     /**
-     * Item Code
-     */
-    item_code?: string | null;
-    /**
      * Item Name
      */
     item_name?: string | null;
