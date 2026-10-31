@@ -626,5 +626,6 @@ qarz, ESF bog'lanishi.
 - Sinov: `scripts/oracles/kroy_yuborish_oracle.py` 25/25 (qulf, huquq, soxta token, qayta ochish, versiya, farq), MX `tests/test_mes_send.py`; brauzerda B-2026-101.
 - Topilgan xato: yagona nusxali detalda MX `n: null` yuboradi (shartnoma bo'yicha), MES `int(None)` bilan 500 berardi; endi u 1-nusxa. Kutilmagan paket tuzilmasi — 422 va sabab.
 - Topilgan xavf: MX da stanok yoqilmagan bo'lsa paket faylsiz keladi va XNC li detalga Prisadka qadami ochilmaydi. Endi birinchi ogohlantirish shu haqda.
+- Ishlab chiqarishga uzatish endi faqat menejer va admin amali (`POST /orders/{id}/start`: `ManagerUser`); texnologda tugma yo'q (foydalanuvchi qarori).
 - MX qismi klonda (`eko-integratsiya`), asl MX ga o'tkazilishi kerak. MX muhitiga: `MES_PUBLIC_URL`.
 

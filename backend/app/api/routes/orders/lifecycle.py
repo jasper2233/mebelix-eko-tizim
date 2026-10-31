@@ -544,13 +544,12 @@ async def confirm_order(db: SessionDep, current_user: ManagerUser, order_id: int
 
 @router.post("/{order_id}/start", response_model=OrderRead, operation_id="start_order_production")
 async def start_order_production(
-    db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, request: Request
+    db: SessionDep, current_user: ManagerUser, order_id: int, request: Request
 ) -> OrderRead:
     """'Ishlab chiqarishga uzatish': TECHNICAL_REVIEW → PRODUCTION.
 
-    Menejer ham, TEXNOLOG ham uzata oladi. TZ da bu faqat menejer amali edi, lekin
-    tayyorlikni texnolog birinchi biladi: `.project` faylni u yuklaydi va nostandart
-    detallarning marshrutini u chizadi — menejerni kutish bekorga to'siq edi.
+    Faqat menejer (va admin): texnolog kroyni tayyorlaydi, ishga tushirishni menejer hal qiladi
+    (foydalanuvchi qarori, EKO 12; ilgari texnolog ham uzatardi).
     """
     order = await _get_order(db, order_id)
     if order.status != OrderStatus.TECHNICAL_REVIEW:

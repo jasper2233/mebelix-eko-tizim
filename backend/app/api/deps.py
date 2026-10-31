@@ -107,10 +107,8 @@ def require_module(name: str) -> Callable[..., Coroutine[Any, Any, None]]:
 # Common role groups (role/module matrix)
 ManagerUser = Annotated[User, Depends(require_roles(UserRole.MANAGER))]
 TexnologUser = Annotated[User, Depends(require_roles(UserRole.TEXNOLOG))]
-#: Ish markazi biriktirish (`orders/{id}/machines`), ishlab chiqarishga uzatish
-#: (`orders/{id}/start`) va Bazis ochiq havolasi (`orders/{id}/bazis/share`). Uzatish
-#: ilgari faqat menejer amali edi; egasining qaroriga ko'ra texnologga ham ochildi —
-#: faylni u yuklaydi, marshrutni u chizadi, ya'ni buyurtma tayyorligini birinchi bo'lib u biladi.
+#: Ish markazi biriktirish (`orders/{id}/machines`) va Bazis ochiq havolasi (`orders/{id}/bazis/share`).
+#: Ishlab chiqarishga uzatish bu ro'yxatda EMAS: egasining qarori bilan faqat menejer amali (EKO 12).
 ManagerOrTexnologUser = Annotated[User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG))]
 StaffReadUser = Annotated[
     User, Depends(require_roles(UserRole.MANAGER, UserRole.TEXNOLOG, UserRole.DIRECTOR))
