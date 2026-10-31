@@ -15,6 +15,7 @@ class RezervLineRead(BaseModel):
     fayl_qty: Decimal
     fayl_birlik: str
     item_id: int | None
+    item_code: str | None = None
     item_name: str | None = None
     item_unit: str | None = None
     kerak_qty: Decimal

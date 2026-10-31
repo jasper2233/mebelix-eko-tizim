@@ -45,14 +45,14 @@ async def _read(db: SessionDep, order: Order) -> RezervRead:
     if rez is None:
         raise NotFoundException("Bu buyurtmada rezerv yo'q.")
     rows = await db.execute(
-        select(RezervLine, CatalogItem.name, CatalogItem.unit)
+        select(RezervLine, CatalogItem.code, CatalogItem.name, CatalogItem.unit)
         .outerjoin(CatalogItem, CatalogItem.id == RezervLine.item_id)
         .where(RezervLine.rezerv_id == rez.id, RezervLine.is_deleted == False)  # noqa: E712
         .order_by(RezervLine.kind, RezervLine.tashqi_nom)
     )
     lines = [
-        RezervLineRead.model_validate(line).model_copy(update={"item_name": name, "item_unit": unit})
-        for line, name, unit in rows.all()
+        RezervLineRead.model_validate(line).model_copy(update={"item_code": code, "item_name": name, "item_unit": unit})
+        for line, code, name, unit in rows.all()
     ]
     paid, required = await rezerv.paid_and_required(db, order)
     return RezervRead(

@@ -33,14 +33,10 @@ import {
 } from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
-import {
-  FurnituraPanel,
-  useFurnitura,
-} from "@/components/Orders/FurnituraPanel"
 import { KroyButton, KroyVersiyaPanel } from "@/components/Orders/KroyButton"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
-import { RezervPanel } from "@/components/Orders/RezervPanel"
+import { RezervPanel, useRezerv } from "@/components/Orders/RezervPanel"
 import {
   UnplacedArraBanner,
   UploadWarningsDialog,
@@ -203,7 +199,7 @@ function OrderDetailPage() {
     ...cb("Ishlab chiqarishga uzatildi"),
   })
   const [tasdiqOyna, sora] = useTasdiq()
-  const { data: furnitura } = useFurnitura(id)
+  const { data: rezerv } = useRezerv(id, isWarehouseStaff(currentUser))
   // Furnitura uzatishni to'xtatmaydi (yig'ishda kerak bo'ladi), lekin menejer nimasiz uzatayotganini ko'radi.
   // Rezerv bosish paytida qayta o'qiladi: ekrandagi ma'lumot eskirgan bo'lishi mumkin.
   const uzatish = async () => {
@@ -311,7 +307,21 @@ function OrderDetailPage() {
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
   // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
-  const furnituraSoni = furnitura?.qatorlar.length ?? 0
+  const materialSoni = rezerv?.lines.length ?? 0
+  // Bo'lim yopiq bo'lsa ham ko'rinsin: to'lov to'sig'i, moslanmagan yoki yetmagan material
+  const materialOgoh = Boolean(
+    rezerv &&
+      (rezerv.tosiq ||
+        rezerv.lines.some(
+          (l) =>
+            l.item_id == null || Number(l.qoplangan_qty) < Number(l.kerak_qty),
+        )),
+  )
+  const materialTahrir = [
+    "technical_review",
+    "production",
+    "completed",
+  ].includes(order.status)
 
   return (
     <div>
@@ -613,11 +623,6 @@ function OrderDetailPage() {
         )}
       </Card>
 
-      {/* Material rezervi va to'lov chegarasi (EKO TZ §4.3) — fayl yuklangach */}
-      {isWarehouseStaff(currentUser) && order.project_uuid && (
-        <RezervPanel orderId={order.id} />
-      )}
-
       {/* Texnolog ham tanlaydi: marshrutni u chizadi, ya'ni qaysi stanok
           qaysi ishni bajarishini yaxshiroq biladi. */}
       {(canManage || isTexnolog) && canEdit && order.project_uuid && (
@@ -637,8 +642,9 @@ function OrderDetailPage() {
                 Nostandart detallar{customCount ? ` (${customCount})` : ""}
               </TabsTrigger>
               <TabsTrigger value="hardware">
-                Furnituralar
-                {furnituraSoni ? ` (${furnituraSoni})` : ""}
+                Materiallar va furnitura
+                {materialSoni ? ` (${materialSoni})` : ""}
+                {materialOgoh && <TriangleAlert className="text-amber-600" />}
               </TabsTrigger>
               <TabsTrigger value="bazis">
                 3D model{bazisSoni}
@@ -676,14 +682,9 @@ function OrderDetailPage() {
             />
           </TabsContent>
           <TabsContent value="hardware">
-            <FurnituraPanel
+            <RezervPanel
               orderId={id}
-              canEdit={
-                (canManage || isTexnolog) &&
-                ["technical_review", "production", "completed"].includes(
-                  order.status,
-                )
-              }
+              canEdit={(canManage || isTexnolog) && materialTahrir}
             />
           </TabsContent>
         </Tabs>
@@ -693,16 +694,8 @@ function OrderDetailPage() {
           <SectionTitle>Detallar matritsasi</SectionTitle>
           <OrderMatrix orderId={id} editable={false} />
           <div className="mt-8">
-            <SectionTitle>Furnituralar</SectionTitle>
-            <FurnituraPanel
-              orderId={id}
-              canEdit={
-                canManage &&
-                ["technical_review", "production", "completed"].includes(
-                  order.status,
-                )
-              }
-            />
+            <SectionTitle>Materiallar va furnitura</SectionTitle>
+            <RezervPanel orderId={id} canEdit={canManage && materialTahrir} />
           </div>
           {/* Havolani mijozga ko'pincha menejer uzatadi, shuning uchun bu shoxda ham */}
           <div className="mt-8">

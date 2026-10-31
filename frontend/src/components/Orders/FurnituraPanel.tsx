@@ -1,10 +1,9 @@
-// Buyurtma furniturasi: fayldan kelgani (MX Kroy, `.project`) va qo'lda qo'shilgani bitta ro'yxatda.
+// Furniturani qo'lda qo'shish va sonini o'zgartirish; ro'yxatning o'zi — materiallar bilan birga `RezervPanel` da.
 // Qo'shish klaviaturada tez: kod yoki nom → ↑↓ → Enter → soni → Enter, kursor yana qidiruvga qaytadi.
 // Katalogda yo'q nomni ham qo'shsa bo'ladi: u «moslanmagan» bo'lib Ta'minot sahifasiga tushadi.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Check, Plus, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
@@ -13,18 +12,9 @@ import {
   type FurnituraTaklif,
   OmborService,
 } from "@/client"
-import { useTasdiq } from "@/components/Common/useTasdiq"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { handleError } from "@/utils"
 
@@ -44,35 +34,14 @@ export function useFurnitura(orderId: number) {
   })
 }
 
-/** Rezerv holati: moslanmagan / yetmaydi / band / berilgan */
-function RezervHolat({ q }: { q: FurnituraQator }) {
-  if (!q.moslangan) {
-    return (
-      <Link
-        to="/warehouse/taminot"
-        className="text-xs text-amber-700 underline underline-offset-2"
-      >
-        Katalogga moslanmagan
-      </Link>
-    )
-  }
-  const yetmaydi = Number(q.kerak) - Number(q.qoplangan)
-  return (
-    <span className="num text-xs">
-      {yetmaydi > 0 ? (
-        <span className="font-semibold text-red-700">
-          Yetmaydi: {fmt(yetmaydi)}
-        </span>
-      ) : Number(q.berilgan) > 0 ? (
-        <span className="text-emerald-700">Berilgan: {fmt(q.berilgan)}</span>
-      ) : (
-        <span>Band: {fmt(q.qoplangan)}</span>
-      )}
-    </span>
-  )
-}
-
-function Qoshish({ orderId, onDone }: { orderId: number; onDone: () => void }) {
+/** Qo'shish qatori: qidiruv, takliflar, soni */
+export function Qoshish({
+  orderId,
+  onDone,
+}: {
+  orderId: number
+  onDone: () => void
+}) {
   const [q, setQ] = useState("")
   const [tanlangan, setTanlangan] = useState<FurnituraTaklif | null>(null)
   const [katalogsiz, setKatalogsiz] = useState<string | null>(null)
@@ -274,7 +243,7 @@ function Qoshish({ orderId, onDone }: { orderId: number; onDone: () => void }) {
   )
 }
 
-function SoniTahrir({
+export function SoniTahrir({
   q,
   orderId,
   onDone,
@@ -332,129 +301,5 @@ function SoniTahrir({
         <X />
       </Button>
     </span>
-  )
-}
-
-export function FurnituraPanel({
-  orderId,
-  canEdit,
-}: {
-  orderId: number
-  canEdit: boolean
-}) {
-  const queryClient = useQueryClient()
-  const { data } = useFurnitura(orderId)
-  const [tasdiqOyna, sora] = useTasdiq()
-  const [tahrir, setTahrir] = useState<number | null>(null)
-  const rezervYangila = () =>
-    queryClient.invalidateQueries({ queryKey: ["ombor", "rezerv", orderId] })
-  const ochir = useMutation({
-    mutationFn: async (id: number) =>
-      (
-        await OmborService.deleteOrderFurnitura({
-          path: { order_id: orderId, qator_id: id },
-        })
-      ).data,
-    onSuccess: (r) => {
-      queryClient.setQueryData(furnituraKey(orderId), r)
-      rezervYangila()
-    },
-    onError: handleError,
-  })
-  const qatorlar = data?.qatorlar ?? []
-
-  return (
-    <div>
-      {tasdiqOyna}
-      {canEdit && <Qoshish orderId={orderId} onDone={rezervYangila} />}
-      {qatorlar.length === 0 ? (
-        <p className="rounded-md border p-6 text-center text-sm text-muted-foreground">
-          Furnitura yo'q
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Kod</TableHead>
-              <TableHead>Nomi</TableHead>
-              <TableHead className="text-right">Soni</TableHead>
-              <TableHead>Birlik</TableHead>
-              <TableHead>Manba</TableHead>
-              <TableHead>Rezerv</TableHead>
-              {canEdit && <TableHead />}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {qatorlar.map((q) => (
-              <TableRow key={`${q.manba}-${q.id ?? q.kalit}`}>
-                <TableCell className="num text-xs text-muted-foreground">
-                  {q.code ?? "—"}
-                </TableCell>
-                <TableCell className="font-medium">{q.nom}</TableCell>
-                <TableCell className="num text-right font-semibold">
-                  {tahrir != null && tahrir === q.id ? (
-                    <SoniTahrir
-                      q={q}
-                      orderId={orderId}
-                      onDone={() => {
-                        setTahrir(null)
-                        rezervYangila()
-                      }}
-                    />
-                  ) : (
-                    fmt(q.soni)
-                  )}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {q.birlik}
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {q.manba === "qolda" ? `Qo'lda: ${q.kim ?? "—"}` : "Kroydan"}
-                </TableCell>
-                <TableCell>
-                  <RezervHolat q={q} />
-                </TableCell>
-                {canEdit && (
-                  <TableCell className="whitespace-nowrap text-right">
-                    {q.id != null && (
-                      <>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          title="Sonini o'zgartirish"
-                          onClick={() => setTahrir(q.id ?? null)}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7 text-destructive"
-                          title="O'chirish"
-                          onClick={() => {
-                            const id = q.id
-                            if (id == null) return
-                            sora({
-                              title: `${q.nom} o'chirilsinmi?`,
-                              description: `${fmt(q.soni)} ${q.birlik} ro'yxatdan chiqadi va rezervi bo'shaydi.`,
-                              confirmText: "O'chirish",
-                              destructive: true,
-                              onConfirm: () => ochir.mutate(id),
-                            })
-                          }}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </>
-                    )}
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
   )
 }
