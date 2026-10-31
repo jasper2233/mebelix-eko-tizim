@@ -1,7 +1,7 @@
 """MX Kroy paketini buyurtmaga qabul qilish (K2) — `MES_PAKET_V1.md` §2.
 
 Ikki yo'l, bitta ishlov:
-- MX yuboradi (`POST /integ/kroy/orders/{id}/kroy-package`, xizmat tokeni) — MX dagi «MES» tugmasi;
+- MX yuboradi (`POST /integ/kroy/loyiha/{project_id}/paket`, xizmat tokeni + xodim tokeni) — MX dagi «MES ga yuborish»;
 - MES o'zi oladi («Kroyni olish» — `GET {MX}/api/projects/{pid}/mes-package`), bog'langan loyihadan.
 
 Paket `.project` yuklash bilan AYNAN bir yo'ldan o'tadi (`orders/files.py: load_project`): qayta yuklash qoidasi
@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routes.orders._common import _require_editable
@@ -21,7 +21,8 @@ from app.core.exceptions import ForbiddenException
 from app.models import Order, OrderFile, WasteItem
 from app.models.enums import FileKind, OrderStatus
 from app.modules.integratsiya import kroy
-from app.modules.integratsiya.models import KroyLoyiha
+from app.modules.integratsiya.models import KroyLoyiha, KroyVersiya
+from app.modules.integratsiya.outbox import navbatga
 from app.modules.ombor import service as ombor
 from app.schemas.orders import ProjectUploadResult
 from app.services.giblab.models import ParseError
@@ -29,7 +30,7 @@ from app.services.giblab.mx_paket import MxPaket, parse_package
 
 
 async def qabul(
-    db: AsyncSession, order: Order, pkg: dict[str, Any], *, user_id: int | None, ip: str | None
+    db: AsyncSession, order: Order, pkg: dict[str, Any], *, user_id: int | None, ip: str | None, manba: str
 ) -> ProjectUploadResult:
     """Paketni buyurtmaga yozadi va commit qiladi. Xato — `ParseError` (422) yoki `ForbiddenException`."""
     if order.status == OrderStatus.DRAFT:
@@ -42,6 +43,7 @@ async def qabul(
         await _stanok_fayllari(db, order, mp, root)
         await _bogla(db, order, mp)
         await _yorliqla(db, order, mp)
+        await _versiya(db, order, pkg, manba, user_id)
 
     qayta = order.project_uuid is not None
     return await load_project(
@@ -60,6 +62,52 @@ async def qabul(
         waste_items=mp.waste_items,
         write_scx=False,
     )
+
+
+def xulosa(pkg: dict[str, Any]) -> dict[str, Any]:
+    """Versiyalarni solishtirish uchun paketning qisqa ko'rinishi (stanok fayllari mazmunisiz)."""
+    detallar = {
+        str(d.get("key")): {
+            "nom": str(d.get("name") or d.get("code") or ""),
+            "soni": len(d.get("instances") or []),
+            "L": d.get("length"),
+            "W": d.get("width"),
+        }
+        for d in pkg.get("parts") or []
+    }
+    sarf: dict[str, list[Any]] = {}
+    for c in pkg.get("consumption") or []:
+        q = sarf.setdefault(str(c.get("name") or c.get("code") or ""), [0.0, str(c.get("unit") or "")])
+        q[0] = round(q[0] + float(c.get("qty") or 0), 3)
+    return {
+        "detallar": detallar,
+        "nusxalar": sum(d["soni"] for d in detallar.values()),
+        "listlar": sum(int(s.get("mult") or 1) for m in pkg.get("cut_maps") or [] for s in m.get("sheets") or []),
+        "fayllar": len(pkg.get("postprocessor_files") or []),
+        "sarf": sarf,
+    }
+
+
+async def _versiya(db: AsyncSession, order: Order, pkg: dict[str, Any], manba: str, user_id: int | None) -> None:
+    """Paket qabul qilish tranzaksiyasi ichida: yangi versiya; MES o'zi olgan bo'lsa MX da loyiha qulflanadi."""
+    link = (await db.execute(select(KroyLoyiha).where(KroyLoyiha.order_id == order.id))).scalar_one_or_none()
+    oxirgi = (
+        await db.execute(select(func.max(KroyVersiya.versiya)).where(KroyVersiya.order_id == order.id))
+    ).scalar_one()
+    versiya = int(oxirgi or 0) + 1
+    db.add(KroyVersiya(order_id=order.id, versiya=versiya, manba=manba, user_id=user_id, xulosa=xulosa(pkg)))
+    if link is not None:
+        link.qayta_ochilgan = False
+        if manba == "mes":
+            # MX o'zi yuborganda qulfni o'zi qo'yadi; bu yerda — kroy MES ga o'tganini MX ham bilsin
+            await navbatga(
+                db,
+                f"kroy-qulf:{order.id}:{versiya}",
+                "POST",
+                f"/projects/{link.project_id}/mes-sent",
+                {"version": versiya, "order_number": order.number},
+            )
+    await db.flush()
 
 
 async def _stanok_fayllari(db: AsyncSession, order: Order, mp: MxPaket, root: Path) -> None:

@@ -42,6 +42,23 @@ class KroyLoyiha(BaseModel):
     number: Mapped[str] = mapped_column(String(40), default="", kw_only=True)
     #: MX holati: 0 Не заказан, 1 Заказан, 2 Утвержден, 3 Готов (`project.status` webhook)
     holat: Mapped[int] = mapped_column(default=0, server_default="0", kw_only=True)
+    #: Oxirgi qabuldan keyin MX da loyiha qayta ochildi (`project.reopened`): MES dagi kroy eskirgan bo'lishi mumkin
+    qayta_ochilgan: Mapped[bool] = mapped_column(default=False, server_default=text("false"), kw_only=True)
+
+
+class KroyVersiya(BaseModel):
+    """Buyurtmaga qabul qilingan har kroy paketi (v1, v2 …): kim, qaysi yo'l bilan va qisqa xulosa — farq shundan."""
+
+    __tablename__ = "kroy_versiya"
+    __table_args__ = (Index("ux_kroy_versiya", "order_id", "versiya", unique=True),)
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), kw_only=True)
+    versiya: Mapped[int] = mapped_column(kw_only=True)
+    #: `mx` (MX dagi «MES ga yuborish») yoki `mes` (MES dagi «Kroyni olish»)
+    manba: Mapped[str] = mapped_column(String(8), kw_only=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)
+    #: `{detallar: {kalit: {nom, soni, L, W}}, listlar, nusxalar, fayllar, sarf: {nom: [miqdor, birlik]}}`
+    xulosa: Mapped[dict[str, Any]] = mapped_column(JSONB, kw_only=True)
 
 
 class IntegOutbox(BaseModel):

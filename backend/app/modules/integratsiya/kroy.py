@@ -15,6 +15,7 @@ import urllib.request
 from typing import Any
 
 import jwt
+from cryptography.hazmat.primitives import serialization
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,6 +73,23 @@ def sso_token(user: User) -> str:
     if not roles:
         raise KroyXato("Bu lavozimga MX Kroy ochilmaydi.")
     return _token(user.username, user.name or user.username, roles, settings.MX_SSO_TTL_MIN * 60)
+
+
+def token_login(token: str) -> str:
+    """MX yuborgan foydalanuvchi tokeni (MES o'zi imzolagan SSO) → login; yaroqsiz bo'lsa `KroyXato`."""
+    public = serialization.load_pem_private_key(_key().encode(), password=None).public_key()
+    try:
+        claims = jwt.decode(
+            token,
+            public,  # type: ignore[arg-type]
+            algorithms=["RS256"],
+            issuer="mebelix-mes",
+            audience=settings.MX_SSO_AUDIENCE,
+            options={"verify_aud": bool(settings.MX_SSO_AUDIENCE), "require": ["exp", "sub"]},
+        )
+    except jwt.PyJWTError as e:
+        raise KroyXato("Sessiya eskirgan: MX ni MES dagi «Kroy (MX)» tugmasi orqali qayta oching.") from e
+    return str(claims["sub"])
 
 
 def _request(method: str, path: str, body: Any, idempotency_key: str | None = None) -> tuple[int, Any]:
@@ -167,3 +185,15 @@ async def holat_webhook(db: AsyncSession, body: dict[str, Any]) -> str:
     link.holat = int(body.get("status") or 0)
     await db.flush()
     return f"holat:{link.holat}"
+
+
+async def qayta_ochildi_webhook(db: AsyncSession, body: dict[str, Any]) -> str:
+    """`project.reopened`: MX da yuborilgan loyiha qayta ochildi — MES dagi kroy eskirgan bo'lishi mumkin."""
+    link = (
+        await db.execute(select(KroyLoyiha).where(KroyLoyiha.project_id == str(body.get("project_id") or "")))
+    ).scalar_one_or_none()
+    if link is None:
+        return "bog'lanmagan loyiha"
+    link.qayta_ochilgan = True
+    await db.flush()
+    return "qayta ochildi"

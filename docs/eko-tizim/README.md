@@ -45,6 +45,7 @@ obuna (ko'p ijarachi, har obunachi alohida baza) va mijoz serverida o'rnatish.
 | 8b Ishga tushirish (ekran) | tayyor, Chrome'da ko'rsatilgan | pastda |
 | 9 Yo'riqnomalar: kassir, omborchi, moliyachi, direktor (dasturda `/yoriqnoma`) | tayyor | pastda |
 | 2.4 Mustahkamlik (prototip darajasi: baza cheklovlari, o'zgarmas jurnal, solishtirish, storno, ikki kalit, qulf chegarasi) | tayyor, lokal sinalgan | pastda |
+| 12 Kroyni MX dan MES ga yuborish: tugma, qulf, versiya, farq, texnolog oynasiga qaytish | tayyor, MX klon bilan sinalgan | pastda |
 
 ### 1a — nima qo'shildi
 
@@ -272,7 +273,7 @@ Ulash (prod): MES `.env` — `MX_URL`, `MX_PUBLIC_URL`, `MX_SSO_PRIVATE_KEY`, `K
 - Sarf (`consumption`) → `order.material_usage` (CS/CN → list, EL → kromka, CL → `linear` metr, boshqasi → dona).
   Rezerv: fayldagi kod katalog kodiga AYNAN teng bo'lsa moslash avtomatik (koef 1, bir marta yoziladi).
 - Ikki yo'l: «Kroyni olish» (buyurtma sahifasi; MES `GET {MX}/projects/{pid}/mes-package?pp=enabled`) va MX
-  yuboradi `POST /api/v1/integ/kroy/orders/{id}/kroy-package` (xizmat tokeni; 201 `{order_id, order_number, redirect_url}`).
+  yuboradi `POST /api/v1/integ/kroy/loyiha/{project_id}/paket` (bosqich 12 da o'zgardi: xizmat tokeni + xodim tokeni; pastda).
 - Yo'l-yo'lakay topilgan xatolar: (1) rezerv qayta qurilganda berilgan miqdor yangi ehtiyojgacha KESILARDI va
   kroydan chiqib ketgan material yo'qolardi — endi to'liq ko'chadi, «kerak 0, berilgan N» qatori, berish
   varaqasida «ortiqcha» (kechki solishtirish ushlagan); (2) to'liq berilgan (`sarflandi`) rezervli buyurtmaga kroy
@@ -609,3 +610,19 @@ buyurtmada ko'rsatiladi (P&L kabi). Ishlab chiqarish rollari (direktor) uchun pa
 ESF holat belgisi `components/Common/EsfHolat.tsx` ga ko'chdi (Soliq sahifasi bilan bir manba).
 Orakl: `scripts/oracles/buyurtma_karta_oracle.py` — ruxsat (kassir 403), 404, P&L tannarx/foyda, to'lovlar yig'indisi,
 qarz, ESF bog'lanishi.
+
+### 12 — Kroyni MX dan MES ga yuborish
+
+- Oqim: texnolog buyurtmadan «Kroy (MX)» → MX da kesadi → yashil «MES ga yuborish» → paket buyurtmaga yoziladi, MX tabi yopiladi,
+  texnolog tabida shu buyurtma ochiladi va xabar chiqadi (`postMessage`, `KroyButton.tsx: MxKroyQaytish`; manba `kroy_holat.mx_origin`
+  bilan tekshiriladi). Chrome boshqa tabga fokusni dasturdan bermaydi: qaytish yopilgan tabning o'z ochuvchisiga qaytishiga tayanadi.
+- `POST /integ/kroy/loyiha/{project_id}/paket` eski `orders/{id}/kroy-package` o'rnida: xizmat tokeni + `X-Mes-User-Token` (MES imzolagan SSO).
+  Faqat admin, direktor, texnolog; `kim yubordi` audit va versiyaga yoziladi. Xodim tokenisiz yo'l yo'q.
+- `kroy_versiya`: har qabul v1, v2 … (`manba` mx / mes, `xulosa`: detal, nusxa, list, sarf). Buyurtma sahifasida versiya, kim, qachon; qayta
+  yuborilganda farq (`GET /integ/kroy/orders/{id}/versiyalar`). Skandan keyin qayta yuborish — avvalgidek rad (`_require_editable`), sabab MX da chiqadi.
+- MX da yuborilgan loyiha qulf. «Qayta ochish» → `project.reopened` → `kroy_loyiha.qayta_ochilgan`, buyurtmada ogohlantirish; keyingi qabulda yechiladi.
+  «Kroyni olish» bilan olinganda ham MX qulflanadi (`kroy-qulf:*`, outbox, `POST /projects/{pid}/mes-sent`).
+- Topilgan xato: «Kroy» tugmalari holat kelguncha yo'q edi, qator siljib bosish «Ishlab chiqarishga uzatish» ga tushardi — endi joy band.
+- Sinov: `scripts/oracles/kroy_yuborish_oracle.py` 25/25 (qulf, huquq, soxta token, qayta ochish, versiya, farq), MX `tests/test_mes_send.py`; brauzerda B-2026-101.
+- MX qismi klonda (`eko-integratsiya`), asl MX ga o'tkazilishi kerak. MX muhitiga: `MES_PUBLIC_URL`.
+

@@ -32,7 +32,7 @@ import {
 } from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
-import { KroyButton } from "@/components/Orders/KroyButton"
+import { KroyButton, KroyVersiyaPanel } from "@/components/Orders/KroyButton"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
 import { RezervPanel } from "@/components/Orders/RezervPanel"
@@ -509,6 +509,7 @@ function OrderDetailPage() {
           </div>
         )}
 
+      <KroyVersiyaPanel orderId={order.id} />
       <Card className="mb-6 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Meta label="Mijoz" value={order.client_name} />
         <Meta

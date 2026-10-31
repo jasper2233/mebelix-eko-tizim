@@ -5002,6 +5002,10 @@ export type KroyHolat = {
      * Enabled
      */
     enabled: boolean;
+    /**
+     * Mx Origin
+     */
+    mx_origin?: string | null;
 };
 
 /**
@@ -5020,6 +5024,54 @@ export type KroyOchish = {
      * Number
      */
     number: string;
+};
+
+/**
+ * KroyVersiyaQator
+ */
+export type KroyVersiyaQator = {
+    /**
+     * Versiya
+     */
+    versiya: number;
+    /**
+     * Manba
+     */
+    manba: string;
+    /**
+     * Kim
+     */
+    kim: string;
+    /**
+     * Vaqt
+     */
+    vaqt: string;
+    /**
+     * Listlar
+     */
+    listlar: number;
+    /**
+     * Nusxalar
+     */
+    nusxalar: number;
+};
+
+/**
+ * KroyVersiyalar
+ */
+export type KroyVersiyalar = {
+    /**
+     * Versiyalar
+     */
+    versiyalar: Array<KroyVersiyaQator>;
+    /**
+     * Qayta Ochilgan
+     */
+    qayta_ochilgan: boolean;
+    /**
+     * Farq
+     */
+    farq: Array<string>;
 };
 
 /**
@@ -14544,33 +14596,39 @@ export type KroyWebhookResponses = {
     200: unknown;
 };
 
-export type KroyPackagePushData = {
+export type KroyPaketYuborishData = {
     /**
      * Body
      */
     body: {
         [key: string]: unknown;
     };
+    headers?: {
+        /**
+         * X-Mes-User-Token
+         */
+        'x-mes-user-token'?: string | null;
+    };
     path: {
         /**
-         * Order Id
+         * Project Id
          */
-        order_id: number;
+        project_id: string;
     };
     query?: never;
-    url: '/api/v1/integ/kroy/orders/{order_id}/kroy-package';
+    url: '/api/v1/integ/kroy/loyiha/{project_id}/paket';
 };
 
-export type KroyPackagePushErrors = {
+export type KroyPaketYuborishErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type KroyPackagePushError = KroyPackagePushErrors[keyof KroyPackagePushErrors];
+export type KroyPaketYuborishError = KroyPaketYuborishErrors[keyof KroyPaketYuborishErrors];
 
-export type KroyPackagePushResponses = {
+export type KroyPaketYuborishResponses = {
     /**
      * Successful Response
      */
@@ -16966,6 +17024,36 @@ export type KroyOlishResponses = {
 };
 
 export type KroyOlishResponse = KroyOlishResponses[keyof KroyOlishResponses];
+
+export type KroyVersiyalarData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/integ/kroy/orders/{order_id}/versiyalar';
+};
+
+export type KroyVersiyalarErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type KroyVersiyalarError = KroyVersiyalarErrors[keyof KroyVersiyalarErrors];
+
+export type KroyVersiyalarResponses = {
+    /**
+     * Successful Response
+     */
+    200: KroyVersiyalar;
+};
+
+export type KroyVersiyalarResponse = KroyVersiyalarResponses[keyof KroyVersiyalarResponses];
 
 export type ReadAuditSummaryData = {
     body?: never;
