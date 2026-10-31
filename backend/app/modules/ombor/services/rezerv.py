@@ -24,7 +24,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Client, Order
-from app.modules.ombor.models import CatalogItem, MaterialMap, Rezerv, RezervLine
+from app.modules.ombor.models import BuyurtmaFurnitura, CatalogItem, MaterialMap, Rezerv, RezervLine
 from app.services.settings_service import ENG_KAM_AVANS_FOIZ, REZERV_DARVOZA, REZERV_MUDDAT_KUN, get_setting
 
 FAOL = "faol"
@@ -134,7 +134,17 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
             manba.setdefault(ln.item_id, ln)
         old.holat = BEKOR
         await db.flush()
-    if not order.material_usage and not berilgan:
+    qolda = list(
+        (
+            await db.execute(
+                select(BuyurtmaFurnitura).where(
+                    BuyurtmaFurnitura.order_id == order.id,
+                    BuyurtmaFurnitura.is_deleted == False,  # noqa: E712
+                )
+            )
+        ).scalars()
+    )
+    if not order.material_usage and not qolda and not berilgan:
         return None
 
     # Bir xil material bir necha marta kelishi mumkin — kalit bo'yicha jamlanadi
@@ -143,6 +153,10 @@ async def reserve_for_order(db: AsyncSession, order: Order) -> Rezerv | None:
         akey = (str(m["kind"]), usage_key(m.get("code"), str(m["name"])))
         row = agg.setdefault(akey, {"nom": str(m["name"]), "birlik": str(m.get("unit") or ""), "qty": Decimal(0)})
         row["qty"] = Decimal(row["qty"]) + Decimal(str(m.get("count") or 0))  # type: ignore[arg-type]
+    # Qo'lda qo'shilgan furnitura: kroyda ham bo'lsa miqdori qo'shiladi (texnolog yetmaganini qo'shadi)
+    for f in qolda:
+        row = agg.setdefault(("hardware", f.kalit), {"nom": f.nom, "birlik": f.birlik, "qty": Decimal(0)})
+        row["qty"] = Decimal(row["qty"]) + f.soni  # type: ignore[arg-type]
 
     maps = {
         (mm.kind, mm.tashqi_kalit): mm

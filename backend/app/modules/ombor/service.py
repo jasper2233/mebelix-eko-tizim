@@ -8,13 +8,33 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
+from app.modules.ombor.models import BuyurtmaFurnitura
 from app.modules.ombor.services import kroy, moliya_oqish, mx_katalog, rezerv, solishtirish
 from app.modules.ombor.services.kroy_auth import kroy_token
 
 __all__ = ["kroy_token"]
+
+
+async def qolda_furnitura_sarfi(db: AsyncSession, order_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+    """Material hisoboti uchun: qo'lda qo'shilgan furnitura `material_usage` yozuvi shaklida."""
+    if not order_ids:
+        return {}
+    rows = await db.execute(
+        select(BuyurtmaFurnitura).where(
+            BuyurtmaFurnitura.order_id.in_(order_ids),
+            BuyurtmaFurnitura.is_deleted == False,  # noqa: E712
+        )
+    )
+    out: dict[int, list[dict[str, Any]]] = {}
+    for f in rows.scalars():
+        out.setdefault(f.order_id, []).append(
+            {"name": f.nom, "code": f.code, "kind": "hardware", "count": float(f.soni), "unit": f.birlik}
+        )
+    return out
 
 
 async def on_project_loaded(db: AsyncSession, order: Order) -> None:

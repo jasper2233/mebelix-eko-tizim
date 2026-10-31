@@ -33,6 +33,10 @@ import {
 } from "@/components/Orders/BazisPanel"
 import { CustomRoutes } from "@/components/Orders/CustomRoutes"
 import { EditOrder } from "@/components/Orders/EditOrder"
+import {
+  FurnituraPanel,
+  useFurnitura,
+} from "@/components/Orders/FurnituraPanel"
 import { KroyButton, KroyVersiyaPanel } from "@/components/Orders/KroyButton"
 import { MachineAssign } from "@/components/Orders/MachineAssign"
 import { OrderMatrix } from "@/components/Orders/OrderMatrix"
@@ -53,14 +57,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useCurrentUser } from "@/hooks/useCurrentUser"
 import {
@@ -207,6 +203,7 @@ function OrderDetailPage() {
     ...cb("Ishlab chiqarishga uzatildi"),
   })
   const [tasdiqOyna, sora] = useTasdiq()
+  const { data: furnitura } = useFurnitura(id)
   // Furnitura uzatishni to'xtatmaydi (yig'ishda kerak bo'ladi), lekin menejer nimasiz uzatayotganini ko'radi.
   // Rezerv bosish paytida qayta o'qiladi: ekrandagi ma'lumot eskirgan bo'lishi mumkin.
   const uzatish = async () => {
@@ -314,12 +311,7 @@ function OrderDetailPage() {
   // GibLab fayldagi typeId="simple" goodlar: petlya, yevrovint, dasta... (dona).
   // SKU kodlilar oldin: kodsizlar orasida dizaynerning 3D-model qoldiqlari ham
   // uchraydi ("Вычитание тел", "Гнутая") — haqiqiy furnitura ustun tursin.
-  const hardware = (order.material_usage ?? [])
-    .filter((m) => m.kind === "hardware")
-    .sort(
-      (a, b) =>
-        (a.code ? 0 : 1) - (b.code ? 0 : 1) || a.name.localeCompare(b.name),
-    )
+  const furnituraSoni = furnitura?.qatorlar.length ?? 0
 
   return (
     <div>
@@ -644,11 +636,10 @@ function OrderDetailPage() {
               <TabsTrigger value="custom">
                 Nostandart detallar{customCount ? ` (${customCount})` : ""}
               </TabsTrigger>
-              {hardware.length > 0 && (
-                <TabsTrigger value="hardware">
-                  Furnituralar ({hardware.length})
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="hardware">
+                Furnituralar
+                {furnituraSoni ? ` (${furnituraSoni})` : ""}
+              </TabsTrigger>
               <TabsTrigger value="bazis">
                 3D model{bazisSoni}
                 {bazis?.bogLanmagan ? (
@@ -685,32 +676,15 @@ function OrderDetailPage() {
             />
           </TabsContent>
           <TabsContent value="hardware">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-36">Kod</TableHead>
-                  <TableHead>Nomi</TableHead>
-                  <TableHead className="w-24 text-right">Soni</TableHead>
-                  <TableHead className="w-20">Birlik</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {hardware.map((m, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="num text-xs text-muted-foreground">
-                      {m.code ?? "—"}
-                    </TableCell>
-                    <TableCell className="font-medium">{m.name}</TableCell>
-                    <TableCell className="num text-right font-semibold">
-                      {m.count}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {m.unit}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <FurnituraPanel
+              orderId={id}
+              canEdit={
+                (canManage || isTexnolog) &&
+                ["technical_review", "production", "completed"].includes(
+                  order.status,
+                )
+              }
+            />
           </TabsContent>
         </Tabs>
       ) : (
@@ -718,6 +692,18 @@ function OrderDetailPage() {
           {/* Matritsani faqat texnolog tahrirlaydi — bu shox unga tegishli emas */}
           <SectionTitle>Detallar matritsasi</SectionTitle>
           <OrderMatrix orderId={id} editable={false} />
+          <div className="mt-8">
+            <SectionTitle>Furnituralar</SectionTitle>
+            <FurnituraPanel
+              orderId={id}
+              canEdit={
+                canManage &&
+                ["technical_review", "production", "completed"].includes(
+                  order.status,
+                )
+              }
+            />
+          </div>
           {/* Havolani mijozga ko'pincha menejer uzatadi, shuning uchun bu shoxda ham */}
           <div className="mt-8">
             <SectionTitle>3D model</SectionTitle>

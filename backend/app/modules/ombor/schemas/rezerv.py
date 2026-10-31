@@ -57,3 +57,56 @@ class MaterialMapIn(BaseModel):
     item_id: int
     #: Fayl birligidan katalog birligiga ko'paytiruvchi (bir xil birlikda 1)
     koef: Decimal = Field(default=Decimal(1), gt=0, le=Decimal(100000))
+
+
+class FurnituraTaklif(BaseModel):
+    """Qidiruv taklifi: `erkin` — boshqa buyurtmalarga band qilinmagan qoldiq."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    item_id: int
+    code: str
+    name: str
+    unit: str
+    qoldiq: Decimal
+    erkin: Decimal
+
+
+class FurnituraQator(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    #: Qo'lda qo'shilgan qator id si; fayldan kelgani tahrirlanmaydi (null)
+    id: int | None
+    #: `fayl` (MX Kroy yoki `.project`) | `qolda`
+    manba: str
+    kalit: str
+    code: str | None
+    nom: str
+    soni: Decimal
+    birlik: str
+    item_id: int | None
+    kim: str | None
+    vaqt: datetime | None
+    #: Rezerv ustunlari — shu kalitning umumiy qatori (fayl + qo'lda)
+    moslangan: bool
+    kerak: Decimal
+    qoplangan: Decimal
+    berilgan: Decimal
+
+
+class FurnituraRoyxat(BaseModel):
+    qatorlar: list[FurnituraQator]
+    #: Fayldan ham kelgan bo'lsa — qo'shish javobida ogohlantirish
+    ogoh: str | None = None
+
+
+class FurnituraQosh(BaseModel):
+    """Katalogdan (`item_id`) yoki katalogda yo'q bo'lsa nom bilan (`nom`)."""
+
+    item_id: int | None = None
+    nom: str | None = Field(default=None, max_length=200)
+    soni: Decimal = Field(gt=0, le=Decimal(1000000), decimal_places=3)
+
+
+class FurnituraSoni(BaseModel):
+    soni: Decimal = Field(gt=0, le=Decimal(1000000), decimal_places=3)

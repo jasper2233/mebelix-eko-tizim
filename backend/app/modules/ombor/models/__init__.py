@@ -3,11 +3,12 @@
 from .birlik import MaterialBirlik
 from .bolak import KroyIntake, OmborBolak, OmborBolakYorliq
 from .catalog import CatalogItem
-from .rezerv import MaterialMap, Rezerv, RezervLine
+from .rezerv import BuyurtmaFurnitura, MaterialMap, Rezerv, RezervLine
 from .sorov import MaterialSorov
 from .stock import StockDoc, StockDocLine, StockLot, StockMovement
 
 __all__ = [
+    "BuyurtmaFurnitura",
     "CatalogItem",
     "KroyIntake",
     "MaterialBirlik",

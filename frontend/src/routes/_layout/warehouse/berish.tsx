@@ -266,8 +266,12 @@ function Varaqa({ orderId }: { orderId: number }) {
 
   if (isError) return <QueryError onRetry={refetch} />
   if (isLoading || !data) return <Skeleton className="h-60" />
+  // Furnitura berilganicha qaytadi: qo'lda xato ko'p kiritilgani shu yo'l bilan tuzatiladi
   const ortiqchaBor = data.lines.some(
-    (l) => l.item_id != null && num(l.berilgan) > num(l.kerak),
+    (l) =>
+      l.item_id != null &&
+      (num(l.berilgan) > num(l.kerak) ||
+        (l.kind === "hardware" && num(l.berilgan) > 0)),
   )
 
   return (
@@ -297,7 +301,7 @@ function Varaqa({ orderId }: { orderId: number }) {
             }}
           >
             <Undo2 className="size-4" />
-            {qaytarish ? "Qaytarish rejimi yoqilgan" : "Ortiqchani qaytarish"}
+            {qaytarish ? "Qaytarish rejimi yoqilgan" : "Omborga qaytarish"}
           </Button>
           {qaytarish && (
             <span className="text-amber-800">

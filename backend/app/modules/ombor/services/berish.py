@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Order
@@ -318,7 +318,10 @@ async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, 
     """Ortiqcha berilgan materialni sexdan omborga QAYTARISH (EKO 3f): kroy berilgandan keyin o'zgargan —
     `berilgan > kerak`. Faqat ortiqcha miqdorgacha. List — o'z barkodi bilan omborga qaytadi; rulon — metri
     rulon qoldig'iga qo'shiladi (sexda qoladi); furnitura — katalog kodi + son. Qoldiq `qaytish` harakati bilan,
-    sarfdagi o'rtacha tannarxda yangi partiya bo'lib kiradi."""
+    sarfdagi o'rtacha tannarxda yangi partiya bo'lib kiradi.
+
+    Furnitura berilganicha qaytadi: qo'lda qo'shilgani berilgandan kam qilinmaydi (`furnitura._berilgandan_kam_emas`),
+    demak xato ko'p kiritilgani avval shu yerda qaytariladi, keyin texnolog kamaytiradi."""
     rez = (
         await db.execute(
             select(Rezerv)
@@ -340,7 +343,10 @@ async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, 
             .where(
                 RezervLine.rezerv_id == rez.id,
                 RezervLine.item_id == item.id,
-                RezervLine.berilgan_qty > RezervLine.kerak_qty,
+                or_(
+                    RezervLine.berilgan_qty > RezervLine.kerak_qty,
+                    and_(RezervLine.kind == "hardware", RezervLine.berilgan_qty > 0),
+                ),
                 RezervLine.is_deleted == False,  # noqa: E712
             )
             .order_by((RezervLine.berilgan_qty - RezervLine.kerak_qty).desc())
@@ -350,7 +356,7 @@ async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, 
     ).scalar_one_or_none()
     if line is None:
         raise BerishError(f"«{item.name}»: bu buyurtmada ortiqcha berilgan yo'q.")
-    ortiq = line.berilgan_qty - line.kerak_qty
+    ortiq = line.berilgan_qty if line.kind == "hardware" else line.berilgan_qty - line.kerak_qty
     if unit is not None and not birlik.is_roll(item):
         if unit.joy != TUGADI or unit.order_id != order.id:
             raise BerishError(f"{unit.barkod}: bu list shu buyurtmaga berilmagan.")
@@ -374,6 +380,8 @@ async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, 
     item.quantity += q
     line.berilgan_qty -= q
     line.qoplangan_qty = max(line.qoplangan_qty - q, line.berilgan_qty)
+    if rez.holat == rezerv.SARFLANDI and line.berilgan_qty < line.kerak_qty:
+        rez.holat = rezerv.YECHILDI  # to'liq berilgan edi, endi yana beriladigan qism bor
     db.add(
         StockMovement(
             item_id=item.id,
@@ -389,5 +397,6 @@ async def qaytar(db: AsyncSession, order: Order, kod: str, qty: Decimal | None, 
     )
     await db.flush()
     return Natija(
-        xabar=f"«{item.name}» — {fmt(q)} {item.unit or ''} omborga qaytdi (ortiqcha qoldi: {fmt(ortiq - q)}).", sarf=-q
+        xabar=f"«{item.name}» — {fmt(q)} {item.unit or ''} omborga qaytdi (yana qaytarish mumkin: {fmt(ortiq - q)}).",
+        sarf=-q,
     )

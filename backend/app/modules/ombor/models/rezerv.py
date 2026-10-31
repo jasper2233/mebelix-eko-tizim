@@ -86,3 +86,31 @@ class RezervLine(BaseModel):
     qoplangan_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=Decimal(0), kw_only=True)
     #: Sexga berilgan (sarflangan). Band = qoplangan − berilgan: berilgani endi qoldiqda yo'q
     berilgan_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=Decimal(0), kw_only=True)
+
+
+class BuyurtmaFurnitura(BaseModel):
+    """Texnolog yoki menejer qo'lda qo'shgan furnitura. Kroy qayta yuklanganda almashadigan `order.material_usage`
+    dan alohida — qayta yuborish uni o'chirmaydi. Rezerv ikkalasini `kalit` bo'yicha jamlaydi."""
+
+    __tablename__ = "buyurtma_furnitura"
+    __table_args__ = (
+        Index(
+            "ux_buyurtma_furnitura_kalit",
+            "order_id",
+            "kalit",
+            unique=True,
+            postgresql_where=text("NOT is_deleted"),
+        ),
+        CheckConstraint("soni > 0", name="ck_buyurtma_furnitura_soni"),
+    )
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("order.id"), index=True, kw_only=True)
+    #: Katalogdan tanlangan bo'lsa; bo'lmasa nom Ta'minot sahifasida moslanadi
+    item_id: Mapped[int | None] = mapped_column(ForeignKey("catalog_item.id"), default=None, kw_only=True)
+    #: Moslash kaliti (`rezerv.usage_key`): katalog kodi yoki normallangan nom
+    kalit: Mapped[str] = mapped_column(String(200), kw_only=True)
+    code: Mapped[str | None] = mapped_column(String(100), default=None, kw_only=True)
+    nom: Mapped[str] = mapped_column(String(200), kw_only=True)
+    soni: Mapped[Decimal] = mapped_column(Numeric(14, 3), kw_only=True)
+    birlik: Mapped[str] = mapped_column(String(10), default="dona", kw_only=True)
+    yaratgan_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), default=None, kw_only=True)

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from sqlalchemy import select
 
 from app.api.deps import DirectorUser, ManagerOrTexnologUser, SessionDep, WarehouseReadUser, WarehouseUser, client_ip
@@ -10,8 +10,18 @@ from app.core.exceptions import NotFoundException
 from app.crud import log_action
 from app.models import Order
 from app.modules.ombor.models import CatalogItem, Rezerv, RezervLine
-from app.modules.ombor.schemas.rezerv import MaterialMapIn, RezervLineRead, RezervRead, ShortageRead
-from app.modules.ombor.services import rezerv
+from app.modules.ombor.schemas.rezerv import (
+    FurnituraQator,
+    FurnituraQosh,
+    FurnituraRoyxat,
+    FurnituraSoni,
+    FurnituraTaklif,
+    MaterialMapIn,
+    RezervLineRead,
+    RezervRead,
+    ShortageRead,
+)
+from app.modules.ombor.services import furnitura, rezerv
 
 router = APIRouter(prefix="/ombor", tags=["ombor"])
 
@@ -147,3 +157,94 @@ async def map_project_material(
     )
     await db.commit()
     return await read_supply_needs(db, current_user)
+
+
+async def _royxat(db: SessionDep, order: Order, ogoh: str | None = None) -> FurnituraRoyxat:
+    return FurnituraRoyxat(
+        qatorlar=[FurnituraQator.model_validate(q) for q in await furnitura.royxat(db, order)],
+        ogoh=ogoh,
+    )
+
+
+@router.get("/furnitura/qidir", response_model=list[FurnituraTaklif], operation_id="furnitura_qidir")
+async def furnitura_qidir(
+    db: SessionDep, _: ManagerOrTexnologUser, q: str = Query(min_length=2, max_length=100)
+) -> list[FurnituraTaklif]:
+    """Katalogdan furnitura: kod, artikul yoki nomning bir qismi bo'yicha."""
+    return [FurnituraTaklif.model_validate(t) for t in await furnitura.qidir(db, q)]
+
+
+@router.get("/buyurtma/{order_id}/furnitura", response_model=FurnituraRoyxat, operation_id="read_order_furnitura")
+async def read_order_furnitura(db: SessionDep, _: WarehouseReadUser, order_id: int) -> FurnituraRoyxat:
+    return await _royxat(db, await _order(db, order_id))
+
+
+@router.post("/buyurtma/{order_id}/furnitura", response_model=FurnituraRoyxat, operation_id="add_order_furnitura")
+async def add_order_furnitura(
+    db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, body: FurnituraQosh, request: Request
+) -> FurnituraRoyxat:
+    """Qo'lda qo'shish. Shu furnitura qo'lda qo'shilgan bo'lsa miqdori ustiga qo'shiladi; rezerv qayta quriladi."""
+    order, row, ogoh = await furnitura.qosh(db, order_id, body.item_id, body.nom, body.soni, current_user.id)
+    log_action(
+        db,
+        module="rezerv",
+        action="furnitura_qoshildi",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=f"{row.nom}: +{body.soni} {row.birlik} (jami qo'lda {row.soni})",
+        ip=client_ip(request),
+    )
+    natija = await _royxat(db, order, ogoh)
+    await db.commit()
+    return natija
+
+
+@router.patch(
+    "/buyurtma/{order_id}/furnitura/{qator_id}", response_model=FurnituraRoyxat, operation_id="update_order_furnitura"
+)
+async def update_order_furnitura(
+    db: SessionDep,
+    current_user: ManagerOrTexnologUser,
+    order_id: int,
+    qator_id: int,
+    body: FurnituraSoni,
+    request: Request,
+) -> FurnituraRoyxat:
+    order, row = await furnitura.ozgartir(db, order_id, qator_id, body.soni)
+    log_action(
+        db,
+        module="rezerv",
+        action="furnitura_ozgardi",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=f"{row.nom}: {row.soni} {row.birlik}",
+        ip=client_ip(request),
+    )
+    natija = await _royxat(db, order)
+    await db.commit()
+    return natija
+
+
+@router.delete(
+    "/buyurtma/{order_id}/furnitura/{qator_id}", response_model=FurnituraRoyxat, operation_id="delete_order_furnitura"
+)
+async def delete_order_furnitura(
+    db: SessionDep, current_user: ManagerOrTexnologUser, order_id: int, qator_id: int, request: Request
+) -> FurnituraRoyxat:
+    """Yumshoq o'chirish: omborchi bergan miqdordan past tushsa rad etiladi."""
+    order, row = await furnitura.ochir(db, order_id, qator_id)
+    log_action(
+        db,
+        module="rezerv",
+        action="furnitura_ochirildi",
+        user_id=current_user.id,
+        entity_type="order",
+        entity_id=order.id,
+        message=f"{row.nom}: {row.soni} {row.birlik}",
+        ip=client_ip(request),
+    )
+    natija = await _royxat(db, order)
+    await db.commit()
+    return natija

@@ -46,6 +46,7 @@ from app.models.enums import (
 )
 from app.models.user import User
 from app.modules.kassa import service as kassa
+from app.modules.ombor import service as ombor
 from app.schemas.reports import (
     AvailabilityReason,
     DashboardMoney,
@@ -896,18 +897,20 @@ async def report_materials(
     orders = (
         (
             await db.execute(
-                select(Order.material_usage).where(
+                select(Order.id, Order.material_usage).where(
                     Order.project_loaded_at.between(start, end),
                     Order.status != OrderStatus.CANCELLED,
                     Order.is_deleted == False,  # noqa: E712
                 )
             )
         )
-        .scalars()
+        .tuples()
         .all()
     )
+    qolda = await ombor.qolda_furnitura_sarfi(db, [order_id for order_id, _ in orders])
     agg: dict[tuple[str, str], MaterialUsageRow] = {}
-    for usage in orders:
+    for order_id, usage_fayl in orders:
+        usage = [*(usage_fayl or []), *qolda.get(order_id, [])]
         # `orders` — buyurtmalar soni, JSONB yozuvlar soni emas: bitta buyurtmada bir material
         # bir necha marta uchrashi mumkin, ammo u faqat bir marta sanaladi.
         seen: set[tuple[str, str]] = set()

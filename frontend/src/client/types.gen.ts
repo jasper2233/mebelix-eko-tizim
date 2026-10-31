@@ -3640,6 +3640,144 @@ export type FreezeMatch = {
 };
 
 /**
+ * FurnituraQator
+ */
+export type FurnituraQator = {
+    /**
+     * Id
+     */
+    id: number | null;
+    /**
+     * Manba
+     */
+    manba: string;
+    /**
+     * Kalit
+     */
+    kalit: string;
+    /**
+     * Code
+     */
+    code: string | null;
+    /**
+     * Nom
+     */
+    nom: string;
+    /**
+     * Soni
+     */
+    soni: string;
+    /**
+     * Birlik
+     */
+    birlik: string;
+    /**
+     * Item Id
+     */
+    item_id: number | null;
+    /**
+     * Kim
+     */
+    kim: string | null;
+    /**
+     * Vaqt
+     */
+    vaqt: string | null;
+    /**
+     * Moslangan
+     */
+    moslangan: boolean;
+    /**
+     * Kerak
+     */
+    kerak: string;
+    /**
+     * Qoplangan
+     */
+    qoplangan: string;
+    /**
+     * Berilgan
+     */
+    berilgan: string;
+};
+
+/**
+ * FurnituraQosh
+ *
+ * Katalogdan (`item_id`) yoki katalogda yo'q bo'lsa nom bilan (`nom`).
+ */
+export type FurnituraQosh = {
+    /**
+     * Item Id
+     */
+    item_id?: number | null;
+    /**
+     * Nom
+     */
+    nom?: string | null;
+    /**
+     * Soni
+     */
+    soni: number | string;
+};
+
+/**
+ * FurnituraRoyxat
+ */
+export type FurnituraRoyxat = {
+    /**
+     * Qatorlar
+     */
+    qatorlar: Array<FurnituraQator>;
+    /**
+     * Ogoh
+     */
+    ogoh?: string | null;
+};
+
+/**
+ * FurnituraSoni
+ */
+export type FurnituraSoni = {
+    /**
+     * Soni
+     */
+    soni: number | string;
+};
+
+/**
+ * FurnituraTaklif
+ *
+ * Qidiruv taklifi: `erkin` — boshqa buyurtmalarga band qilinmagan qoldiq.
+ */
+export type FurnituraTaklif = {
+    /**
+     * Item Id
+     */
+    item_id: number;
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Unit
+     */
+    unit: string;
+    /**
+     * Qoldiq
+     */
+    qoldiq: string;
+    /**
+     * Erkin
+     */
+    erkin: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -13893,6 +14031,166 @@ export type MapProjectMaterialResponses = {
 };
 
 export type MapProjectMaterialResponse = MapProjectMaterialResponses[keyof MapProjectMaterialResponses];
+
+export type FurnituraQidirData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Q
+         */
+        q: string;
+    };
+    url: '/api/v1/ombor/furnitura/qidir';
+};
+
+export type FurnituraQidirErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type FurnituraQidirError = FurnituraQidirErrors[keyof FurnituraQidirErrors];
+
+export type FurnituraQidirResponses = {
+    /**
+     * Response Furnitura Qidir
+     *
+     * Successful Response
+     */
+    200: Array<FurnituraTaklif>;
+};
+
+export type FurnituraQidirResponse = FurnituraQidirResponses[keyof FurnituraQidirResponses];
+
+export type ReadOrderFurnituraData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/buyurtma/{order_id}/furnitura';
+};
+
+export type ReadOrderFurnituraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadOrderFurnituraError = ReadOrderFurnituraErrors[keyof ReadOrderFurnituraErrors];
+
+export type ReadOrderFurnituraResponses = {
+    /**
+     * Successful Response
+     */
+    200: FurnituraRoyxat;
+};
+
+export type ReadOrderFurnituraResponse = ReadOrderFurnituraResponses[keyof ReadOrderFurnituraResponses];
+
+export type AddOrderFurnituraData = {
+    body: FurnituraQosh;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/buyurtma/{order_id}/furnitura';
+};
+
+export type AddOrderFurnituraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddOrderFurnituraError = AddOrderFurnituraErrors[keyof AddOrderFurnituraErrors];
+
+export type AddOrderFurnituraResponses = {
+    /**
+     * Successful Response
+     */
+    200: FurnituraRoyxat;
+};
+
+export type AddOrderFurnituraResponse = AddOrderFurnituraResponses[keyof AddOrderFurnituraResponses];
+
+export type DeleteOrderFurnituraData = {
+    body?: never;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * Qator Id
+         */
+        qator_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/buyurtma/{order_id}/furnitura/{qator_id}';
+};
+
+export type DeleteOrderFurnituraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteOrderFurnituraError = DeleteOrderFurnituraErrors[keyof DeleteOrderFurnituraErrors];
+
+export type DeleteOrderFurnituraResponses = {
+    /**
+     * Successful Response
+     */
+    200: FurnituraRoyxat;
+};
+
+export type DeleteOrderFurnituraResponse = DeleteOrderFurnituraResponses[keyof DeleteOrderFurnituraResponses];
+
+export type UpdateOrderFurnituraData = {
+    body: FurnituraSoni;
+    path: {
+        /**
+         * Order Id
+         */
+        order_id: number;
+        /**
+         * Qator Id
+         */
+        qator_id: number;
+    };
+    query?: never;
+    url: '/api/v1/ombor/buyurtma/{order_id}/furnitura/{qator_id}';
+};
+
+export type UpdateOrderFurnituraErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateOrderFurnituraError = UpdateOrderFurnituraErrors[keyof UpdateOrderFurnituraErrors];
+
+export type UpdateOrderFurnituraResponses = {
+    /**
+     * Successful Response
+     */
+    200: FurnituraRoyxat;
+};
+
+export type UpdateOrderFurnituraResponse = UpdateOrderFurnituraResponses[keyof UpdateOrderFurnituraResponses];
 
 export type ListBerishOrdersData = {
     body?: never;
