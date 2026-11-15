@@ -136,7 +136,7 @@ export function PrisadkaView({
   // Oxirgi skan bo'lgan qator keyingi skangacha ajralib turadi + avto-scroll
   // Kalit `route_id` — takroriy qadamda `part_id` ikki qatorni bitta kalitga
   // siqib, har refetchda yolg'on "skan bo'ldi" xatcho'pini berardi
-  const flashId = useScanFlash(
+  const flash = useScanFlash(
     parts,
     (p) => p.route_id,
     (p) => p.done,
@@ -147,7 +147,7 @@ export function PrisadkaView({
   const instRows = parts.flatMap((p) =>
     (p.instances ?? []).map((i) => ({ p, i })),
   )
-  const instFlash = useScanFlash(
+  const instFlashState = useScanFlash(
     instRows,
     instKey,
     (r) => Number(r.i.done),
@@ -281,9 +281,12 @@ export function PrisadkaView({
                 {sorted.map((r) => {
                   const { p, i } = r
                   const key = instKey(r)
+                  const flashed = instFlashState?.id === key
                   return (
                     <tr
-                      key={key}
+                      // `n` kalitda: ayni nusxa qayta skan qilinganda urish
+                      // animatsiyasi qaytadan boshlansin
+                      key={flashed ? `${key}:${instFlashState?.n}` : key}
                       id={`pv-inst-${key}`}
                       onClick={() => setSelectedId(key)}
                       // ARRA xaritasi bilan bir xil imo-ishora: ikki marta bosish
@@ -317,8 +320,10 @@ export function PrisadkaView({
                         i.done && "bg-green-50",
                         selectedId === key &&
                           "bg-primary/10 ring-2 ring-inset ring-primary",
-                        // Xatcho'p tanlov bilan birga ko'rinadi — boshqa o'q
-                        instFlash === key && "border-l-4 border-l-primary",
+                        // Skandan keyin qisqa urish, keyin xatcho'p qoladi —
+                        // tanlov bilan birga ko'rinadi, boshqa o'q
+                        flashed &&
+                          "animate-row-flash border-l-4 border-l-primary",
                       )}
                     >
                       <td className="px-4 py-3 text-lg font-semibold">
@@ -544,16 +549,20 @@ export function PrisadkaView({
               .map((p) => {
                 const finished = p.done >= p.total
                 const started = !finished && p.done > 0
+                const flashed = flash?.id === p.route_id
                 return (
                   <tr
-                    key={p.route_id}
+                    // `n` kalitda: ayni qator qayta skan qilinganda urish
+                    // animatsiyasi qaytadan boshlansin (element qayta yaraladi)
+                    key={flashed ? `${p.route_id}:${flash?.n}` : p.route_id}
                     id={`pv-row-${p.route_id}`}
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
                       started && "bg-amber-50/70",
-                      // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
-                      flashId === p.route_id && "border-l-4 border-l-primary",
+                      // Skandan keyin qisqa urish, keyin xatcho'p qoladi
+                      flashed &&
+                        "animate-row-flash border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num whitespace-nowrap px-4 py-3 font-semibold">
