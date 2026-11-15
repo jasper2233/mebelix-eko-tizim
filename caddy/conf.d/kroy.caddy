@@ -1,0 +1,21 @@
+# kroy.mebelix.uz — MX Kroy (alohida dastur, `/opt/mebelix-kroy`).
+#
+# Nega shu Caddy: serverda 443-port bitta va u prod stekiniki. Bu yerda faqat
+# so'rov uzatiladi — `kroy-api` SPA ni ham, API ni ham o'zi beradi.
+#
+# Kroy steki ko'tarilmagan bo'lsa bu blok konfigni BUZMAYDI: nom faqat so'rov
+# kelganda qidiriladi, eng yomoni 502 chiqadi.
+kroy.mebelix.uz {
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+	}
+
+	encode gzip
+
+	# Paket MES ga shu yo'ldan ketmaydi, lekin kiruvchi fayllar (loyiha importi)
+	# katta bo'ladi — Caddy sukut bo'yicha cheklamaydi, api o'zi tekshiradi.
+	handle {
+		reverse_proxy kroy-api:8000
+	}
+}
