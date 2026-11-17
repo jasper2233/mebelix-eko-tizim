@@ -16,6 +16,12 @@ dev.mebelix.uz {
 
 	encode gzip
 
+	# Upakofka postlari protokoli (prod blokidagi izohga qarang)
+	handle_path /upakofka/api/* {
+		rewrite * /api/v1/upakofka/srv{uri}
+		reverse_proxy dev-api:8000
+	}
+
 	handle /api* {
 		reverse_proxy dev-api:8000
 	}

@@ -12,6 +12,20 @@
 
 	# Host passthrough, X-Forwarded-For va X-Forwarded-Proto'ni Caddy reverse_proxy
 	# o'zi qo'yadi — qo'lda `header_up` yozish shart emas.
+	# UPAKOFKA POSTLARI (saralash / qadoqlash / saralash bo'limidagi TV) bir-biri bilan
+	# reja va saralash holatini almashadi. Ularning sahifasi NISBIY manzil so'raydi
+	# (`SRV.base = "api/"`), ya'ni `/upakofka/api/ping`. MES o'sha protokolni bajaradi
+	# (`api/routes/upakofka_srv.py`), shuning uchun tsexga alohida server kerak emas.
+	# `handle_path` prefiksni olib tashlaydi: `/upakofka/api/plans/7CAF3A` -> `/plans/7CAF3A`.
+	#
+	# Bu blok `main` ga ATAYLAB alohida chiqarildi: Caddy konfigi FAQAT prod stekidan
+	# o'qiladi, ya'ni `dev.mebelix.uz` dagi upakofka ham shu fayl bilan ishlaydi
+	# (2026-11-05 dagi kroy.caddy uzilishining saboqi — docs/07).
+	handle_path /upakofka/api/* {
+		rewrite * /api/v1/upakofka/srv{uri}
+		reverse_proxy api:8000
+	}
+
 	handle /api* {
 		reverse_proxy api:8000
 	}
