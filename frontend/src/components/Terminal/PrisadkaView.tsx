@@ -118,6 +118,10 @@ export function PrisadkaView({
   }
   // null = yuklanmayapti; son = nechta fayl saqlandi (tugmada jonli 12/69)
   const [progress, setProgress] = useState<number | null>(null)
+  // Tugma QAYSI bosqichda turganini aytadi: papka/ruxsat so'rovi brauzerning O'Z
+  // oynasida bo'ladi va u kiosk oynasi ortida ko'rinmay qolishi mumkin — ilgari
+  // operator shunda faqat «Yuklanmoqda…» ni ko'rib, nimani kutayotganini bilmasdi
+  const [faza, setFaza] = useState<"papka" | "yuklash">("papka")
   // Saqlangan SCX papkasining NOMI tugmada ko'rinadi: operator fayllar
   // qayerga tushishini ko'rib tursin («Papka» yolg'iz o'zi nima ekanini aytmasdi)
   const [dirName, setDirName] = useState<string | null>(null)
@@ -165,13 +169,27 @@ export function PrisadkaView({
   const downloadAll = async () => {
     if (!allFiles.length) return
     setProgress(0)
+    setFaza("papka")
     try {
       if (dirSupported()) {
         // BIR MARTA so'raladi: saqlangan papka bo'lsa ruxsatini yangilaymiz,
-        // bo'lmasa tanlash dialogi ochiladi va tanlov eslab qolinadi
-        let dir = await getSavedDir()
-        if (!dir) dir = await pickDir()
-        if (!dir) return // bekor qilindi
+        // bo'lmasa tanlash dialogi ochiladi va tanlov eslab qolinadi.
+        // MUHLAT: ruxsat/papka so'rovi brauzer oynasida kutib qoladi (javob
+        // berilmasa — abadiy). Muhlatsiz tugma bloklanib qolardi va operator
+        // uchun yagona chora sahifani yangilash edi (2026-11-22, Prisadka).
+        const dir = await Promise.race([
+          (async () => (await getSavedDir()) ?? (await pickDir()))(),
+          new Promise<null>((res) => setTimeout(() => res(null), 25_000)),
+        ])
+        if (!dir) {
+          // Bekor qilingan ham, muhlat tugagan ham shu yerda: ikkalasida ham
+          // operatorga ayni bir narsa kerak — brauzer so'ragan oynani tasdiqlash
+          toast.error(
+            "Papka tanlanmadi — brauzer so'ragan oynani tasdiqlang va qayta bosing",
+          )
+          return
+        }
+        setFaza("yuklash")
         // Har proyekt o'z papkasiga: "1007 Yangibozor" kabi — fayllar aralashmaydi
         // `projectFolder` faqat taqiqlangan belgilarni tozalaydi — natija
         // bo'sh qolishi mumkin (" " kabi nom), bo'sh nom bilan papka ochilmaydi
@@ -197,6 +215,7 @@ export function PrisadkaView({
           )
       } else {
         // Eski brauzer: oddiy Downloads
+        setFaza("yuklash")
         let n = 0
         for (const f of allFiles) {
           const a = document.createElement("a")
@@ -495,7 +514,9 @@ export function PrisadkaView({
           >
             {progress !== null ? (
               <span className="num">
-                Yuklanmoqda… {progress}/{allFiles.length}
+                {faza === "papka"
+                  ? "Papka so'ralmoqda…"
+                  : `Yuklanmoqda… ${progress}/${allFiles.length}`}
               </span>
             ) : (
               <>

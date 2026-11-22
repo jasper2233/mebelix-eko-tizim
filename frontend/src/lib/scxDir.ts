@@ -15,6 +15,10 @@ function idb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => req.result.createObjectStore(STORE)
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
+    // `blocked` da na `success`, na `error` ishlaydi: ushlab turilsa va'da
+    // HECH QACHON yopilmaydi va chaqiruvchi tugma abadiy «Yuklanmoqda» bo'lib qolardi
+    req.onblocked = () =>
+      reject(new Error("IndexedDB band — sahifani yangilang"))
   })
 }
 
@@ -106,6 +110,9 @@ export async function saveScxToDir(
 ): Promise<string> {
   const resp = await fetch(scxFileUrl(fileId), {
     credentials: "include",
+    // Tarmoq osilib qolsa fetch o'zi hech qachon qaytmaydi — 30 soniyadan keyin
+    // uziladi va chaqiruvchi keyingi faylga o'tadi (tsexda Wi-Fi uzilib turadi)
+    signal: AbortSignal.timeout(30_000),
   })
   if (!resp.ok) throw new Error(`Fayl ${fileId}: HTTP ${resp.status}`)
   const blob = await resp.blob()
