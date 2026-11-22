@@ -36,6 +36,7 @@ import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Button } from "@/components/ui/button"
 import { LoadingButton } from "@/components/ui/loading-button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 import { detailParts, toastScanError } from "@/utils"
@@ -169,11 +170,6 @@ export function UpakovkaView({
     return () => registerScan?.(null)
   }, [registerScan, scan.mutate])
 
-  if (isLoading) return <Skeleton className="h-full w-full" />
-  // Xatoni yutib bo'lmaydi: aks holda kiosk "Ochiq qadoq yo'q" va "Hammasi
-  // qadoqlangan." deb yolg'on tinch holat ko'rsatardi.
-  if (isError) return <QueryError onRetry={() => refetch()} />
-
   const pending: UpakovkaPending[] = data?.pending ?? []
   const closed = pachkas.filter((p) => p.status !== "open")
   const packedItems: PachkaItemRow[] = pachkas.flatMap((p) => p.items ?? [])
@@ -223,6 +219,22 @@ export function UpakovkaView({
       ),
     }))
     .sort((a, b) => tier(a) - tier(b) || a.key.localeCompare(b.key))
+
+  // Skan qilingan detal qatori «Detallar» ro'yxatida qisqa urish bilan yonadi,
+  // keyin xatcho'p qoladi + markazga scroll. Hook erta `return`lardan OLDIN
+  // chaqirilishi shart (React qoidasi), shuning uchun yuqoridagi hisob ham
+  // yuklanish/xato tekshiruvidan oldin turadi.
+  const flash = useScanFlash(
+    rows,
+    (g) => g.key,
+    (g) => g.instances.filter((i) => i.packed).length,
+    "uv-row-",
+  )
+
+  if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xatoni yutib bo'lmaydi: aks holda kiosk "Ochiq qadoq yo'q" va "Hammasi
+  // qadoqlangan." deb yolg'on tinch holat ko'rsatardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
 
   return (
     <div className="flex h-full min-h-0 gap-3">
@@ -459,12 +471,19 @@ export function UpakovkaView({
             ) : (
               rows.map((g) => {
                 const finished = g.instances.every((i) => i.packed)
+                const flashed = flash?.id === g.key
                 return (
                   <div
-                    key={g.key}
+                    // `n` kalitda: ayni detalning keyingi nusxasi qadoqlanganda
+                    // qator qayta yaralib urish qaytadan boshlansin
+                    key={flashed ? `${g.key}:${flash?.n}` : g.key}
+                    id={`uv-row-${g.key}`}
                     className={cn(
                       "flex items-center gap-3 border-b px-4 py-2 last:border-0",
                       finished && "bg-green-50",
+                      // Skandan keyin qisqa urish, keyin xatcho'p qoladi
+                      flashed &&
+                        "animate-row-flash border-l-4 border-l-primary",
                     )}
                   >
                     <div className="min-w-0 shrink-0">

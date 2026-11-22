@@ -178,6 +178,27 @@
   animation: mx-cell-flash 0.9s ease-out 1;
 }
 
+/* SKAN QILINGAN QATOR: skandan keyin ro'yxatdagi o'sha detal uch marta yonib
+   o'chadi (~1.8 s), keyin faqat chap chetdagi xatcho'p chizig'i qoladi
+   (`hooks/useScanFlash.ts`). Tsexda operator skanerni detal ustida tutadi,
+   ekranga esa keyin qaraydi — 100 qatorli ro'yxatda qaysi qator yozilganini
+   statik belgi bilan darhol topib bo'lmaydi.
+
+   Rang — `--primary` (#2f496e): qatorning HOLAT foni (oq / amber «boshlangan» /
+   yashil «bajarilgan») ustida ham ko'rinadi, yashil urish esa yashil qatorda
+   yo'qolardi. `box-shadow: inset` — fon ham, matn ham tegilmaydi. */
+@keyframes mx-row-flash {
+  from {
+    box-shadow: inset 0 0 0 9999px rgba(47, 73, 110, 0.28);
+  }
+  to {
+    box-shadow: inset 0 0 0 9999px rgba(47, 73, 110, 0);
+  }
+}
+.animate-row-flash {
+  animation: mx-row-flash 0.6s ease-out 3;
+}
+
 /* Uzoq bosish JARAYONI (kesish xaritasi, sensorli monoblok).
    Bosish 600 ms davom etadi va shu vaqtda katak asta bo'yaladi: operator
    bosish qabul qilinganini va qancha ushlash kerakligini KO'RADI. Busiz
@@ -276,6 +297,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .animate-cell-flash {
+    animation: none;
+  }
+  .animate-row-flash {
     animation: none;
   }
   .mx-draw {

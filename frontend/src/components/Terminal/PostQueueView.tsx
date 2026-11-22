@@ -21,6 +21,7 @@ import { PostHeader } from "@/components/Terminal/PostHeader"
 import { PostProgress } from "@/components/Terminal/PostProgress"
 import { useDragScroll } from "@/components/Terminal/useDragScroll"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useScanFlash } from "@/hooks/useScanFlash"
 import { formatSize } from "@/lib/mes"
 import { cn } from "@/lib/utils"
 
@@ -59,19 +60,7 @@ export function PostQueueView({
     refetchInterval: 30_000,
   })
 
-  if (isLoading) return <Skeleton className="h-full w-full" />
-  // Xato JIM yutilmasin: busiz `rows` bo'sh qolib, operator "Bu proyektda bu
-  // postga tegishli detal yo'q." ni o'qib postni ishsiz deb tashlab ketardi.
-  if (isError) return <QueryError onRetry={() => refetch()} />
-
   const rows = data?.rows ?? []
-  const label = LABELS[data?.post_code ?? ""] ?? { done: "Bajarilgan" }
-  // Material faqat bo'yoqchiga kerak — u uchun bu RANG/pardoz («LMDF BELI
-  // KARONA GLYANETS»). Stolyarda detal qo'lida, materiali chekda — shovqin.
-  const showMaterial = data?.post_code === "BOYOQ"
-  // Biriktirma ro'yxati yig'uvchiga kerak — omborchi uchun shovqin
-  const showAssembly = data?.post_code !== "TMO"
-
   // Detal bo'yicha guruh: bir detal ikki xil amal bilan kelishi mumkin
   // (stolyarkada) — kalitga amal kodi ham kiradi
   const groups = new Map<string, Group>()
@@ -85,6 +74,28 @@ export function PostQueueView({
     if (r.done || r.ready) g.instances.push(r)
     else g.waiting++
   }
+  // Skan qilingan detal qatori: qisqa urish + xatcho'p + avto-scroll. Hook erta
+  // `return`lardan OLDIN chaqirilishi shart (React qoidasi), shuning uchun
+  // guruh hisobi ham shu yerda — yuklanish/xato tekshiruvidan yuqorida.
+  const flash = useScanFlash(
+    [...groups.values()],
+    (g) => g.key,
+    (g) => g.instances.filter((i) => i.done).length,
+    "pq-row-",
+  )
+
+  if (isLoading) return <Skeleton className="h-full w-full" />
+  // Xato JIM yutilmasin: busiz `rows` bo'sh qolib, operator "Bu proyektda bu
+  // postga tegishli detal yo'q." ni o'qib postni ishsiz deb tashlab ketardi.
+  if (isError) return <QueryError onRetry={() => refetch()} />
+
+  const label = LABELS[data?.post_code ?? ""] ?? { done: "Bajarilgan" }
+  // Material faqat bo'yoqchiga kerak — u uchun bu RANG/pardoz («LMDF BELI
+  // KARONA GLYANETS»). Stolyarda detal qo'lida, materiali chekda — shovqin.
+  const showMaterial = data?.post_code === "BOYOQ"
+  // Biriktirma ro'yxati yig'uvchiga kerak — omborchi uchun shovqin
+  const showAssembly = data?.post_code !== "TMO"
+
   const doneTotal = rows.filter((r) => r.done).length
   const waitingTotal = rows.filter((r) => !r.done && !r.ready).length
   // Tartib: ishi bor (navbatda nusxa) detallar tepada, tugaganlari pastda yashil
@@ -156,12 +167,20 @@ export function PostQueueView({
               {sorted.map((g) => {
                 const r = g.first
                 const finished = isFinished(g)
+                const flashed = flash?.id === g.key
                 return (
                   <tr
-                    key={g.key}
+                    // `n` kalitda: ayni detalning ikkinchi nusxasi skan
+                    // qilinganda qator qayta yaralib urish qaytadan boshlansin
+                    key={flashed ? `${g.key}:${flash?.n}` : g.key}
+                    id={`pq-row-${g.key}`}
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
+                      // Skandan keyin qisqa urish, keyin xatcho'p qoladi —
+                      // qatorning holat rangi (yashil) bosilmaydi
+                      flashed &&
+                        "animate-row-flash border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num whitespace-nowrap px-4 py-3 font-semibold">

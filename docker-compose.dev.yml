@@ -1,0 +1,155 @@
+# dev.mebelix.uz — SINOV steki, prod bilan BITTA serverda, lekin butunlay alohida:
+# o'z bazasi, o'z Redis'i, o'z volume'lari. `/opt/mebelix-mes-dev` da yashaydi va
+# `dev` branchidan deploy bo'ladi (docs/07 §dev).
+#
+# Nega prod compose'i ishlatilmaydi: unda `caddy` bor va u 80/443 ni egallaydi —
+# ikkinchi nusxa ko'tarilmaydi. Bu yerda caddy YO'Q: prodniki dev.mebelix.uz ni
+# ham tinglaydi (`caddy/conf.d/dev.caddy`) va `dev-frontend`/`dev-api` ga uzatadi.
+#
+# ⚠️ NOM MASALASI. `api` ikki tarmoqqa ulangan: o'zining (dev) va prodning
+# tarmog'iga (Caddy ko'rishi uchun). Prod tarmog'ida ham `db`, `redis` degan
+# nomlar bor, ya'ni `POSTGRES_SERVER=db` yozilsa dev api PROD BAZASIGA tushib
+# qolishi mumkin edi. Shuning uchun dev xizmatlari `dev-` prefiksli nom bilan
+# chaqiriladi — bunday nom prod tarmog'ida umuman yo'q.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: mebelix-dev-db
+    restart: always
+    logging: *logging
+    # Proddan KICHIK: dev faqat qarab ko'rish uchun, xotira esa tsexnikidan
+    # o'g'irlanmasligi kerak (serverda jami 3.8 GB).
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=384MB
+      -c work_mem=8MB
+      -c maintenance_work_mem=64MB
+    shm_size: 64mb
+    mem_limit: 512m
+    cpus: 0.5
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      dev:
+        aliases: [dev-db]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: mebelix-dev-redis
+    restart: always
+    logging: *logging
+    # Dev navbati qimmat emas — AOF'siz, xotira chegarasi bilan
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
+    mem_limit: 128m
+    cpus: 0.25
+    networks:
+      dev:
+        aliases: [dev-redis]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
+    container_name: mebelix-dev-api
+    # Prodda 4 worker; dev'da bitta yetadi — foydalanuvchisi bir-ikki kishi
+    command: bash -c "/app/scripts/prestart.sh && gunicorn app.main:app -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000 --forwarded-allow-ips '172.16.0.0/12'"
+    restart: always
+    logging: *logging
+    mem_limit: 768m
+    cpus: 0.75
+    volumes:
+      - uploads_data:/app/backend/uploads
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: dev-db
+      REDIS_HOST: dev-redis
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      dev:
+      # Prodning tarmog'i — faqat Caddy shu nom bo'yicha topishi uchun
+      mes:
+        aliases: [dev-api]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-backend:${TAG:-latest}
+    container_name: mebelix-dev-worker
+    command: arq app.core.worker.WorkerSettings --custom-log-dict app.core.logger.ARQ_LOG_DICT
+    restart: always
+    logging: *logging
+    mem_limit: 384m
+    cpus: 0.5
+    env_file:
+      - .env
+    environment:
+      POSTGRES_SERVER: dev-db
+      REDIS_HOST: dev-redis
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      dev:
+    healthcheck:
+      test: ["CMD", "arq", "app.core.worker.WorkerSettings", "--check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: ${REGISTRY:-ghcr.io/dshukriddinov}/mebelix-mes-frontend:${TAG:-latest}
+    container_name: mebelix-dev-frontend
+    restart: always
+    logging: *logging
+    mem_limit: 128m
+    cpus: 0.25
+    depends_on:
+      - api
+    networks:
+      dev:
+      mes:
+        aliases: [dev-frontend]
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+networks:
+  dev:
+  mes:
+    external: true
+    name: mebelix-mes_default

@@ -12,6 +12,13 @@ import { useEffect, useRef, useState } from "react"
  * yashil qolaveradi) — u boshqa o'q: "siz shu yerda edingiz". Chizilishi
  * chaqiruvchida: chap chetdagi yo'g'on chiziq.
  *
+ * Qaytaradi: `{id, n}` — `id` belgilangan qator kaliti, `n` o'zgarish
+ * hisoblagichi. `n` chaqiruvchiga KERAK: qator qisqa urish animatsiyasi
+ * (`.animate-row-flash`) bilan yonib o'chadi va bir qator ketma-ket ikki marta
+ * skan qilinsa (KROMKA'da ikki qirra) `id` o'zgarmaydi — animatsiya faqat
+ * element qayta yaralganda qaytadan boshlanadi, shuning uchun `key` ga `n`
+ * qo'shiladi.
+ *
  * Qator DOM id'si: `${rowIdPrefix}${key}`.
  */
 export function useScanFlash<T>(
@@ -19,7 +26,7 @@ export function useScanFlash<T>(
   getKey: (item: T) => string | number,
   getCount: (item: T) => number,
   rowIdPrefix: string,
-): string | number | null {
+): { id: string | number; n: number } | null {
   const prevRef = useRef<Map<string | number, number>>(new Map())
   // `n` — o'zgarish hisoblagichi: bir qator ketma-ket ikki marta skan qilinsa
   // (KROMKA'da 2 tomon) id o'zgarmaydi, lekin scroll baribir kerak — aynan
@@ -59,5 +66,5 @@ export function useScanFlash<T>(
     }, 150)
     return () => clearTimeout(t)
   }, [flash, rowIdPrefix])
-  return flash?.id ?? null
+  return flash
 }

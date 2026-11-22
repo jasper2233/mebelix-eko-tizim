@@ -1,0 +1,48 @@
+# dev.mebelix.uz — SINOV muhiti (docs/07 §dev). Prod bloki bilan bir xil yo'llar,
+# lekin boshqa stekka: `dev-api` / `dev-frontend` (`docker-compose.dev.yml`).
+#
+# Nega shu Caddy: serverda 443-port bitta va u prod steknikida. Dev steki esa
+# alohida — o'z bazasi, o'z Redis'i; bu yerda faqat so'rov uzatiladi.
+#
+# Dev steki ko'tarilmagan bo'lsa bu blok konfigni BUZMAYDI: nom faqat so'rov
+# kelganda qidiriladi, ya'ni eng yomoni 502 chiqadi.
+dev.mebelix.uz {
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		# Sinov muhiti qidiruvga tushmasin — tsexnikidan farqi faqat domenda
+		X-Robots-Tag "noindex, nofollow"
+	}
+
+	encode gzip
+
+	# Upakofka postlari protokoli (prod blokidagi izohga qarang)
+	handle_path /upakofka/api/* {
+		rewrite * /api/v1/upakofka/srv{uri}
+		reverse_proxy dev-api:8000
+	}
+
+	handle /api* {
+		reverse_proxy dev-api:8000
+	}
+
+	handle /docs* {
+		reverse_proxy dev-api:8000
+	}
+
+	handle /redoc* {
+		reverse_proxy dev-api:8000
+	}
+
+	handle /openapi.json {
+		reverse_proxy dev-api:8000
+	}
+
+	handle /metrics {
+		respond "Forbidden" 403
+	}
+
+	handle {
+		reverse_proxy dev-frontend:80
+	}
+}

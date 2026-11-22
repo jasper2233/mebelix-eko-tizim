@@ -15,6 +15,10 @@ function idb(): Promise<IDBDatabase> {
     req.onupgradeneeded = () => req.result.createObjectStore(STORE)
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
+    // `blocked` da na `success`, na `error` ishlaydi: ushlab turilsa va'da
+    // HECH QACHON yopilmaydi va chaqiruvchi tugma abadiy «Yuklanmoqda» bo'lib qolardi
+    req.onblocked = () =>
+      reject(new Error("IndexedDB band — sahifani yangilang"))
   })
 }
 
@@ -70,6 +74,21 @@ export async function getSavedDir(): Promise<FileSystemDirectoryHandle | null> {
   }
 }
 
+/** Papka bosqichi nima holatda — TASHXIS uchun: stanokda oyna umuman chiqmasa
+ *  (2026-11-22) operator ekranda shu satrni ko'radi va aytib beradi. */
+export async function savedDirHolati(): Promise<string> {
+  try {
+    const h = await kvGet<FileSystemDirectoryHandle>(KEY)
+    if (!h) return "saqlangan papka yo'q"
+    const perms = h as unknown as {
+      queryPermission: (o: { mode: string }) => Promise<string>
+    }
+    return `papka "${h.name}", ruxsat: ${await perms.queryPermission({ mode: "readwrite" })}`
+  } catch (e) {
+    return `papka holati o'qilmadi (${(e as Error)?.name})`
+  }
+}
+
 /** Saqlangan papka o'chirilgan/ko'chirilgan — eslab qolinganini tashlaymiz,
  *  keyingi bosishda tanlash dialogi qayta ochiladi (aks holda o'sha o'lik
  *  handle har safar yiqilaverardi) */
@@ -106,6 +125,9 @@ export async function saveScxToDir(
 ): Promise<string> {
   const resp = await fetch(scxFileUrl(fileId), {
     credentials: "include",
+    // Tarmoq osilib qolsa fetch o'zi hech qachon qaytmaydi — 30 soniyadan keyin
+    // uziladi va chaqiruvchi keyingi faylga o'tadi (tsexda Wi-Fi uzilib turadi)
+    signal: AbortSignal.timeout(30_000),
   })
   if (!resp.ok) throw new Error(`Fayl ${fileId}: HTTP ${resp.status}`)
   const blob = await resp.blob()

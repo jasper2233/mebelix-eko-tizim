@@ -484,7 +484,7 @@ export function KromkaView({
   }, [registerScan])
 
   // Oxirgi skan bo'lgan detal qatori keyingi skangacha ajralib turadi + avto-scroll
-  const flashId = useScanFlash(
+  const flash = useScanFlash(
     parts,
     (p) => p.route_id,
     (p) => p.instances.reduce((s, i) => s + i.done, 0),
@@ -627,16 +627,22 @@ export function KromkaView({
                 const started = !finished && tier(p) === 0
                 const pazBor = (p.paz_sides ?? []).length > 0
                 const frezBor = (p.frez_sides ?? []).length > 0
+                const flashed = flash?.id === p.route_id
                 return (
                   <tr
-                    key={p.route_id}
+                    // `n` kalitda: ayni qator ikkinchi marta skan qilinganda
+                    // (ikkinchi qirra) qator qayta yaralsin — aks holda urish
+                    // animatsiyasi qaytadan boshlanmaydi
+                    key={flashed ? `${p.route_id}:${flash?.n}` : p.route_id}
                     id={`kv-row-${p.route_id}`}
                     className={cn(
                       "border-b last:border-0",
                       finished && "bg-green-50",
                       started && "bg-amber-50/70",
-                      // Xatcho'p: holat rangini bosmaydi, chap chetda turadi
-                      flashId === p.route_id && "border-l-4 border-l-primary",
+                      // Skandan keyin qisqa urish, keyin xatcho'p qoladi:
+                      // ikkisi ham qatorning holat rangini bosmaydi
+                      flashed &&
+                        "animate-row-flash border-l-4 border-l-primary",
                     )}
                   >
                     <td className="num whitespace-nowrap px-4 py-3 font-semibold">

@@ -230,6 +230,46 @@ CI chaqiradi: `TAG=<git sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh`. O
 
 Tozalash `docker images --format '{{.Repository}}:{{.Tag}}' | grep 'mebelix-mes-'` bilan ishlaydi, `--filter=reference='mebelix-mes-*'` bilan emas: docker glob'i `/` dan o'tmaydi, ya'ni `ghcr.io/<owner>/mebelix-mes-*` nomlariga u hech qachon mos kelmasdi va eski image'lar to'planib qolardi. Natija o'sha `grep -vE ":(TAG|STABLE)$"` filtridan o'tkaziladi. **Rollback va DB (2026-09-02):** smoke yiqilsa eski image `SKIP_MIGRATIONS=1` bilan ko'tariladi — `prestart.sh` migratsiyani o'tkazib yuboradi, chunki eski image'ning alembic'i bazadagi yangi revision'ni tanimaydi va `upgrade head` `Can't locate revision` bilan yiqilib api'ni crash loop'ga tushirardi (2026-09-02 da repro bilan isbotlangan; bungacha har migratsiyali deploy'da avto-rollback ishlamas edi). `alembic_version` ga tegilmaydi (`stamp` YO'Q — u keyingi deploy'da migratsiyani qayta yuritib yiqitardi), keyingi to'g'ri deploy `upgrade head` bilan davom etadi. **Qoida: migratsiya oldingi reliz bilan mos bo'lsin (expand/contract)** — ustun/jadval qo'shish bemalol; o'chirish/nomini o'zgartirish — kod uni ishlatmay qo'ygan KEYINGI relizda. Additiv bo'lmagan migratsiya deploy qilinganda `ROLLBACK_DOWNGRADE=1`: rollback'dan oldin YANGI image bilan `alembic downgrade <eski image head>` yuriladi (eski head `TAG=<stable> compose run --rm --no-deps api python -m alembic heads` dan). Bu bayroq FAQAT serverda qo'lda deploy'da ishlaydi (`cd /opt/mebelix-mes && docker login ghcr.io` PAT bilan, so'ng `ROLLBACK_DOWNGRADE=1 TAG=<sha> REGISTRY=ghcr.io/<owner> bash scripts/deploy.sh`) — CI ssh qatori faqat `TAG`/`REGISTRY` uzatadi. Yana ikki qoida: (1) prodga tushgan (hatto rollback qilingan) migratsiya fayli QAYTA YOZILMAYDI — tuzatish yangi migratsiya bilan; agar id o'zgartirilgan/o'chirilgan bo'lsa keyingi deploy `Can't locate revision` beradi va deploy'dan oldin qo'lda `alembic stamp <mavjud id>` kerak — `stamp` o'rinli bo'lgan yagona holat shu; (2) rollback holatida (stable konteyner `SKIP_MIGRATIONS=1` bilan turganda) qo'lda `docker compose up -d` qilinsa `SKIP_MIGRATIONS=1` ni ham bering, aks holda env o'zgargani uchun konteyner qayta yaratilib eski alembic yana yiqiladi. Yangi NOT NULL ustun — `server_default` bilan (eski image `seed_defaults`/INSERT'lari yiqilmasin). Prestart'ning o'zi yiqilgan holat (migratsiya xatosi) ham rollback'ga yetadi: `up -d` `dependency failed` bilan exit 1 bersa ham skript to'xtamaydi, smoke yiqilib rollback ishlaydi (DB tranzaksiya sabab eski revision'da qoladi).
 
+### Sinov muhiti — `dev.mebelix.uz` (2026-10-24)
+
+O'zgarish tsexga tushishidan oldin **ko'rib olinadigan** joy: `https://dev.mebelix.uz`. Prod bilan
+BITTA serverda, lekin butunlay alohida stek — o'z bazasi, o'z Redis'i, o'z volume'lari
+(`docker-compose.dev.yml`, `/opt/mebelix-mes-dev`, compose loyihasi `mebelix-dev`). Alohida
+droplet olinmadi: prod konteynerlarining hammasi ~710 MB oladi, serverda esa 2.6 GB bo'sh
+(2026-10-24 o'lchovi), ya'ni ikkinchi stek joy topadi. Dev konteynerlari `mem_limit` va `cpus`
+bilan bo'g'ilgan — sinovdagi og'ir so'rov tsexdagi MES ni sekinlashtira olmasin.
+
+**Branch oqimi.** `dev` branchiga push → CI (`deploy-dev` job) dev serverga chiqaradi, **soat
+talabisiz** (tsexga tegmaydi). Ma'qul kelgan variant `main` ga **`git merge --ff-only dev`**
+bilan o'tkaziladi: commit sha o'zgarmaydi, ya'ni prodga AYNAN dev'da sinalgan image tushadi —
+qayta qurilmaydi. Shu sabab `images` job'i endi `dev` push'ida ham yuradi, lekin `:latest`
+tegini FAQAT `main` qo'yadi (u — prod compose'idagi `${TAG:-latest}` defaulti).
+
+**Tarmoq va nomlar.** 443-port bitta va u prod stekiniki, shuning uchun dev saytini ham
+o'sha Caddy beradi: `caddy/conf.d/dev.caddy` (asosiy `Caddyfile` dagi `import
+/etc/caddy/conf.d/*.caddy` orqali) so'rovni `dev-api` / `dev-frontend` ga uzatadi. Dev
+`api` va `frontend` prod tarmog'iga (`mebelix-mes_default`) SHU nomlar bilan qo'shiladi.
+⚠️ Shuning uchun dev xizmatlari `dev-` prefiksli nom bilan chaqiriladi va `.env` da
+`POSTGRES_SERVER=dev-db`, `REDIS_HOST=dev-redis` turadi: prod tarmog'ida ham `db`, `redis`
+degan nomlar bor — oddiy `db` yozilsa dev api PROD BAZASIGA ulanib qolishi mumkin edi.
+
+**Ma'lumot.** `scripts/dev_refresh.sh` (serverda qo'lda) prod bazasidan `pg_dump` oladi, dev
+bazasiga tiklaydi va `scripts/dev_anonymize.sql` bilan shaxsiy ma'lumotni almashtiradi:
+mijoz ismi/telefoni/manzili, hodim ismi/telefoni, hisoblarning ismi va telefoni soxtaga
+aylanadi; agent va chek qurilmasi tokenlari NULL qilinadi (tsexdagi kompyuter adashib dev'ga
+ulanib qolmasin). Parol HASHLARI ko'chiriladi — dev'ga o'z parolingiz bilan kirasiz; ularni
+"demo" parolga almashtirish dev'ni taxmin qilinadigan qilib qo'yardi. Buyurtma, detal,
+marshrut, skan, kromka o'lchovi va katalog — tegilmaydi, sinovning ma'nosi shularda.
+
+**Deploy.** `scripts/deploy-dev.sh` — pull → `up -d` → smoke (`dev-api:8000/api/v1/ready`
+tarmoq ichidan). Avto-rollback va `.stable_tag` ATAYLAB yo'q: dev yiqilsa, yiqilgan holicha
+tursin — sabab shu yerda ko'rinadi. Caddy reload ham shart emas: dev vhost'i prod deployida
+(`main`) keladi.
+
+**Dev nima QILMAYDI:** Telegram xabari yubormaydi, backup yozmaydi, stanok agentlariga exe
+tarqatmaydi (`agent` job dev'da kutilmaydi), qidiruv tizimlariga tushmaydi
+(`X-Robots-Tag: noindex`). Kirish baribir login orqali — MES da ochiq sahifa yo'q.
+
 ### `scripts/backup.sh` — kunlik shifrlangan backup (DB + yuklangan fayllar)
 
 Server cron'ida kunlik ishlaydi (`0 18 * * *` — server UTC'da, ya'ni **23:00 Toshkent**: ish kuni tugagach). Fayl nomidagi sana ham Toshkent bo'yicha olinadi (`TZ=Asia/Tashkent date +%F`), aks holda cron soati bir oz surilsa nom bir kun orqaga tushib qolardi. Oqim: `pg_dump` (prod composedagi `db` konteyneri ichida) | `gzip` | `openssl aes-256-cbc -pbkdf2` (parol — `.env` dagi `ADMIN_PASSWORD`) → natija **serverdagi `/var/backups/mebelix/mebelix-YYYY-MM-DD.sql.gz.enc`** fayliga yoziladi — ataylab **deploy daraxtidan tashqarida**: CI `rsync --delete` bilan `/opt/mebelix-mes` ni repo bilan tenglashtiradi va repoda yo'q katalogni o'chirib yuborardi (backuplar aynan shu tarzda yo'qolgan edi). So'ng ikkita nazorat: fayl 1000 baytdan kichik bo'lsa dump yiqilgan deb hisoblanadi (fayl o'chiriladi, script `exit 1`), va `BACKUP_KEEP_DAYS` (default `14`) kundan eski nusxalar `find … -delete` bilan tozalanadi. Katalogni `BACKUP_DIR` (default `/var/backups/mebelix`), saqlash muddatini `BACKUP_KEEP_DAYS` o'zgartiradi — ikkalasi ham `.env.example` da yo'q, kerak bo'lsa `.env` ga qo'lda qo'shiladi. Repo ichidagi `backups/` `.gitignore` da qoladi (kimdir `BACKUP_DIR` ni nisbiy yo'lga qaytarsa ham).
