@@ -317,16 +317,52 @@ class ParsedPart:
     forced_passes: int = 0
     #: MX paketi (2026-11-22): figurali detal — arraga to'rtburchak, figura keyin kesiladi.
     #: `MES_PAKET_V1` `parts[].figure`:
-    #: {size, removed (shtrix halqalari, evenodd), cuts [{path, length, edge, source, rule}], edge_m}. Chek va terminal
-    #: eskizi shundan chizadi; kromkali figurali qirra bo'lsa marshrutga OVAL posti qo'shiladi.
+    #: {size, removed (shtrix halqalari, evenodd), cuts [{path, length, edge, source, rule, shape}], edge_m}.
+    #: Chek va terminal eskizi shundan chizadi. Marshrut: `kromka_marshrut` (egri — OVAL, to'g'ri chiziqli — KROMKA).
     figure: dict[str, Any] | None = None
+
+    @staticmethod
+    def _toghri(c: dict[str, Any]) -> bool:
+        """Yangi qirra bitta to'g'ri chiziqmi (MX `shape`; eski paketda — ikki nuqtali yo'l)."""
+        shape = c.get("shape")
+        return shape == "line" if shape else len(c.get("path") or []) == 2
+
+    def kromka_marshrut(self, *, oval_post_bor: bool) -> tuple[int, bool]:
+        """(KROMKA o'tishlari, OVAL kerakmi). Korxona qoidasi (2026-11-22): egri figurali kromka HAR DOIM OVAL da;
+        faqat to'g'ri chiziqli yangi qirra (qiya burchak, to'g'ri kesik) oddiy KROMKA postida — har biri bitta o'tish.
+        OVAL posti sozlanmagan bo'lsa egri qirralar ham KROMKA o'tishiga qo'shiladi (ish yo'qolmasin).
+        Narx kromka turidan (post bo'yicha alohida narx yo'q)."""
+        ovalga = self.oval_edge_m > 0 and oval_post_bor
+        egri = 0 if ovalga else self.figure_curve_cuts
+        return self.kromka_sides + self.figure_edge_cuts + egri, ovalga
+
+    @property
+    def figure_edge_cuts(self) -> int:
+        """Kromkali TO'G'RI figurali qirralar soni — oddiy KROMKA postida har biri bitta o'tish."""
+        if not self.figure:
+            return 0
+        return sum(1 for c in self.figure.get("cuts") or [] if c.get("edge") and self._toghri(c))
+
+    @property
+    def figure_curve_cuts(self) -> int:
+        """Kromkali EGRI figurali qirralar soni (OVAL posti)."""
+        if not self.figure:
+            return 0
+        return sum(1 for c in self.figure.get("cuts") or [] if c.get("edge") and not self._toghri(c))
 
     @property
     def oval_edge_m(self) -> float:
-        """Figurali (egri / kesilgan) qirralardagi kromka, m — 1 dona detal uchun."""
+        """Egri (figurali) qirralardagi kromka, m — 1 dona detal uchun (OVAL posti)."""
         if not self.figure:
             return 0.0
-        return sum(float(c.get("length") or 0) for c in self.figure.get("cuts") or [] if c.get("edge")) / 1000
+        return (
+            sum(
+                float(c.get("length") or 0)
+                for c in self.figure.get("cuts") or []
+                if c.get("edge") and not self._toghri(c)
+            )
+            / 1000
+        )
 
     @property
     def key(self) -> str:

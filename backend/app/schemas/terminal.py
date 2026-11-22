@@ -431,6 +431,8 @@ class CutmapFigureCut(BaseModel):
     edge: CutmapFigureEdge | None = None
     source: str = "auto"
     rule: str = ""
+    #: line — bitta to'g'ri chiziq (oddiy KROMKA), curve — egri (OVAL)
+    shape: str = "curve"
 
 
 class CutmapFigure(BaseModel):

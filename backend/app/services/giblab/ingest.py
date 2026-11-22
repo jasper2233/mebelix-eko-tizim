@@ -694,13 +694,14 @@ async def ingest_project(
             # emas: `usedCount="0"` detalni GibLab ataylab joylashtirmagan (`pp.placed`).
             if pp.placed and (pp.material_name or pp.label_num is not None):
                 steps.append((1, PostCode.ARRA, 1))  # 1 = Raspil
-            if pp.kromka_sides:
-                steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
+            # Figurali qirra kromkasi (MX paketi): egri — OVAL, to'g'ri chiziqli — oddiy KROMKA o'tishi
+            kromka_otish, ovalga = pp.kromka_marshrut(oval_post_bor=PostCode.OVAL in posts)
+            if kromka_otish:
+                steps.append((3, PostCode.KROMKA, kromka_otish))  # 3 = Kromka
             if prisadka := pp.prisadka_passes():
                 steps.append((6, PostCode.PRISADKA, prisadka))  # 6 = Prisadka
-            # Figurali qirra kromkasi (MX paketi) — figura stanokda kesilgandan KEYIN, alohida OVAL postida.
-            # Post sozlanmagan bo'lsa qadam qo'shilmaydi (import to'xtamaydi) — texnolog qo'lda qo'shadi, avvalgidek.
-            if pp.oval_edge_m > 0 and PostCode.OVAL in posts:
+            # Egri figurali kromka — figura stanokda kesilgandan KEYIN, OVAL postida
+            if ovalga:
                 steps.append((5, PostCode.OVAL, 1))  # 5 = Oval kromka
             # Qadoqlash — anketada belgilangan bo'lsa HAMMA detalga oxirgi qadam.
             # Qisman qadoqlash yo'q: buyurtma yo butunlay qadoqlanadi, yo yo'q.

@@ -106,8 +106,26 @@ print("1. Paket → ParsedPart")
 pk = parse_package(PAKET, ORDER)
 dets = {p.code: p for pr in pk.project.products for p in pr.parts}
 tek("figurali detalda figure bor", bool(dets["001"].figure), True)
-tek("oval kromka metri (1 dona)", round(dets["001"].oval_edge_m, 3), 0.2)
+tek("oval kromka metri (1 dona, egri qirra)", round(dets["001"].oval_edge_m, 3), 0.2)
 tek("oddiy detalda figura yo'q", (dets["002"].figure, dets["002"].oval_edge_m), (None, 0.0))
+
+print("1b. Marshrut: egri figurali kromka — OVAL, to'g'ri chiziqli — oddiy KROMKA")
+d1 = dets["001"]  # 2 to'g'ri tomon (t, r) + 1 kromkali EGRI figurali qirra (shape yo'q, 3 nuqta)
+tek("egri qirra — KROMKA 2 + OVAL", d1.kromka_marshrut(oval_post_bor=True), (2, True))
+tek("OVAL posti sozlanmagan — egri qirra ham KROMKA: 3", d1.kromka_marshrut(oval_post_bor=False), (3, False))
+d1.figure = dict(
+    d1.figure,
+    cuts=[dict(c, shape="line") for c in d1.figure["cuts"]]
+    + [
+        {"path": [[0, 0], [10, 10], [20, 30]], "length": 40, "edge": {"ref": "el1", "symbol": "A"}, "shape": "curve"},
+        {"path": [[0, 300], [50, 400]], "length": 112, "edge": None, "shape": "line"},
+    ],
+)
+tek("to'g'ri qirra KROMKA ga (+1), egri — OVAL", d1.kromka_marshrut(oval_post_bor=True), (3, True))
+tek("OVAL metri faqat egri qirralardan", round(d1.oval_edge_m, 3), 0.04)
+d1.figure = dict(d1.figure, cuts=[c for c in d1.figure["cuts"] if c.get("shape") == "line"])
+tek("faqat to'g'ri qirra — OVAL yo'q, KROMKA 3", d1.kromka_marshrut(oval_post_bor=True), (3, False))
+tek("figurasiz detal o'zgarmaydi", dets["002"].kromka_marshrut(oval_post_bor=True), (0, False))
 
 print("2. Terminal sxemasi")
 cf = CutmapFigure.model_validate(FIGURA)

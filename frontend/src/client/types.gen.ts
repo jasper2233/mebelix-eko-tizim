@@ -2166,6 +2166,10 @@ export type CutmapFigureCut = {
      * Rule
      */
     rule?: string;
+    /**
+     * Shape
+     */
+    shape?: string;
 };
 
 /**
