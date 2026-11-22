@@ -160,6 +160,94 @@ def _teksturasiz(band: list[tuple[int, int]], joylar: tuple[int, ...]) -> list[i
     return qolgan or list(joylar)
 
 
+def _halqa_ichida(x: float, y: float, halqa: list[list[float]]) -> bool:
+    ichida = False
+    for (x1, y1), (x2, y2) in zip(halqa, halqa[1:] + halqa[:1], strict=False):
+        if (y1 > y) != (y2 > y) and x < (x2 - x1) * (y - y1) / (y2 - y1) + x1:
+            ichida = not ichida
+    return ichida
+
+
+def _olib_tashlangan(x: float, y: float, halqalar: list[list[list[float]]]) -> bool:
+    """Nuqta kesib tashlanadigan qismdami — `evenodd` qoidasi (MX `figure.removed` bilan bir xil)."""
+    return sum(_halqa_ichida(x, y, h) for h in halqalar) % 2 == 1
+
+
+def figure_removed_sides(figure: dict[str, Any] | None) -> set[str]:
+    """Butunlay kesib tashlanadigan tomonlar (`t`/`b`/`l`/`r`): ularning to'g'ri kromka chizig'i chizilmaydi —
+    kromka figurali qirraga o'tgan (yoy tepa va h.k.)."""
+    if not figure or not figure.get("size"):
+        return set()
+    L, W = float(figure["size"][0]), float(figure["size"][1])
+    rings = figure.get("removed") or []
+    out = set()
+    e = 0.3
+    for tomon, nuqtalar in (
+        ("t", [(L * k / 10, e) for k in range(1, 10)]),
+        ("b", [(L * k / 10, W - e) for k in range(1, 10)]),
+        ("l", [(e, W * k / 10) for k in range(1, 10)]),
+        ("r", [(L - e, W * k / 10) for k in range(1, 10)]),
+    ):
+        if sum(_olib_tashlangan(x, y, rings) for x, y in nuqtalar) >= 8:
+            out.add(tomon)
+    return out
+
+
+def _figura_chiz(
+    img: Any, draw: Any, figure: dict[str, Any], box: tuple[int, int, int, int], burilgan: bool, bt: int
+) -> None:
+    """Figurali detal (MX paketi, `MES_PAKET_V1` `parts[].figure`): kesib tashlanadigan qism yo'l-yo'l shtrix bilan,
+    yangi qirra — ingichka chiziq, kromkali yangi qirra — qalin chiziq + kromka harfi. Arra to'g'ri to'rtburchak
+    kesadi, figurani keyin stanok (yoki arra qayta) kesadi — arrachi va kromkachi ikkalasi ham shuni ko'radi."""
+    from PIL import Image, ImageChops, ImageDraw
+
+    bx, by, bw, bh = box
+    L, W = float(figure["size"][0] or 1), float(figure["size"][1] or 1)
+    sx = bw / (W if burilgan else L)
+    sy = bh / (L if burilgan else W)
+
+    def px(p: list[float]) -> tuple[int, int]:
+        x, y = float(p[0]), float(p[1])
+        gor, ver = (y, L - x) if burilgan else (x, y)
+        return (bx + round(gor * sx), by + round(ver * sy))
+
+    # evenodd: har halqa niqobda XOR qilinadi (tashqi figura = to'rtburchak + kontur — oradagi qism)
+    niqob = Image.new("1", img.size, 0)
+    for h in figure.get("removed") or []:
+        if len(h) < 3:
+            continue
+        bir = Image.new("1", img.size, 0)
+        ImageDraw.Draw(bir).polygon([px(p) for p in h], fill=1)
+        niqob = ImageChops.logical_xor(niqob, bir)
+    # 45° shtrix, qadam ~1.1 mm — 203 dpi termal chekda aniq ko'rinadi, matn bilan adashmaydi
+    shtrix = Image.new("1", img.size, 0)
+    sd = ImageDraw.Draw(shtrix)
+    qadam = max(4, round(1.1 * _MM))
+    for k in range(-img.size[1], img.size[0], qadam):
+        sd.line((k, 0, k + img.size[1], img.size[1]), fill=1, width=1)
+    oq = Image.new("RGB", img.size, "white")
+    qora = Image.new("RGB", img.size, "black")
+    img.paste(oq, (0, 0), niqob)  # olib tashlanadigan qism — oq fon
+    img.paste(qora, (0, 0), ImageChops.logical_and(niqob, shtrix))
+    for c in figure.get("cuts") or []:
+        yol = [px(p) for p in c.get("path") or []]
+        if len(yol) < 2:
+            continue
+        if c.get("edge"):
+            draw.line(yol, fill="black", width=bt + 1, joint="curve")
+            sym = str((c["edge"] or {}).get("symbol") or "")[:3]
+            if sym:
+                mx, my = yol[len(yol) // 2]
+                # harf detal ICHIGA — eskiz markaziga qarab siljitiladi
+                cx, cy = bx + bw / 2, by + bh / 2
+                dx, dy = cx - mx, cy - my
+                n = max(1.0, (dx * dx + dy * dy) ** 0.5)
+                t = (mx + dx / n * 1.8 * _MM, my + dy / n * 1.8 * _MM)
+                draw.text(t, sym, fill="black", font=_font(2.4, bold=True), anchor="mm")
+        else:
+            draw.line(yol, fill="black", width=2, joint="curve")
+
+
 def _canvas() -> tuple[Any, Any, int]:
     """Bo'sh 80x60 mm blank — to'rtala chek shundan boshlanadi."""
     from PIL import Image, ImageDraw
@@ -434,9 +522,15 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         by = area_y
         # kamida 2px kontur: GDI kichraytirishda 1px chiziq yo'qolishi mumkin
         draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=2)
+        # Figurali detal (MX paketi): kesib tashlanadigan qism shtrixlanadi, yangi qirralar va ularning kromkasi
+        figura = (d.xnc_summary or {}).get("figure")
+        yoq_tomonlar = figure_removed_sides(figura)
+        if figura and figura.get("size"):
+            _figura_chiz(img, draw, figura, (bx, by, bw, bh), burilgan, bt)
+            draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=1)  # zagotovka chegarasi ko'rinib tursin
 
         for tomon, joy in qirra.items():
-            if not d.edges.get(tomon):
+            if not d.edges.get(tomon) or tomon in yoq_tomonlar:
                 continue
             if joy == "chap":
                 draw.rectangle((bx - off - bt, by, bx - off, by + bh), fill="black")

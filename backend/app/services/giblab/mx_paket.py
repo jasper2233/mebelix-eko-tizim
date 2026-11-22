@@ -157,6 +157,7 @@ def parse_package(pkg: dict[str, Any], order_number: str) -> MxPaket:
             label_num=int(d["mx_uid"]),
             placed=any(i.get("pattern_no") is not None for i in inst),
             forced_passes=1 if d.get("xnc_refs") and d["key"] in cnc_keys else 0,
+            figure=d.get("figure") if isinstance(d.get("figure"), dict) else None,
         )
         if pp.key != d.get("key"):
             raise ParseError(f"{d.get('key')}: detal kaliti {pp.key} ga mos emas.")

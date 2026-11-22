@@ -2120,6 +2120,73 @@ export type CutmapEdgeBore = {
 };
 
 /**
+ * CutmapFigure
+ *
+ * Arraga to'rtburchak beriladi, figura keyin kesiladi: `removed` — shtrixlanadigan qism halqalari (evenodd).
+ */
+export type CutmapFigure = {
+    /**
+     * Size
+     */
+    size?: Array<number>;
+    /**
+     * Removed
+     */
+    removed?: Array<Array<Array<number>>>;
+    /**
+     * Cuts
+     */
+    cuts?: Array<CutmapFigureCut>;
+    /**
+     * Edge M
+     */
+    edge_m?: number;
+};
+
+/**
+ * CutmapFigureCut
+ *
+ * Figura kesimidan keyingi yangi qirra: siniq chiziq (mm, detal koordinatasida) va kromkasi.
+ */
+export type CutmapFigureCut = {
+    /**
+     * Path
+     */
+    path?: Array<Array<number>>;
+    /**
+     * Length
+     */
+    length?: number;
+    edge?: CutmapFigureEdge | null;
+    /**
+     * Source
+     */
+    source?: string;
+    /**
+     * Rule
+     */
+    rule?: string;
+};
+
+/**
+ * CutmapFigureEdge
+ */
+export type CutmapFigureEdge = {
+    /**
+     * Ref
+     */
+    ref?: string;
+    /**
+     * Symbol
+     */
+    symbol?: string;
+    /**
+     * Name
+     */
+    name?: string;
+};
+
+/**
  * CutmapHole
  *
  * Bitta detalning birlashtirilgan XNC qatlami.
@@ -2219,6 +2286,7 @@ export type CutmapMachining = {
      * Frez Paths
      */
     frez_paths?: Array<Array<Array<number>>>;
+    figure?: CutmapFigure | null;
 };
 
 /**

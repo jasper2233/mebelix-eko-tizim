@@ -59,6 +59,38 @@ export function PartPreview({
         )
         .join(" "),
     )
+  // FIGURALI detal (MX paketi `parts[].figure`): arra to'rtburchak kesadi, figura
+  // keyin kesiladi — olib tashlanadigan qism shtrix, yangi qirra chiziq, kromkali
+  // yangi qirra qalin chiziq. Chek (`labels.py: _figura_chiz`) bilan bir xil til.
+  const fig = ishlov?.figure
+  const figXY = (x: number, y: number) =>
+    holeXY(local, { l: fig?.size?.[0], w: fig?.size?.[1] }, x, y)
+  const figRings = (fig?.removed ?? [])
+    .filter((h) => h.length >= 3)
+    .map((h) => h.map((q) => figXY(q[0], q[1])))
+  const figD = figRings
+    .map((h) => `M ${h.map((q) => q.join(" ")).join(" L ")} Z`)
+    .join(" ")
+  // evenodd: nuqta nechta halqa ichida — toq bo'lsa olib tashlanadi
+  const olibTashlangan = (x: number, y: number) =>
+    figRings.reduce((n, h) => {
+      let ichida = false
+      for (let i = 0, j = h.length - 1; i < h.length; j = i++) {
+        const [xi, yi] = h[i]
+        const [xj, yj] = h[j]
+        if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi)
+          ichida = !ichida
+      }
+      return n + (ichida ? 1 : 0)
+    }, 0) %
+      2 ===
+    1
+  // Butunlay kesib tashlanadigan tomonning to'g'ri kromka chizig'i chizilmaydi:
+  // uning kromkasi figurali qirraga o'tgan (yoy tepa va h.k.)
+  const tomonYoq = (nuqta: (k: number) => [number, number]) =>
+    figRings.length > 0 &&
+    [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((k) => olibTashlangan(...nuqta(k)))
+      .length >= 8
   const ty = oy - 13
   const lx = ox - 13
   // Balandlik chegarasi: chizma dialog kengligiga cho'zilib ~370px olar,
@@ -79,6 +111,75 @@ export function PartPreview({
         stroke="#242424"
         strokeWidth="1.5"
       />
+      {fig && figD && (
+        <g>
+          <defs>
+            <pattern
+              id={`shtrix-${part.id}`}
+              width="6"
+              height="6"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(45)"
+            >
+              <rect width="6" height="6" fill="#fafafa" />
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="6"
+                stroke="#444"
+                strokeWidth="1.4"
+              />
+            </pattern>
+          </defs>
+          <path
+            d={figD}
+            fill={`url(#shtrix-${part.id})`}
+            fillRule="evenodd"
+            stroke="none"
+          />
+        </g>
+      )}
+      {fig?.cuts?.map((c, i) => {
+        const pts = (c.path ?? [])
+          .map((q) => figXY(q[0], q[1]).join(","))
+          .join(" ")
+        const kromka = !!c.edge
+        return (
+          <g key={`fc${i}`}>
+            <polyline
+              points={pts}
+              fill="none"
+              stroke={kromka ? "#111" : "#242424"}
+              strokeWidth={kromka ? 4 : 1.5}
+              strokeLinejoin="round"
+            />
+            {kromka && c.edge?.symbol && c.path && c.path.length > 0
+              ? (() => {
+                  const [mx, my] = figXY(
+                    c.path[Math.floor(c.path.length / 2)][0],
+                    c.path[Math.floor(c.path.length / 2)][1],
+                  )
+                  const dx = ox + rw / 2 - mx
+                  const dy = oy + rh / 2 - my
+                  const n = Math.max(1, Math.hypot(dx, dy))
+                  return (
+                    <text
+                      x={mx + (dx / n) * 11}
+                      y={my + (dy / n) * 11}
+                      fontSize="11"
+                      fontWeight="700"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      {c.edge.symbol}
+                    </text>
+                  )
+                })()
+              : null}
+          </g>
+        )
+      })}
       {/* KROMKA — chekdagi kabi konturdan tashqarida qalin chiziq.
           Burilish hisobi SHART EMAS: backend `eW`/`eH` ni katak qanday
           joylashganiga qarab allaqachon hal qilgan (`cutmap._edge_markers`),
@@ -86,12 +187,40 @@ export function PartPreview({
           Pastdagi "chap 400 (A)" yozuvi ham xuddi shu manbadan — chizma bilan
           matn hech qachon ziddiyatga tushmaydi. */}
       {[
-        { bor: part.eW?.[0], x: ox - 5, y: oy, w: 3, h: rh },
-        { bor: part.eW?.[1], x: ox + rw + 2, y: oy, w: 3, h: rh },
-        { bor: part.eH?.[0], x: ox, y: oy - 5, w: rw, h: 3 },
-        { bor: part.eH?.[1], x: ox, y: oy + rh + 2, w: rw, h: 3 },
+        {
+          bor: part.eW?.[0],
+          x: ox - 5,
+          y: oy,
+          w: 3,
+          h: rh,
+          yoq: tomonYoq((k) => [ox + 2, oy + (rh * k) / 10]),
+        },
+        {
+          bor: part.eW?.[1],
+          x: ox + rw + 2,
+          y: oy,
+          w: 3,
+          h: rh,
+          yoq: tomonYoq((k) => [ox + rw - 2, oy + (rh * k) / 10]),
+        },
+        {
+          bor: part.eH?.[0],
+          x: ox,
+          y: oy - 5,
+          w: rw,
+          h: 3,
+          yoq: tomonYoq((k) => [ox + (rw * k) / 10, oy + 2]),
+        },
+        {
+          bor: part.eH?.[1],
+          x: ox,
+          y: oy + rh + 2,
+          w: rw,
+          h: 3,
+          yoq: tomonYoq((k) => [ox + (rw * k) / 10, oy + rh - 2]),
+        },
       ].map((k, i) =>
-        k.bor ? (
+        k.bor && !k.yoq ? (
           <rect
             key={`k${i}`}
             x={k.x}

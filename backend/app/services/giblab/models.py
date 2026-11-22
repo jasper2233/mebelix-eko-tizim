@@ -315,6 +315,18 @@ class ParsedPart:
     #: MX paketi: ishlov dasturi (XNC) va uning stanok fayli bor — PRISADKA qadami ochiladi, garchi
     #: `xnc_ops` (GibLab XML) bo'lmasa ham (`MES_PAKET_V1.md` §1 «machining» qoidasi)
     forced_passes: int = 0
+    #: MX paketi (2026-11-22): figurali detal — arraga to'rtburchak, figura keyin kesiladi.
+    #: `MES_PAKET_V1` `parts[].figure`:
+    #: {size, removed (shtrix halqalari, evenodd), cuts [{path, length, edge, source, rule}], edge_m}. Chek va terminal
+    #: eskizi shundan chizadi; kromkali figurali qirra bo'lsa marshrutga OVAL posti qo'shiladi.
+    figure: dict[str, Any] | None = None
+
+    @property
+    def oval_edge_m(self) -> float:
+        """Figurali (egri / kesilgan) qirralardagi kromka, m — 1 dona detal uchun."""
+        if not self.figure:
+            return 0.0
+        return sum(float(c.get("length") or 0) for c in self.figure.get("cuts") or [] if c.get("edge")) / 1000
 
     @property
     def key(self) -> str:

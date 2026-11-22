@@ -413,6 +413,36 @@ class CutmapMachining(BaseModel):
     #: Qirraga tushmagan ishlov yo'llari (mm): `[[[x, y], ...], ...]`
     paz_paths: list[list[list[float]]] = Field(default_factory=list)
     frez_paths: list[list[list[float]]] = Field(default_factory=list)
+    #: MX paketi figurali detal (`MES_PAKET_V1` `parts[].figure`) — chekdagi bilan bir xil eskiz
+    figure: "CutmapFigure | None" = None
+
+
+class CutmapFigureEdge(BaseModel):
+    ref: str = ""
+    symbol: str = ""
+    name: str = ""
+
+
+class CutmapFigureCut(BaseModel):
+    """Figura kesimidan keyingi yangi qirra: siniq chiziq (mm, detal koordinatasida) va kromkasi."""
+
+    path: list[list[float]] = Field(default_factory=list)
+    length: float = 0
+    edge: CutmapFigureEdge | None = None
+    source: str = "auto"
+    rule: str = ""
+
+
+class CutmapFigure(BaseModel):
+    """Arraga to'rtburchak beriladi, figura keyin kesiladi: `removed` — shtrixlanadigan qism halqalari (evenodd)."""
+
+    size: list[float] = Field(default_factory=list)
+    removed: list[list[list[float]]] = Field(default_factory=list)
+    cuts: list[CutmapFigureCut] = Field(default_factory=list)
+    edge_m: float = 0
+
+
+CutmapMachining.model_rebuild()
 
 
 class CutmapModel(BaseModel):

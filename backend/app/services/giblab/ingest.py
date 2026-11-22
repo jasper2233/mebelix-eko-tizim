@@ -653,6 +653,8 @@ async def ingest_project(
                     # 45 loyihali korpusda o'lchangan).
                     "groove_paths": paths_json(merged.paths("paz")) if merged else [],
                     "mill_paths": paths_json(merged.paths("freza")) if merged else [],
+                    # MX paketi: figurali detal (shtrix qism + yangi qirralar kromkasi) — chek va terminal eskizi
+                    **({"figure": pp.figure} if pp.figure else {}),
                 },
             )
             db.add(part)
@@ -696,6 +698,10 @@ async def ingest_project(
                 steps.append((3, PostCode.KROMKA, pp.kromka_sides))  # 3 = Kromka
             if prisadka := pp.prisadka_passes():
                 steps.append((6, PostCode.PRISADKA, prisadka))  # 6 = Prisadka
+            # Figurali qirra kromkasi (MX paketi) — figura stanokda kesilgandan KEYIN, alohida OVAL postida.
+            # Post sozlanmagan bo'lsa qadam qo'shilmaydi (import to'xtamaydi) — texnolog qo'lda qo'shadi, avvalgidek.
+            if pp.oval_edge_m > 0 and PostCode.OVAL in posts:
+                steps.append((5, PostCode.OVAL, 1))  # 5 = Oval kromka
             # Qadoqlash — anketada belgilangan bo'lsa HAMMA detalga oxirgi qadam.
             # Qisman qadoqlash yo'q: buyurtma yo butunlay qadoqlanadi, yo yo'q.
             if packaging:

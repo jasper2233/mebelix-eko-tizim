@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Order, Part, PartInstance, PartRoute, Post, Product, Scan, WasteItem
 from app.models.enums import PostCode
 from app.schemas.terminal import (
+    CutmapFigure,
     CutmapInstanceState,
     CutmapMachining,
     CutmapModel,
@@ -383,7 +384,7 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
     machining: dict[str, CutmapMachining] = {}
     if model:
         kalit_boyicha = {
-            f"{product_code}_{code}": (stored_machined_sides(xs), length, width)
+            f"{product_code}_{code}": (stored_machined_sides(xs), length, width, (xs or {}).get("figure"))
             for code, product_code, xs, length, width in (
                 await db.execute(
                     select(Part.code, Product.code, Part.xnc_summary, Part.length, Part.width)
@@ -398,8 +399,8 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
                     topilgan = kalit_boyicha.get(cell.key or "")
                     if not topilgan:
                         continue
-                    ishlov, length, width = topilgan
-                    if ishlov.paz or ishlov.frez or ishlov.paz_yollari or ishlov.frez_yollari:
+                    ishlov, length, width, figura = topilgan
+                    if ishlov.paz or ishlov.frez or ishlov.paz_yollari or ishlov.frez_yollari or figura:
                         machining[str(cell.id)] = CutmapMachining(
                             l=length,
                             w=width,
@@ -407,6 +408,7 @@ async def build_cutmap_state(db: AsyncSession, order: Order, post_id: int) -> Cu
                             frez_sides=ishlov.frez,
                             paz_paths=ishlov.paz_yollari,
                             frez_paths=ishlov.frez_yollari,
+                            figure=CutmapFigure.model_validate(figura) if figura else None,
                         )
 
     return CutmapState(
