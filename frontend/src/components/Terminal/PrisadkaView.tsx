@@ -171,20 +171,10 @@ export function PrisadkaView({
     if (!allFiles.length) return
     setProgress(0)
     setFaza("papka")
-    // Chrome TO'LIQ EKRANDA (Fullscreen API) papka tanlash va ruxsat oynasini
-    // ko'rsatmaydi — 2026-11-22 da stanokda aynan shu bo'ldi: tugmada «Papka
-    // so'ralmoqda…» turdi, ekranda esa hech qanday oyna chiqmadi. Shuning uchun
-    // so'rashdan OLDIN to'liq ekrandan chiqamiz; qaytib kirishni kiosk qobig'i
-    // o'z tugmasi bilan taklif qiladi (`KioskOverlays` — `requestFullscreen`
-    // foydalanuvchi bosishini talab qiladi, biz uni o'zimiz tiklay olmaymiz).
+    // To'liq ekrandan HAR BOSISHDA chiqmaymiz: 2026-11-22 da sabab brauzerning
+    // eskirgan holati bo'lib chiqdi (kesh tozalangach oyna chiqdi), to'liq ekran
+    // emas. Chiqish faqat ZAHIRA chora — oyna umuman chiqmay, muhlat tugaganda.
     const toliqEkranEdi = Boolean(document.fullscreenElement)
-    if (toliqEkranEdi) {
-      try {
-        await document.exitFullscreen()
-      } catch {
-        /* chiqib bo'lmasa ham davom etamiz — oyna chiqishi mumkin */
-      }
-    }
     try {
       if (dirSupported()) {
         // BIR MARTA so'raladi: saqlangan papka bo'lsa ruxsatini yangilaymiz,
@@ -200,8 +190,18 @@ export function PrisadkaView({
           // Bekor qilingan ham, muhlat tugagan ham shu yerda. Xabarga TASHXIS
           // qo'shiladi: stanokda oyna umuman chiqmagan edi va sababini aytadigan
           // hech narsa yo'q edi — endi operator o'qib aytib beradi
+          // Oyna ko'rinmay qolgan bo'lishi mumkin: to'liq ekrandan chiqamiz,
+          // keyingi bosishda brauzer oynasi aniq ko'rinadi (to'liq ekranga
+          // qaytishni kiosk qobig'ining o'z tugmasi taklif qiladi)
+          if (toliqEkranEdi) {
+            try {
+              await document.exitFullscreen()
+            } catch {
+              /* chiqib bo'lmasa ham xabar beramiz */
+            }
+          }
           toast.error(
-            `Papka tanlanmadi — ekranda chiqqan oynada papkani tanlang va qayta bosing (${
+            `Papka tanlanmadi — qayta bosing va chiqqan oynada papkani tanlang (${
               toliqEkranEdi ? "to'liq ekran" : "oddiy oyna"
             }, ${await savedDirHolati()})`,
           )
