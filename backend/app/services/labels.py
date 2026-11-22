@@ -160,6 +160,10 @@ def _teksturasiz(band: list[tuple[int, int]], joylar: tuple[int, ...]) -> list[i
     return qolgan or list(joylar)
 
 
+#: Eskizda shundan kichik (mm, chekda) kesib tashlanadigan qism aylana bilan belgilanadi
+KICHIK_KESIK_MM = 3.0
+
+
 def _halqa_ichida(x: float, y: float, halqa: list[list[float]]) -> bool:
     ichida = False
     for (x1, y1), (x2, y2) in zip(halqa, halqa[1:] + halqa[:1], strict=False):
@@ -246,6 +250,17 @@ def _figura_chiz(
                 draw.text(t, sym, fill="black", font=_font(2.4, bold=True), anchor="mm")
         else:
             draw.line(yol, fill="black", width=2, joint="curve")
+    # Kichik kesik (tsokol / burchak kesigi 30 mm) eskizda 1–2 mm bo'lib ko'rinmay qoladi — aylana bilan belgilanadi
+    for h in figure.get("removed") or []:
+        if len(h) < 3:
+            continue
+        nuqtalar = [px(p) for p in h]
+        xs = [q[0] for q in nuqtalar]
+        ys = [q[1] for q in nuqtalar]
+        if max(xs) - min(xs) < KICHIK_KESIK_MM * _MM and max(ys) - min(ys) < KICHIK_KESIK_MM * _MM:
+            cx, cy = (max(xs) + min(xs)) / 2, (max(ys) + min(ys)) / 2
+            r = 2.2 * _MM
+            draw.ellipse((cx - r, cy - r, cx + r, cy + r), outline="black", width=2)
 
 
 def _canvas() -> tuple[Any, Any, int]:

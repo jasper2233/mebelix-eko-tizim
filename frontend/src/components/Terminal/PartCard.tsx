@@ -138,6 +138,26 @@ export function PartPreview({
             fillRule="evenodd"
             stroke="none"
           />
+          {/* Kichik kesik (tsokol / burchak kesigi) chizmada 1-2 px bo'lib
+              ko'rinmay qoladi — chekdagi kabi aylana bilan belgilanadi */}
+          {figRings.map((h, i) => {
+            const xs = h.map((q) => q[0])
+            const ys = h.map((q) => q[1])
+            const w = Math.max(...xs) - Math.min(...xs)
+            const hh = Math.max(...ys) - Math.min(...ys)
+            if (w >= 10 || hh >= 10) return null
+            return (
+              <circle
+                key={`kk${i}`}
+                cx={(Math.max(...xs) + Math.min(...xs)) / 2}
+                cy={(Math.max(...ys) + Math.min(...ys)) / 2}
+                r={8}
+                fill="none"
+                stroke="#dc2626"
+                strokeWidth="1.5"
+              />
+            )
+          })}
         </g>
       )}
       {fig?.cuts?.map((c, i) => {
