@@ -5,7 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { HardDriveDownload, Printer } from "lucide-react"
+import { FileArchive, HardDriveDownload, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -41,6 +41,7 @@ import {
   projectFolder,
   saveScxToDir,
   scxFileUrl,
+  scxZipUrl,
 } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 
@@ -166,6 +167,17 @@ export function PrisadkaView({
   const totDone = parts.reduce((s, p) => s + p.done, 0)
   const totReq = parts.reduce((s, p) => s + p.total, 0)
 
+  /** Oynasiz yo'l: hamma SCX bitta ZIP bo'lib «Yuklamalar»ga tushadi.
+   *  Papka tanlash/ruxsat oynasi ko'rinmaydigan stanok uchun — va operator
+   *  xohlagan paytda bosishi uchun alohida tugma ham bor. */
+  const zipYukla = () => {
+    if (!orderId) return
+    window.location.href = scxZipUrl(orderId)
+    toast.success(
+      "SCX arxivi yuklanmoqda — brauzer «Yuklamalar» papkasiga tushadi",
+    )
+  }
+
   const downloadAll = async () => {
     if (!allFiles.length) return
     setProgress(0)
@@ -182,11 +194,11 @@ export function PrisadkaView({
           new Promise<null>((res) => setTimeout(() => res(null), 25_000)),
         ])
         if (!dir) {
-          // Bekor qilingan ham, muhlat tugagan ham shu yerda: ikkalasida ham
-          // operatorga ayni bir narsa kerak — brauzer so'ragan oynani tasdiqlash
-          toast.error(
-            "Papka tanlanmadi — brauzer so'ragan oynani tasdiqlang va qayta bosing",
-          )
+          // Bekor qilingan ham, muhlat tugagan ham shu yerda. Stanokda bu
+          // oynalar KIOSK oynasi ortida ko'rinmasdan qolishi mumkin (2026-11-22:
+          // operator «Papka so'ralmoqda…» ni ko'rdi, oyna esa umuman chiqmadi) —
+          // shuning uchun jim turmaymiz, OYNASIZ yo'lga o'tamiz: bitta ZIP
+          zipYukla()
           return
         }
         setFaza("yuklash")
@@ -506,6 +518,18 @@ export function PrisadkaView({
               Papka: {dirName}
             </span>
           )}
+          {/* ZIP — oynasiz zahira yo'l: papka dialogi ochilmaydigan stanokda
+              operator shuni bosadi (fayllar «Yuklamalar»ga bitta arxiv bo'lib
+              tushadi, keyin stanok papkasiga ochib ko'chiriladi) */}
+          <Button
+            variant="outline"
+            className="h-12 px-4 text-base"
+            disabled={!allFiles.length || progress !== null}
+            onClick={zipYukla}
+            title="Hamma SCX bitta ZIP bo'lib Yuklamalar papkasiga tushadi"
+          >
+            <FileArchive /> ZIP
+          </Button>
           <LoadingButton
             className="h-12 px-5 text-base font-bold"
             loading={progress !== null}

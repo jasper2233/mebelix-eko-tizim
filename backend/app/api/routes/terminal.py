@@ -1,5 +1,7 @@
 """Operator terminal API: context, badge sessions, post queue, ARRA cut map, files."""
 
+import io
+import zipfile
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any
@@ -1412,6 +1414,51 @@ async def render_instance_label(db: SessionDep, _: LabelImageUser, instance_id: 
     if data is None:
         raise NotFoundException("Nusxa topilmadi.")
     return Response(content=render_label_png(data), media_type="image/png")
+
+
+@router.get("/orders/{order_id}/scx-zip", operation_id="download_terminal_scx_zip")
+async def download_terminal_scx_zip(db: SessionDep, user: TerminalUser, order_id: int) -> Response:
+    """Buyurtmaning HAMMA SCX fayli — bitta ZIP (2026-11-22, Prisadka).
+
+    Papkaga yozish yo'li brauzerning File System Access API'siga tayanadi va u
+    stanokda IKKI xil oyna ochadi: ruxsat so'rovi va papka tanlash. Kiosk
+    oynasi ortida bu oynalar KO'RINMASDAN qolishi mumkin — operator hech narsa
+    ko'rmaydi, yuklash esa boshlanmaydi (o'lchangan: tugma osilgan kuni
+    `/terminal/files/` ga bitta ham so'rov kelmagan). ZIP — oynasiz yo'l:
+    bitta fayl, brauzerning odatdagi «Yuklamalar» papkasiga tushadi."""
+    rows = (
+        (
+            await db.execute(
+                select(OrderFile)
+                .where(
+                    OrderFile.order_id == order_id,
+                    OrderFile.kind == FileKind.SCX,
+                    OrderFile.is_deleted == False,  # noqa: E712
+                )
+                .order_by(OrderFile.filename)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if not rows:
+        raise NotFoundException("Bu buyurtmada SCX fayl yo'q.")
+    order = await crud_orders.get_or_404(db, "Buyurtma topilmadi.", id=order_id)
+
+    bufer = io.BytesIO()
+    # SCX — kichik XML (o'nlab KB), shuning uchun xotirada yig'iladi: oqimli
+    # yozish uchun vaqtinchalik fayl kerak bo'lardi, foyda esa yo'q
+    with zipfile.ZipFile(bufer, "w", zipfile.ZIP_DEFLATED) as z:
+        for row in rows:
+            yol = upload_root() / row.path
+            if yol.is_file():  # diskda yo'q fayl butun ZIPni yiqitmasin
+                z.write(yol, arcname=row.filename)
+    nom = f"{order.number}_scx.zip"
+    return Response(
+        content=bufer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{nom}"'},
+    )
 
 
 @router.get("/files/{file_id}", operation_id="download_terminal_file")

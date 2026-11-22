@@ -50,6 +50,12 @@ export function scxFileUrl(id: number): string {
   return `${API_BASE}/api/v1/terminal/files/${id}`
 }
 
+/** Buyurtmaning hamma SCX fayli — bitta ZIP. Papka/ruxsat oynasi ochilmaydigan
+ *  stanoklar uchun yagona ishonchli yo'l (oynasiz, odatdagi «Yuklamalar»ga tushadi). */
+export function scxZipUrl(orderId: number): string {
+  return `${API_BASE}/api/v1/terminal/orders/${orderId}/scx-zip`
+}
+
 /** Proyekt nomidan papka nomi: Windows'da taqiqlangan belgilar almashtiriladi */
 export function projectFolder(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim()
