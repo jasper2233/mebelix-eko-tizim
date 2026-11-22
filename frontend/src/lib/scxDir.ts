@@ -50,12 +50,6 @@ export function scxFileUrl(id: number): string {
   return `${API_BASE}/api/v1/terminal/files/${id}`
 }
 
-/** Buyurtmaning hamma SCX fayli — bitta ZIP. Papka/ruxsat oynasi ochilmaydigan
- *  stanoklar uchun yagona ishonchli yo'l (oynasiz, odatdagi «Yuklamalar»ga tushadi). */
-export function scxZipUrl(orderId: number): string {
-  return `${API_BASE}/api/v1/terminal/orders/${orderId}/scx-zip`
-}
-
 /** Proyekt nomidan papka nomi: Windows'da taqiqlangan belgilar almashtiriladi */
 export function projectFolder(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim()
@@ -77,6 +71,21 @@ export async function getSavedDir(): Promise<FileSystemDirectoryHandle | null> {
     return perm === "granted" ? h : null
   } catch {
     return null
+  }
+}
+
+/** Papka bosqichi nima holatda — TASHXIS uchun: stanokda oyna umuman chiqmasa
+ *  (2026-11-22) operator ekranda shu satrni ko'radi va aytib beradi. */
+export async function savedDirHolati(): Promise<string> {
+  try {
+    const h = await kvGet<FileSystemDirectoryHandle>(KEY)
+    if (!h) return "saqlangan papka yo'q"
+    const perms = h as unknown as {
+      queryPermission: (o: { mode: string }) => Promise<string>
+    }
+    return `papka "${h.name}", ruxsat: ${await perms.queryPermission({ mode: "readwrite" })}`
+  } catch (e) {
+    return `papka holati o'qilmadi (${(e as Error)?.name})`
   }
 }
 

@@ -10744,34 +10744,6 @@ export type RenderInstanceLabelResponses = {
     200: unknown;
 };
 
-export type DownloadTerminalScxZipData = {
-    body?: never;
-    path: {
-        /**
-         * Order Id
-         */
-        order_id: number;
-    };
-    query?: never;
-    url: '/api/v1/terminal/orders/{order_id}/scx-zip';
-};
-
-export type DownloadTerminalScxZipErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DownloadTerminalScxZipError = DownloadTerminalScxZipErrors[keyof DownloadTerminalScxZipErrors];
-
-export type DownloadTerminalScxZipResponses = {
-    /**
-     * Successful Response
-     */
-    200: unknown;
-};
-
 export type DownloadTerminalFileData = {
     body?: never;
     path: {

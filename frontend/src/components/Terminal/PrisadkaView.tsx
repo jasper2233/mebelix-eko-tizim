@@ -5,7 +5,7 @@
 // yuklash faqat shu tugma orqali, operator xohlaganda.
 
 import { useQuery } from "@tanstack/react-query"
-import { FileArchive, HardDriveDownload, Printer } from "lucide-react"
+import { HardDriveDownload, Printer } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { toast } from "sonner"
@@ -39,9 +39,9 @@ import {
   getSavedDir,
   pickDir,
   projectFolder,
+  savedDirHolati,
   saveScxToDir,
   scxFileUrl,
-  scxZipUrl,
 } from "@/lib/scxDir"
 import { cn } from "@/lib/utils"
 
@@ -167,21 +167,24 @@ export function PrisadkaView({
   const totDone = parts.reduce((s, p) => s + p.done, 0)
   const totReq = parts.reduce((s, p) => s + p.total, 0)
 
-  /** Oynasiz yo'l: hamma SCX bitta ZIP bo'lib «Yuklamalar»ga tushadi.
-   *  Papka tanlash/ruxsat oynasi ko'rinmaydigan stanok uchun — va operator
-   *  xohlagan paytda bosishi uchun alohida tugma ham bor. */
-  const zipYukla = () => {
-    if (!orderId) return
-    window.location.href = scxZipUrl(orderId)
-    toast.success(
-      "SCX arxivi yuklanmoqda — brauzer «Yuklamalar» papkasiga tushadi",
-    )
-  }
-
   const downloadAll = async () => {
     if (!allFiles.length) return
     setProgress(0)
     setFaza("papka")
+    // Chrome TO'LIQ EKRANDA (Fullscreen API) papka tanlash va ruxsat oynasini
+    // ko'rsatmaydi — 2026-11-22 da stanokda aynan shu bo'ldi: tugmada «Papka
+    // so'ralmoqda…» turdi, ekranda esa hech qanday oyna chiqmadi. Shuning uchun
+    // so'rashdan OLDIN to'liq ekrandan chiqamiz; qaytib kirishni kiosk qobig'i
+    // o'z tugmasi bilan taklif qiladi (`KioskOverlays` — `requestFullscreen`
+    // foydalanuvchi bosishini talab qiladi, biz uni o'zimiz tiklay olmaymiz).
+    const toliqEkranEdi = Boolean(document.fullscreenElement)
+    if (toliqEkranEdi) {
+      try {
+        await document.exitFullscreen()
+      } catch {
+        /* chiqib bo'lmasa ham davom etamiz — oyna chiqishi mumkin */
+      }
+    }
     try {
       if (dirSupported()) {
         // BIR MARTA so'raladi: saqlangan papka bo'lsa ruxsatini yangilaymiz,
@@ -194,11 +197,14 @@ export function PrisadkaView({
           new Promise<null>((res) => setTimeout(() => res(null), 25_000)),
         ])
         if (!dir) {
-          // Bekor qilingan ham, muhlat tugagan ham shu yerda. Stanokda bu
-          // oynalar KIOSK oynasi ortida ko'rinmasdan qolishi mumkin (2026-11-22:
-          // operator «Papka so'ralmoqda…» ni ko'rdi, oyna esa umuman chiqmadi) —
-          // shuning uchun jim turmaymiz, OYNASIZ yo'lga o'tamiz: bitta ZIP
-          zipYukla()
+          // Bekor qilingan ham, muhlat tugagan ham shu yerda. Xabarga TASHXIS
+          // qo'shiladi: stanokda oyna umuman chiqmagan edi va sababini aytadigan
+          // hech narsa yo'q edi — endi operator o'qib aytib beradi
+          toast.error(
+            `Papka tanlanmadi — ekranda chiqqan oynada papkani tanlang va qayta bosing (${
+              toliqEkranEdi ? "to'liq ekran" : "oddiy oyna"
+            }, ${await savedDirHolati()})`,
+          )
           return
         }
         setFaza("yuklash")
@@ -518,18 +524,6 @@ export function PrisadkaView({
               Papka: {dirName}
             </span>
           )}
-          {/* ZIP — oynasiz zahira yo'l: papka dialogi ochilmaydigan stanokda
-              operator shuni bosadi (fayllar «Yuklamalar»ga bitta arxiv bo'lib
-              tushadi, keyin stanok papkasiga ochib ko'chiriladi) */}
-          <Button
-            variant="outline"
-            className="h-12 px-4 text-base"
-            disabled={!allFiles.length || progress !== null}
-            onClick={zipYukla}
-            title="Hamma SCX bitta ZIP bo'lib Yuklamalar papkasiga tushadi"
-          >
-            <FileArchive /> ZIP
-          </Button>
           <LoadingButton
             className="h-12 px-5 text-base font-bold"
             loading={progress !== null}
