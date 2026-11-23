@@ -177,6 +177,53 @@ def _olib_tashlangan(x: float, y: float, halqalar: list[list[list[float]]]) -> b
     return sum(_halqa_ichida(x, y, h) for h in halqalar) % 2 == 1
 
 
+#: Eski Bazis eksporti (≤ 1.99) figurali qirra kromkasini tutash tomonga «!СмЧт <material>» («смотри чертёж») nomi bilan
+#: yozadi — chekda haqiqiy material nomi ko'rsatiladi
+SMCHT_PREFIX = "!СмЧт"
+
+
+def kromka_nomi(nom: str) -> str:
+    """Chekdagi kromka nomi: «!СмЧт 06-19» → «06-19» (haqiqiy material)."""
+    nom = (nom or "").strip()
+    return nom[len(SMCHT_PREFIX) :].strip() if nom.startswith(SMCHT_PREFIX) else nom
+
+
+def figure_side_spans(figure: dict[str, Any] | None, tomon: str) -> list[tuple[float, float]] | None:
+    """Tomonning kesilgandan keyin QOLADIGAN qismlari (detal koordinatasida, tomon bo'ylab mm) — to'g'ri kromka chizig'i
+    faqat shu oraliqlarda chiziladi (yoy / burchak kesigi ustidan emas). Figura yo'q — None (butun tomon)."""
+    if not figure or not figure.get("size"):
+        return None
+    L, W = float(figure["size"][0]), float(figure["size"][1])
+    rings = [h for h in (figure.get("removed") or []) if len(h) >= 3]
+    if not rings:
+        return None
+    e = 0.3
+    gorizontal = tomon in ("t", "b")
+    c = e if tomon in ("t", "l") else ((W if gorizontal else L) - e)
+    uz = L if gorizontal else W
+    kesishlar: list[float] = []
+    for h in rings:
+        for (x1, y1), (x2, y2) in zip(h, h[1:] + h[:1], strict=False):
+            a1, b1, a2, b2 = (
+                (float(x1), float(y1), float(x2), float(y2))
+                if gorizontal
+                else (float(y1), float(x1), float(y2), float(x2))
+            )
+            if (b1 > c) != (b2 > c):
+                kesishlar.append(a1 + (a2 - a1) * (c - b1) / (b2 - b1))
+    kesishlar.sort()
+    olingan = [(max(0.0, kesishlar[i]), min(uz, kesishlar[i + 1])) for i in range(0, len(kesishlar) - 1, 2)]
+    qolgan: list[tuple[float, float]] = []
+    t = 0.0
+    for a, b in olingan:
+        if a > t:
+            qolgan.append((t, a))
+        t = max(t, b)
+    if t < uz:
+        qolgan.append((t, uz))
+    return [(a, b) for a, b in qolgan if b - a >= 1.0]
+
+
 def figure_removed_sides(figure: dict[str, Any] | None) -> set[str]:
     """Butunlay kesib tashlanadigan tomonlar (`t`/`b`/`l`/`r`): ularning to'g'ri kromka chizig'i chizilmaydi —
     kromka figurali qirraga o'tgan (yoy tepa va h.k.)."""
@@ -198,7 +245,13 @@ def figure_removed_sides(figure: dict[str, Any] | None) -> set[str]:
 
 
 def _figura_chiz(
-    img: Any, draw: Any, figure: dict[str, Any], box: tuple[int, int, int, int], burilgan: bool, bt: int
+    img: Any,
+    draw: Any,
+    figure: dict[str, Any],
+    box: tuple[int, int, int, int],
+    burilgan: bool,
+    bt: int,
+    tomon_harflari: set[str] | None = None,
 ) -> None:
     """Figurali detal (MX paketi, `MES_PAKET_V1` `parts[].figure`): kesib tashlanadigan qism yo'l-yo'l shtrix bilan,
     yangi qirra — ingichka chiziq, kromkali yangi qirra — qalin chiziq + kromka harfi. Arra to'g'ri to'rtburchak
@@ -233,23 +286,72 @@ def _figura_chiz(
     qora = Image.new("RGB", img.size, "black")
     img.paste(oq, (0, 0), niqob)  # olib tashlanadigan qism — oq fon
     img.paste(qora, (0, 0), ImageChops.logical_and(niqob, shtrix))
+    qalin = bt + 2
+    bosh = max(3, round(0.7 * _MM))  # shtrix va kromka chizig'i orasidagi oq bo'shliq
+    for c in figure.get("cuts") or []:
+        yol = [px(p) for p in c.get("path") or []]
+        if len(yol) >= 2 and c.get("edge"):
+            draw.line(yol, fill="white", width=qalin + 2 * bosh, joint="curve")
+            for q in (yol[0], yol[-1]):
+                r = (qalin + 2 * bosh) / 2
+                draw.ellipse((q[0] - r, q[1] - r, q[0] + r, q[1] + r), fill="white")
+    # Bir xil kromkali ketma-ket qirralar (yoy + uning davomidagi to'g'ri bo'lak) — bitta zanjir,
+    # harf BITTA (o'rtasida): har bo'lakka harf qo'yilsa burchakda «A A A» to'planib, kromkachini chalg'itardi
+    zanjirlar: list[tuple[str, list[tuple[int, int]]]] = []
+    oxirgi: list[float] | None = None
     for c in figure.get("cuts") or []:
         yol = [px(p) for p in c.get("path") or []]
         if len(yol) < 2:
             continue
-        if c.get("edge"):
-            draw.line(yol, fill="black", width=bt + 1, joint="curve")
-            sym = str((c["edge"] or {}).get("symbol") or "")[:3]
-            if sym:
-                mx, my = yol[len(yol) // 2]
-                # harf detal ICHIGA — eskiz markaziga qarab siljitiladi
-                cx, cy = bx + bw / 2, by + bh / 2
-                dx, dy = cx - mx, cy - my
-                n = max(1.0, (dx * dx + dy * dy) ** 0.5)
-                t = (mx + dx / n * 1.8 * _MM, my + dy / n * 1.8 * _MM)
-                draw.text(t, sym, fill="black", font=_font(2.4, bold=True), anchor="mm")
-        else:
+        if not c.get("edge"):
             draw.line(yol, fill="black", width=2, joint="curve")
+            oxirgi = None
+            continue
+        draw.line(yol, fill="black", width=qalin, joint="curve")
+        sym = str((c["edge"] or {}).get("symbol") or "")[:3]
+        bosh_n = [float(v) for v in c["path"][0]]
+        if (
+            zanjirlar
+            and oxirgi is not None
+            and zanjirlar[-1][0] == sym
+            and abs(bosh_n[0] - oxirgi[0]) + abs(bosh_n[1] - oxirgi[1]) < 0.5
+        ):
+            zanjirlar[-1][1].extend(yol[1:])
+        else:
+            zanjirlar.append((sym, list(yol)))
+        oxirgi = [float(v) for v in c["path"][-1]]
+    for sym, yol in zanjirlar:
+        if not sym:
+            continue
+        uz = [((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 for a, b in zip(yol, yol[1:], strict=False)]
+        # Kichik burchak (eskizda < 3 mm) tutash tomon bilan bir xil kromkali bo'lsa — harfi yozilmaydi:
+        # tomon harfi yetadi, aks holda burchakda «D D D» to'planib qoladi (foydalanuvchi, 2026-11-23)
+        if sum(uz) < KICHIK_KESIK_MM * _MM and sym in (tomon_harflari or set()):
+            continue
+        yopiq = len(yol) > 2 and abs(yol[0][0] - yol[-1][0]) + abs(yol[0][1] - yol[-1][1]) <= 2
+        if yopiq:
+            # yopiq kontur (oyna, o'yiq) — eng uzun kesmaning chorak nuqtasida:
+            # o'rtasi tomon harfi bilan ustma-ust, zanjir o'rtasi esa qarama-qarshi burchakka tushadi
+            i = max(range(len(uz)), key=lambda j: uz[j])
+            mx, my = yol[i][0] + (yol[i + 1][0] - yol[i][0]) / 4, yol[i][1] + (yol[i + 1][1] - yol[i][1]) / 4
+        else:
+            yarim, t0 = sum(uz) / 2, 0.0
+            mx, my = yol[len(yol) // 2]
+            for (a, b), u in zip(zip(yol, yol[1:], strict=False), uz, strict=False):
+                if t0 + u >= yarim and u > 0:
+                    k = (yarim - t0) / u
+                    mx, my = a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k
+                    break
+                t0 += u
+        # harf detalning QOLADIGAN qismiga: eskiz markaziga qarab, shtrixga tushsa — teskari tomonga
+        cx, cy = bx + bw / 2, by + bh / 2
+        dx, dy = cx - mx, cy - my
+        n = max(1.0, (dx * dx + dy * dy) ** 0.5)
+        t = (mx + dx / n * 1.8 * _MM, my + dy / n * 1.8 * _MM)
+        qx, qy = round(t[0]), round(t[1])
+        if 0 <= qx < img.size[0] and 0 <= qy < img.size[1] and niqob.getpixel((qx, qy)):
+            t = (mx - dx / n * 1.8 * _MM, my - dy / n * 1.8 * _MM)
+        draw.text(t, sym, fill="black", font=_font(2.4, bold=True), anchor="mm")
     # Kichik kesik (tsokol / burchak kesigi 30 mm) eskizda 1–2 mm bo'lib ko'rinmay qoladi — aylana bilan belgilanadi
     for h in figure.get("removed") or []:
         if len(h) < 3:
@@ -359,7 +461,8 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
 
     def edge_field(side: str, key: str) -> str:
         e = d.edges.get(side)
-        return str(e.get(key) or "").strip() if e else ""
+        v = str(e.get(key) or "").strip() if e else ""
+        return kromka_nomi(v) if key in ("name", "mat") else v
 
     # ============ CHAP USTUN (x 5..52) ============
     if not _paste_logo(img, width_mm=22, xy=(3 * mm, 1 * mm)):
@@ -541,32 +644,72 @@ def render_label_png(d: LabelData) -> bytes:  # noqa: C901 — chiziqli layout k
         figura = (d.xnc_summary or {}).get("figure")
         yoq_tomonlar = figure_removed_sides(figura)
         if figura and figura.get("size"):
-            _figura_chiz(img, draw, figura, (bx, by, bw, bh), burilgan, bt)
+            _figura_chiz(
+                img,
+                draw,
+                figura,
+                (bx, by, bw, bh),
+                burilgan,
+                bt,
+                {edge_field(t, "symbol")[:3] for t in qirra if d.edges.get(t)},
+            )
             draw.rectangle((bx, by, bx + bw, by + bh), outline="black", width=1)  # zagotovka chegarasi ko'rinib tursin
+
+        fL = float((figura or {}).get("size", [d.length])[0] or d.length or 1) if figura else float(d.length or 1)
+        fW = float((figura or {}).get("size", [0, d.width])[1] or d.width or 1) if figura else float(d.width or 1)
+
+        def tomon_px(tomon: str) -> list[tuple[int, int]]:
+            """Tomon kromkasi chiziladigan oraliqlar — eskiz o'qi bo'ylab piksel (boshi, oxiri)."""
+            oraliq = figure_side_spans(figura, tomon) if figura else None
+            if oraliq is None:
+                return [(0, bh if qirra[tomon] in ("chap", "ong") else bw)]
+            out: list[tuple[int, int]] = []
+            for a, b in oraliq:
+                # detal nuqtasi (x, y) → eskiz (gor, ver): burilganda (y, L - x)
+                if tomon in ("t", "b"):
+                    p1, p2 = (a, 0.0), (b, 0.0)
+                else:
+                    p1, p2 = (0.0, a), (0.0, b)
+                if burilgan:
+                    v1, v2 = (fL - p1[0], fL - p2[0]) if tomon in ("t", "b") else (p1[1], p2[1])
+                    k = bh / fL if tomon in ("t", "b") else bw / fW
+                else:
+                    v1, v2 = (p1[0], p2[0]) if tomon in ("t", "b") else (p1[1], p2[1])
+                    k = bw / fL if tomon in ("t", "b") else bh / fW
+                lo, hi = sorted((round(v1 * k), round(v2 * k)))
+                if hi - lo >= 2:
+                    out.append((lo, hi))
+            return out
 
         for tomon, joy in qirra.items():
             if not d.edges.get(tomon) or tomon in yoq_tomonlar:
                 continue
-            if joy == "chap":
-                draw.rectangle((bx - off - bt, by, bx - off, by + bh), fill="black")
-            elif joy == "ong":
-                draw.rectangle((bx + bw + off, by, bx + bw + off + bt, by + bh), fill="black")
-            elif joy == "tepa":
-                draw.rectangle((bx, by - off - bt, bx + bw, by - off), fill="black")
-            else:
-                draw.rectangle((bx, by + bh + off, bx + bw, by + bh + off + bt), fill="black")
-            # Tomon simvoli (A/B) o'sha tomonning ichki chetida — kromka katagidagi harf bilan mos
+            oraliqlar = tomon_px(tomon)
+            if not oraliqlar:
+                continue
+            for lo, hi in oraliqlar:
+                if joy == "chap":
+                    draw.rectangle((bx - off - bt, by + lo, bx - off, by + hi), fill="black")
+                elif joy == "ong":
+                    draw.rectangle((bx + bw + off, by + lo, bx + bw + off + bt, by + hi), fill="black")
+                elif joy == "tepa":
+                    draw.rectangle((bx + lo, by - off - bt, bx + hi, by - off), fill="black")
+                else:
+                    draw.rectangle((bx + lo, by + bh + off, bx + hi, by + bh + off + bt), fill="black")
+            # Tomon simvoli (A/B) o'sha tomonning ichki chetida, kromkali qismining o'rtasida — katakdagi harf bilan mos
             sym = edge_field(tomon, "symbol")[:3]
             if sym:
                 sf = _font(2.8, bold=True)
+                lo, hi = max(oraliqlar, key=lambda o: o[1] - o[0])
+                o = (lo + hi) // 2
                 if joy == "chap":
-                    draw.text((bx + int(0.8 * mm), by + bh // 2), sym, fill="black", font=sf, anchor="lm")
+                    draw.text((bx + int(0.8 * mm), by + o), sym, fill="black", font=sf, anchor="lm")
                 elif joy == "ong":
-                    draw.text((bx + bw - int(0.8 * mm), by + bh // 2), sym, fill="black", font=sf, anchor="rm")
+                    draw.text((bx + bw - int(0.8 * mm), by + o), sym, fill="black", font=sf, anchor="rm")
                 elif joy == "tepa":
-                    draw.text((bx + bw // 2, by + int(0.6 * mm)), sym, fill="black", font=sf, anchor="ma")
+                    draw.text((bx + o, by + int(0.6 * mm)), sym, fill="black", font=sf, anchor="ma")
                 else:
-                    draw.text((bx + bw // 2, by + bh - int(0.6 * mm)), sym, fill="black", font=sf, anchor="md")
+                    draw.text((bx + o, by + bh - int(0.6 * mm)), sym, fill="black", font=sf, anchor="md")
 
         # Paz va freza ketadigan tomonlar — ro'yxat SHU YERDA kerak: tekstura chiziqlari
         # ularga qarab siljiydi. CHIZISH esa teshiklardan KEYIN (pastda) — teshik

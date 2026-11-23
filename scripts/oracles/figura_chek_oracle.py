@@ -17,7 +17,13 @@ from PIL import Image  # noqa: E402
 
 from app.schemas.terminal import CutmapFigure  # noqa: E402
 from app.services.giblab.mx_paket import parse_package  # noqa: E402
-from app.services.labels import LabelData, figure_removed_sides, render_label_png  # noqa: E402
+from app.services.labels import (  # noqa: E402
+    LabelData,
+    figure_removed_sides,
+    figure_side_spans,
+    kromka_nomi,
+    render_label_png,
+)
 
 ORDER = "B-2026-901"
 natija: list[bool] = []
@@ -171,6 +177,24 @@ mm = 8
 tek("o'zgarish faqat eskiz sohasida", all(55 * mm <= x <= 76 * mm for x, _y in farq), True)
 qora = sum(1 for x, y in farq if fig.getpixel((x, y)) < 128)
 tek("shtrix + kromka chizig'i qora piksel qo'shadi", qora > 30, True)
+
+print("4. Tomon kromkasi faqat qoladigan qismda, kromka nomi (2026-11-23)")
+
+
+def oraliq(f, t):
+    o = figure_side_spans(f, t)
+    return None if o is None else [tuple(round(v) for v in q) for q in o]
+
+
+burchak = {"size": [320, 199], "removed": [[[260, 199], [320, 199], [320, 139], [260, 139]]]}
+tek("pastki tomon: yoygacha (0..260)", oraliq(burchak, "b"), [(0, 260)])
+tek("o'ng tomon: yoygacha (0..139)", oraliq(burchak, "r"), [(0, 139)])
+tek("tepa tomon butun", oraliq(burchak, "t"), [(0, 320)])
+ikki = {"size": [1780, 310], "removed": [[[1750, 0], [1780, 0], [1780, 30]], [[1750, 310], [1780, 310], [1780, 280]]]}
+tek("ikki burchak: o'ng tomon o'rtasi (30..280)", oraliq(ikki, "r"), [(30, 280)])
+tek("figurasiz — butun tomon (None)", oraliq(None, "t"), None)
+tek("!СмЧт prefiksi olib tashlanadi", kromka_nomi("!СмЧт 06-19"), "06-19")
+tek("oddiy nom o'zgarmaydi", kromka_nomi("06-19 qora"), "06-19 qora")
 
 print(f"\n{sum(natija)}/{len(natija)} OK")
 sys.exit(0 if all(natija) else 1)

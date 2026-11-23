@@ -85,12 +85,50 @@ export function PartPreview({
     }, 0) %
       2 ===
     1
-  // Butunlay kesib tashlanadigan tomonning to'g'ri kromka chizig'i chizilmaydi:
-  // uning kromkasi figurali qirraga o'tgan (yoy tepa va h.k.)
-  const tomonYoq = (nuqta: (k: number) => [number, number]) =>
-    figRings.length > 0 &&
-    [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((k) => olibTashlangan(...nuqta(k)))
-      .length >= 8
+  // Tomonning kesilgandan keyin QOLADIGAN qismlari (0..1 ulushda): to'g'ri kromka
+  // chizig'i faqat shu yerda — yoy / burchak kesigi ustidan emas (chek bilan bir xil)
+  const tomonOraliq = (
+    nuqta: (k: number) => [number, number],
+  ): [number, number][] => {
+    if (figRings.length === 0) return [[0, 1]]
+    const n = 240
+    const out: [number, number][] = []
+    let bosh: number | null = null
+    for (let i = 0; i <= n; i++) {
+      const k = i / n
+      const qoladi = !olibTashlangan(...nuqta(k))
+      if (qoladi && bosh === null) bosh = k
+      if ((!qoladi || i === n) && bosh !== null) {
+        if (k - bosh > 0.01) out.push([bosh, k])
+        bosh = null
+      }
+    }
+    return out
+  }
+  // Bir xil kromkali ketma-ket qirralar — bitta zanjir, harf bitta (o'rtasida)
+  const zanjirlar: { sym: string; pts: [number, number][] }[] = []
+  {
+    let oxirgi: number[] | null = null
+    for (const c of fig?.cuts ?? []) {
+      const yo = (c.path ?? []).map((q) => figXY(q[0], q[1]))
+      if (yo.length < 2 || !c.edge) {
+        oxirgi = null
+        continue
+      }
+      const sym = c.edge.symbol ?? ""
+      const b0 = c.path?.[0] ?? [0, 0]
+      const z = zanjirlar[zanjirlar.length - 1]
+      if (
+        z &&
+        oxirgi &&
+        z.sym === sym &&
+        Math.abs(b0[0] - oxirgi[0]) + Math.abs(b0[1] - oxirgi[1]) < 0.5
+      )
+        z.pts.push(...yo.slice(1))
+      else zanjirlar.push({ sym, pts: yo })
+      oxirgi = c.path?.[c.path.length - 1] ?? null
+    }
+  }
   const ty = oy - 13
   const lx = ox - 13
   // Balandlik chegarasi: chizma dialog kengligiga cho'zilib ~370px olar,
@@ -138,6 +176,27 @@ export function PartPreview({
             fillRule="evenodd"
             stroke="none"
           />
+          <clipPath id={`olingan-${part.id}`}>
+            <path d={figD} clipRule="evenodd" />
+          </clipPath>
+          {/* kromkali qirra atrofida shtrixsiz bo'shliq — chiziq shtrixga ulanmaydi */}
+          <g clipPath={`url(#olingan-${part.id})`}>
+            {fig.cuts
+              ?.filter((c) => c.edge)
+              .map((c, i) => (
+                <polyline
+                  key={`bo${i}`}
+                  points={(c.path ?? [])
+                    .map((q) => figXY(q[0], q[1]).join(","))
+                    .join(" ")}
+                  fill="none"
+                  stroke="#fafafa"
+                  strokeWidth={12}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              ))}
+          </g>
           {/* Kichik kesik (tsokol / burchak kesigi) chizmada 1-2 px bo'lib
               ko'rinmay qoladi — chekdagi kabi aylana bilan belgilanadi */}
           {figRings.map((h, i) => {
@@ -174,30 +233,56 @@ export function PartPreview({
               strokeWidth={kromka ? 4 : 1.5}
               strokeLinejoin="round"
             />
-            {kromka && c.edge?.symbol && c.path && c.path.length > 0
-              ? (() => {
-                  const [mx, my] = figXY(
-                    c.path[Math.floor(c.path.length / 2)][0],
-                    c.path[Math.floor(c.path.length / 2)][1],
-                  )
-                  const dx = ox + rw / 2 - mx
-                  const dy = oy + rh / 2 - my
-                  const n = Math.max(1, Math.hypot(dx, dy))
-                  return (
-                    <text
-                      x={mx + (dx / n) * 11}
-                      y={my + (dy / n) * 11}
-                      fontSize="11"
-                      fontWeight="700"
-                      textAnchor="middle"
-                      dominantBaseline="middle"
-                    >
-                      {c.edge.symbol}
-                    </text>
-                  )
-                })()
-              : null}
           </g>
+        )
+      })}
+      {zanjirlar.map((z, i) => {
+        if (!z.sym) return null
+        const uz = z.pts
+          .slice(1)
+          .map((q, j) => Math.hypot(q[0] - z.pts[j][0], q[1] - z.pts[j][1]))
+        const jami = uz.reduce((a, b) => a + b, 0)
+        if (jami < 8) return null // kichik burchak — tomon harfi yetadi
+        let [mx, my] = z.pts[Math.floor(z.pts.length / 2)]
+        let t0 = 0
+        const p0 = z.pts[0]
+        const pn = z.pts[z.pts.length - 1]
+        const yopiq =
+          z.pts.length > 2 &&
+          Math.abs(p0[0] - pn[0]) + Math.abs(p0[1] - pn[1]) <= 2
+        if (yopiq) {
+          // yopiq kontur (oyna) — eng uzun kesmaning chorak nuqtasi (chek bilan bir xil)
+          const j = uz.indexOf(Math.max(...uz))
+          mx = z.pts[j][0] + (z.pts[j + 1][0] - z.pts[j][0]) / 4
+          my = z.pts[j][1] + (z.pts[j + 1][1] - z.pts[j][1]) / 4
+        }
+        for (let j = 0; j < uz.length && !yopiq; j++) {
+          if (t0 + uz[j] >= jami / 2 && uz[j] > 0) {
+            const k = (jami / 2 - t0) / uz[j]
+            mx = z.pts[j][0] + (z.pts[j + 1][0] - z.pts[j][0]) * k
+            my = z.pts[j][1] + (z.pts[j + 1][1] - z.pts[j][1]) * k
+            break
+          }
+          t0 += uz[j]
+        }
+        const dx = ox + rw / 2 - mx
+        const dy = oy + rh / 2 - my
+        const n = Math.max(1, Math.hypot(dx, dy))
+        // harf detalning qoladigan qismiga — shtrixga tushsa teskari tomonga
+        let s = 11
+        if (olibTashlangan(mx + (dx / n) * s, my + (dy / n) * s)) s = -11
+        return (
+          <text
+            key={`zh${i}`}
+            x={mx + (dx / n) * s}
+            y={my + (dy / n) * s}
+            fontSize="11"
+            fontWeight="700"
+            textAnchor="middle"
+            dominantBaseline="middle"
+          >
+            {z.sym}
+          </text>
         )
       })}
       {/* KROMKA — chekdagi kabi konturdan tashqarida qalin chiziq.
@@ -213,7 +298,8 @@ export function PartPreview({
           y: oy,
           w: 3,
           h: rh,
-          yoq: tomonYoq((k) => [ox + 2, oy + (rh * k) / 10]),
+          o: tomonOraliq((k) => [ox + 2, oy + rh * k]),
+          tik: true,
         },
         {
           bor: part.eW?.[1],
@@ -221,7 +307,8 @@ export function PartPreview({
           y: oy,
           w: 3,
           h: rh,
-          yoq: tomonYoq((k) => [ox + rw - 2, oy + (rh * k) / 10]),
+          o: tomonOraliq((k) => [ox + rw - 2, oy + rh * k]),
+          tik: true,
         },
         {
           bor: part.eH?.[0],
@@ -229,7 +316,8 @@ export function PartPreview({
           y: oy - 5,
           w: rw,
           h: 3,
-          yoq: tomonYoq((k) => [ox + (rw * k) / 10, oy + 2]),
+          o: tomonOraliq((k) => [ox + rw * k, oy + 2]),
+          tik: false,
         },
         {
           bor: part.eH?.[1],
@@ -237,19 +325,22 @@ export function PartPreview({
           y: oy + rh + 2,
           w: rw,
           h: 3,
-          yoq: tomonYoq((k) => [ox + (rw * k) / 10, oy + rh - 2]),
+          o: tomonOraliq((k) => [ox + rw * k, oy + rh - 2]),
+          tik: false,
         },
       ].map((k, i) =>
-        k.bor && !k.yoq ? (
-          <rect
-            key={`k${i}`}
-            x={k.x}
-            y={k.y}
-            width={k.w}
-            height={k.h}
-            fill="#111"
-          />
-        ) : null,
+        k.bor
+          ? k.o.map(([a, b], j) => (
+              <rect
+                key={`k${i}-${j}`}
+                x={k.tik ? k.x : k.x + k.w * a}
+                y={k.tik ? k.y + k.h * a : k.y}
+                width={k.tik ? k.w : k.w * (b - a)}
+                height={k.tik ? k.h * (b - a) : k.h}
+                fill="#111"
+              />
+            ))
+          : null,
       )}
       {/* Tekstura — xaritadagi varaq bilan bir xil qoida: `rot` bo'lsa tik, aks
           holda yotiq 3 chiziq (uzunlik o'qi bo'ylab). KULRANG va ishlovdan OLDIN:
